@@ -1,6 +1,11 @@
 # wine-app
 
-Aplicación web (en desarrollo).
+Aplicación web (en desarrollo) para descubrir vinos y bodegas españolas: dónde comprarlos, a qué precio, enoturismo, premios y un espacio personal con favoritos, notas, diario de catas y cava.
+
+## Documentación
+
+- [Definición de producto (scope)](docs/SCOPE.md)
+- [Roadmap y checklist por fases](docs/ROADMAP.md)
 
 ## Infraestructura
 
