@@ -22,3 +22,19 @@ vercel env pull .env.local
 ```
 
 Ver `.env.example` para la lista de variables.
+
+## Desarrollo
+
+Next.js 16 (App Router, TypeScript, Tailwind CSS 4) con `@supabase/ssr`.
+
+```bash
+npm install
+vercel env pull .env.local
+npm run dev
+```
+
+- `src/lib/supabase/client.ts`: cliente para Client Components.
+- `src/lib/supabase/server.ts`: cliente para Server Components, Server Actions y Route Handlers.
+- `src/proxy.ts`: refresca la sesión de Supabase en cada petición.
+
+Cada push a `main` se despliega en producción en Vercel; el resto de ramas genera previews.
