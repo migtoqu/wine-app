@@ -12,7 +12,7 @@ Objetivo: proyecto listo para construir encima, sin funcionalidad de producto to
 - [x] Resolver las preguntas abiertas de SCOPE.md (§12)
 - [ ] Revisar `robots.txt` y términos de uso del C.R. D.O. Ribera del Duero y de Vinoselección
 - [ ] Hacer público el repositorio y comprobar que no hay secretos en el historial
-- [ ] Crear app Next.js (App Router, TypeScript) y desplegarla en Vercel
+- [x] Crear app Next.js (App Router, TypeScript) y desplegarla en Vercel
 - [ ] Configurar Supabase: extensiones `pg_trgm`, `unaccent`, `postgis`
 - [ ] Flujo de migraciones con Supabase CLI y tipos TypeScript generados
 - [ ] Migración inicial del esquema de catálogo (§6.1) con índices
