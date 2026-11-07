@@ -12,6 +12,8 @@ export interface Contadores {
   actualizados: number;
   sinCambios: number;
   descartados: number;
+  /** Fichas que no superan el umbral de emparejamiento (cola de revisión del admin). */
+  revision: number;
   errores: number;
 }
 
@@ -27,6 +29,8 @@ export interface Contexto {
   /** id de la fila de `fuentes` (null en --dry-run). */
   fuenteId: string | null;
   contadores: Contadores;
+  /** JSON de un dry-run de Ribera con las bodegas para emparejar en --dry-run. */
+  rutaBodegas: string | null;
   /** Resultado normalizado de cada ficha, para el JSON de --dry-run. */
   salida: unknown[];
   /** La ejecución terminará como 'parcial' aunque no haya errores de ficha. */
@@ -39,6 +43,7 @@ export interface OpcionesEjecucion {
   dryRun: boolean;
   limite: number | null;
   rutaSalida?: string;
+  rutaBodegas?: string;
   verbose?: boolean;
   /** Para tests: cliente HTTP ya construido. */
   http?: ClienteHttp;
@@ -70,7 +75,8 @@ export async function ejecutar(
     log,
     db: null,
     fuenteId: null,
-    contadores: { nuevos: 0, actualizados: 0, sinCambios: 0, descartados: 0, errores: 0 },
+    contadores: { nuevos: 0, actualizados: 0, sinCambios: 0, descartados: 0, revision: 0, errores: 0 },
+    rutaBodegas: opciones.rutaBodegas ?? null,
     salida: [],
     marcarParcial(motivo) {
       log.warn(motivo);
@@ -124,7 +130,7 @@ export async function ejecutar(
   const c = ctx.contadores;
   log.info(
     `Fin (${estado}): ${c.nuevos} nuevos, ${c.actualizados} actualizados, ${c.sinCambios} sin cambios, ` +
-      `${c.descartados} descartados, ${c.errores} errores; ${ctx.http.peticiones} peticiones en ` +
+      `${c.descartados} descartados, ${c.revision} a revisión, ${c.errores} errores; ${ctx.http.peticiones} peticiones en ` +
       `${Math.round((fin.getTime() - inicio.getTime()) / 1000)} s`,
   );
 

@@ -65,17 +65,6 @@ export class GuardadoRibera {
     }
   }
 
-  /** Nº de registros de esta fuente ya conocidos (para detectar volumen anómalo). */
-  async registrosConocidos(): Promise<number> {
-    const r = await this.db
-      .from("registros_fuente")
-      .select("id", { count: "exact", head: true })
-      .eq("fuente_id", this.fuenteId)
-      .neq("estado_emparejamiento", "descartado");
-    if (r.error) throw new Error(`contar registros: ${r.error.message}`);
-    return r.count ?? 0;
-  }
-
   private recordar(id: string, nombre: string, slug: string) {
     this.bodegaIds.add(id);
     this.slugs.add(slug);

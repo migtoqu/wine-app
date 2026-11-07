@@ -1,5 +1,6 @@
 // Scraper del Consejo Regulador D.O. Ribera del Duero: listado paginado → fichas → bodegas.
 // extraer (http + parsear) → normalizar → emparejar (re-vincular por registro o nombre) → guardar.
+import { registrosConocidos } from "../../lib/db.ts";
 import type { Contexto } from "../../lib/ejecucion.ts";
 import { ParadaFuente } from "../../lib/http.ts";
 import { RobotsDenegado } from "../../lib/robots.ts";
@@ -46,8 +47,8 @@ export async function scraperRibera(ctx: Contexto): Promise<void> {
   const fichas = await listarFichas(ctx);
   ctx.log.info(`${fichas.length} fichas de bodega a procesar`);
 
-  if (guardado && ctx.limite == null) {
-    const conocidos = await guardado.registrosConocidos();
+  if (ctx.db && ctx.limite == null) {
+    const conocidos = await registrosConocidos(ctx.db, ctx.fuenteId!);
     if (conocidos > 0 && fichas.length < conocidos * 0.5) {
       ctx.marcarParcial(`Volumen anómalo: ${fichas.length} fichas frente a ${conocidos} conocidas`);
     }

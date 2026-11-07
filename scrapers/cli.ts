@@ -2,10 +2,12 @@
 import { parseArgs } from "node:util";
 import { ejecutar, type Scraper } from "./lib/ejecucion.ts";
 import { scraperRibera, SLUG_FUENTE as SLUG_RIBERA } from "./fuentes/ribera/index.ts";
+import { scraperVinoseleccion, SLUG_FUENTE as SLUG_VINOSELECCION } from "./fuentes/vinoseleccion/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
 const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   ribera: { slug: SLUG_RIBERA, scraper: scraperRibera },
+  vinoseleccion: { slug: SLUG_VINOSELECCION, scraper: scraperVinoseleccion },
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]
@@ -16,6 +18,7 @@ Opciones:
   --dry-run      no toca la BD; escribe el resultado normalizado en scrapers/out/
   --limit N      procesa como mucho N fichas
   --out RUTA     fichero JSON de salida del dry-run
+  --bodegas RUTA (vinoseleccion, dry-run) JSON de un dry-run de Ribera con las bodegas para emparejar
   --verbose      muestra también los logs de depuración
 `;
 
@@ -26,6 +29,7 @@ async function main(): Promise<number> {
       "dry-run": { type: "boolean", default: false },
       limit: { type: "string" },
       out: { type: "string" },
+      bodegas: { type: "string" },
       verbose: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -51,6 +55,7 @@ async function main(): Promise<number> {
     dryRun: values["dry-run"],
     limite,
     rutaSalida: values.out,
+    rutaBodegas: values.bodegas,
     verbose: values.verbose,
   });
 }
