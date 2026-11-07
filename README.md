@@ -104,3 +104,11 @@ npm run typecheck
 ```
 
 `npm run db:status` compara las migraciones locales con las aplicadas en remoto.
+
+### Convenciones del esquema
+
+- Nombres en español, snake_case, sin tildes ni ñ (`ñ → n`: `anadas`, `vinedo`); `año` se escribe `anio`.
+- Tablas en plural; tablas puente `<a>_<b>` (`bodega_denominaciones`). PK `id uuid`, FKs `<entidad>_id`.
+- `created_at` / `updated_at` en cada tabla; `updated_at` lo mantiene el trigger `public.set_updated_at()`.
+- RLS activada en **todas** las tablas. El catálogo es de lectura pública y solo lo escriben los admin (`public.is_admin()`); scrapers y comprobador de enlaces usan la *service role key*.
+- `supabase/tests/rls_check.sql` comprueba las políticas como anon, usuario y admin dentro de una transacción que se deshace (`begin … rollback`).
