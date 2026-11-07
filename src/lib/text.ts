@@ -8,3 +8,12 @@ export function normalizeText(input: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// Slug para URLs: sin tildes, minúsculas y guiones (cumple el check
+// `^[a-z0-9]+(-[a-z0-9]+)*$` de las tablas del catálogo).
+export function slugify(input: string): string {
+  return normalizeText(input)
+    .replace(/&/g, " y ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}

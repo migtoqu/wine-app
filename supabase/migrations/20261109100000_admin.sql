@@ -116,7 +116,7 @@ begin
     and denominacion_id is distinct from p_principal;
 
   insert into public.bodega_denominaciones (bodega_id, denominacion_id, principal)
-  select p_bodega_id, d, d = p_principal
+  select p_bodega_id, d, d is not distinct from p_principal
   from unnest(ids) as d
   on conflict (bodega_id, denominacion_id) do update set principal = excluded.principal;
 end
