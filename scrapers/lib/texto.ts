@@ -37,10 +37,10 @@ const siglasConPuntos = (letras: string) => letras.split("").join("\\.\\s?") + "
 const FORMA_SOCIETARIA = new RegExp(
   "[,\\s]+(?:" +
     [
-      ...["slu", "sll", "sau", "sat", "scl", "scp", "srl", "sl", "sa", "sc", "cb"].map(siglas),
+      ...["slne", "slu", "sll", "sau", "sat", "scl", "scp", "srl", "sl", "sa", "sc", "cb"].map(siglas),
       siglasConPuntos("sal"),
       "s\\.?\\s?coop\\.?(?:\\s?(?:ltda|l|and|cast|gall)\\.?)?", // S.Coop., S.Coop. Ltda.
-      "soc(?:iedad)?\\.?\\s?coop(?:erativa)?\\.?(?:\\s?(?:limitada|ltda|l)\\.?)?",
+      "(?:soc(?:iedad)?|sdad)\\.?\\s?coop(?:erativa)?\\.?(?:\\s?(?:limitada|ltda|l)\\.?)?",
       "ltda\\.?",
     ].join("|") +
     ")[\\s.,;]*$",

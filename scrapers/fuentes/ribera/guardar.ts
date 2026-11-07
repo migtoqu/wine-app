@@ -3,8 +3,7 @@ import { sinError, type ClienteDb } from "../../lib/db.ts";
 import { igualesJson } from "../../lib/json.ts";
 import type { Log } from "../../lib/log.ts";
 import { claveNombreBodega, slugify } from "../../lib/texto.ts";
-import { normalizarCampos, type BodegaNormalizada, type CamposBodega } from "./normalizar.ts";
-import type { FichaRibera } from "./parsear.ts";
+import type { BodegaNormalizada, CamposBodega } from "./normalizar.ts";
 
 export const SLUG_DENOMINACION = "ribera-del-duero";
 
@@ -28,6 +27,17 @@ export function candidatosSlug(campos: CamposBodega, respaldo: string): string[]
 export function camposCambiados(antes: CamposBodega | null, ahora: CamposBodega): (keyof CamposBodega)[] {
   if (!antes) return CAMPOS;
   return CAMPOS.filter((k) => !igualesJson(antes[k], ahora[k]));
+}
+
+/**
+ * Lo que esta fuente escribió en la ejecución anterior (`datos.campos`). Se compara con eso,
+ * y no con la ficha anterior normalizada con el código actual, para que también se apliquen
+ * las mejoras de normalización. Registros sin `campos` (primera carga, anterior a este campo):
+ * null → se reescriben todos los campos una vez.
+ */
+export function camposAnteriores(datos: unknown): CamposBodega | null {
+  const campos = (datos as { campos?: CamposBodega } | null)?.campos;
+  return campos && typeof campos === "object" ? campos : null;
 }
 
 export class GuardadoRibera {
@@ -65,17 +75,6 @@ export class GuardadoRibera {
     }
   }
 
-  /** Nº de registros de esta fuente ya conocidos (para detectar volumen anómalo). */
-  async registrosConocidos(): Promise<number> {
-    const r = await this.db
-      .from("registros_fuente")
-      .select("id", { count: "exact", head: true })
-      .eq("fuente_id", this.fuenteId)
-      .neq("estado_emparejamiento", "descartado");
-    if (r.error) throw new Error(`contar registros: ${r.error.message}`);
-    return r.count ?? 0;
-  }
-
   private recordar(id: string, nombre: string, slug: string) {
     this.bodegaIds.add(id);
     this.slugs.add(slug);
@@ -103,7 +102,7 @@ export class GuardadoRibera {
     if (bodegaId) {
       // Solo se escribe lo que cambió en la fuente: así no se pisan las
       // correcciones del admin (prioridad admin > consejo regulador).
-      const cambios = camposCambiados(this.camposAnteriores(reg!.datos), n.campos);
+      const cambios = camposCambiados(camposAnteriores(reg!.datos), n.campos);
       if (cambios.length > 0) {
         await this.actualizar(bodegaId, Object.fromEntries(cambios.map((k) => [k, n.campos[k]])));
       }
@@ -140,14 +139,6 @@ export class GuardadoRibera {
       "guardar registro",
     );
     return resultado;
-  }
-
-  private camposAnteriores(datos: unknown): CamposBodega | null {
-    try {
-      return normalizarCampos(datos as FichaRibera);
-    } catch {
-      return null; // formato antiguo: se reescriben todos los campos
-    }
   }
 
   private async actualizar(id: string, cambios: Partial<CamposBodega>) {

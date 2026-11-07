@@ -29,3 +29,14 @@ export function sinError<R extends { data: unknown; error: { message: string } |
   if (r.error) throw new Error(`${que}: ${r.error.message}`);
   return r.data as Exclude<R, ConError>["data"];
 }
+
+/** Nº de registros (no descartados) de una fuente: base para detectar volúmenes anómalos. */
+export async function registrosConocidos(db: ClienteDb, fuenteId: string): Promise<number> {
+  const r = await db
+    .from("registros_fuente")
+    .select("id", { count: "exact", head: true })
+    .eq("fuente_id", fuenteId)
+    .neq("estado_emparejamiento", "descartado");
+  if (r.error) throw new Error(`contar registros: ${r.error.message}`);
+  return r.count ?? 0;
+}

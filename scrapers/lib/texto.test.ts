@@ -28,6 +28,8 @@ describe("quitarFormaSocietaria", () => {
     ["Viña Mayor S. Coop. Ltda.", "Viña Mayor"],
     ["Hermanos Pérez, C.B.", "Hermanos Pérez"],
     ["Bodegas X, S.L. S.A.", "Bodegas X"],
+    ["SEI SOLO Bodegas y Viñedos, S.L.N.E", "SEI SOLO Bodegas y Viñedos"],
+    ["Bodega San Roque de la Encina, SDAD. COOP", "Bodega San Roque de la Encina"],
   ])("%s → %s", (entrada, salida) => {
     expect(quitarFormaSocietaria(entrada)).toBe(salida);
   });
