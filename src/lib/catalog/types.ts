@@ -1,0 +1,174 @@
+import type { Database, Enums } from "@/lib/supabase/database.types";
+
+// Tipos del catálogo para la interfaz. Las funciones RPC de
+// supabase/migrations/20261108090000_catalogo_lectura.sql se tipan aquí hasta
+// que se regenere database.types.ts (npm run db:types); después la
+// intersección de CatalogDatabase sigue siendo válida y puede simplificarse.
+
+export type TipoVino = Enums<"tipo_vino">;
+export type CrianzaVino = Enums<"crianza_vino">;
+export type TipoDenominacion = Enums<"tipo_denominacion">;
+export type ColorUva = Enums<"color_uva">;
+
+export type ListarVinosArgs = {
+  q?: string;
+  tipos?: TipoVino[];
+  crianzas?: CrianzaVino[];
+  denominaciones?: string[];
+  variedades?: string[];
+  anio?: number;
+  sin_anada?: boolean;
+  bodega?: string;
+  orden?: string;
+  limite?: number;
+  desplazamiento?: number;
+};
+
+export type VinoListItem = {
+  id: string;
+  slug: string;
+  nombre: string;
+  tipo: TipoVino;
+  crianza: CrianzaVino | null;
+  bodega_slug: string;
+  bodega_nombre: string;
+  denominacion_slug: string | null;
+  denominacion_nombre: string | null;
+  // Años de las añadas, de más reciente a más antigua; null = sin añada.
+  anios: Array<number | null> | null;
+  imagen_url: string | null;
+  imagen_alt: string | null;
+  relevancia: number | null;
+  total: number;
+};
+
+export type ListarBodegasArgs = {
+  q?: string;
+  denominacion?: string;
+  limite?: number;
+  desplazamiento?: number;
+};
+
+export type BodegaListItem = {
+  id: string;
+  slug: string;
+  nombre: string;
+  municipio: string | null;
+  provincia: string | null;
+  denominacion_nombre: string | null;
+  num_vinos: number;
+  imagen_url: string | null;
+  imagen_alt: string | null;
+  relevancia: number | null;
+  total: number;
+};
+
+export type SearchSuggestion = {
+  entidad: "vino" | "bodega";
+  id: string;
+  slug: string;
+  nombre: string;
+  subtitulo: string | null;
+  tipo_vino: TipoVino | null;
+  relevancia: number;
+};
+
+export type FilterOption = {
+  grupo: "denominacion" | "variedad" | "anio" | "bodega";
+  valor: string;
+  etiqueta: string;
+  num: number;
+};
+
+type CatalogFunctions = {
+  buscar_catalogo: {
+    Args: { q: string; limite?: number };
+    Returns: SearchSuggestion[];
+  };
+  listar_vinos: { Args: ListarVinosArgs; Returns: VinoListItem[] };
+  listar_bodegas: { Args: ListarBodegasArgs; Returns: BodegaListItem[] };
+  opciones_filtro_vinos: { Args: never; Returns: FilterOption[] };
+};
+
+type PublicSchema = Database["public"];
+
+export type CatalogDatabase = Omit<Database, "public"> & {
+  public: Omit<PublicSchema, "Functions"> & {
+    Functions: PublicSchema["Functions"] & CatalogFunctions;
+  };
+};
+
+// --- Fichas ---------------------------------------------------------------
+
+export type CatalogImage = {
+  url: string;
+  alt: string | null;
+  atribucion: string | null;
+};
+
+export type Fuente = { nombre: string; url_base: string } | null;
+
+export type DenominacionRef = { slug: string; nombre: string; tipo: TipoDenominacion };
+
+export type AnadaVariedad = {
+  slug: string;
+  nombre: string;
+  color: ColorUva | null;
+  porcentaje: number | null;
+};
+
+export type Anada = {
+  id: string;
+  anio: number | null;
+  grado: number | null;
+  meses_crianza: number | null;
+  notas_cata: string | null;
+  maridaje: string | null;
+  temp_servicio_min: number | null;
+  temp_servicio_max: number | null;
+  produccion_botellas: number | null;
+  updated_at: string;
+  variedades: AnadaVariedad[];
+  imagenes: CatalogImage[];
+};
+
+export type VinoFicha = {
+  id: string;
+  slug: string;
+  nombre: string;
+  tipo: TipoVino;
+  crianza: CrianzaVino | null;
+  descripcion: string | null;
+  updated_at: string;
+  bodega: { slug: string; nombre: string; municipio: string | null; provincia: string | null };
+  denominacion: DenominacionRef | null;
+  fuente: Fuente;
+  imagenes: CatalogImage[];
+  // Ordenadas de más reciente a más antigua; "sin añada" al final.
+  anadas: Anada[];
+};
+
+export type BodegaFicha = {
+  id: string;
+  slug: string;
+  nombre: string;
+  descripcion: string | null;
+  direccion: string | null;
+  codigo_postal: string | null;
+  municipio: string | null;
+  provincia: string | null;
+  comunidad: string | null;
+  web: string | null;
+  telefono: string | null;
+  email: string | null;
+  redes: unknown;
+  anio_fundacion: number | null;
+  hectareas: number | null;
+  estado: Enums<"estado_bodega">;
+  updated_at: string;
+  fuente: Fuente;
+  // La principal primero.
+  denominaciones: DenominacionRef[];
+  imagenes: CatalogImage[];
+  vinos: VinoListItem[];
+};

@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# salida local de los scrapers (--dry-run)
+/scrapers/out/
