@@ -23,8 +23,10 @@ export interface CamposBodega {
   email: string | null;
 }
 
-/** `registros_fuente.datos`: la ficha cruda + claves para emparejar después. */
+/** `registros_fuente.datos`: la ficha cruda, lo escrito en `bodegas` y claves para emparejar. */
 export interface DatosRegistroRibera extends FichaRibera {
+  /** Campos escritos en `bodegas` en esta ejecución (base de comparación de la siguiente). */
+  campos: CamposBodega;
   clave_nombre: string;
   claves_marcas: string[];
 }
@@ -62,12 +64,14 @@ export function normalizarCampos(f: FichaRibera): CamposBodega {
 }
 
 export function normalizarFicha(f: FichaRibera): BodegaNormalizada {
+  const campos = normalizarCampos(f);
   return {
     idExterno: f.nodo ? `nodo:${f.nodo}` : `slug:${f.slug_fuente}`,
     url: f.url,
-    campos: normalizarCampos(f),
+    campos,
     datos: {
       ...f,
+      campos,
       clave_nombre: claveNombreBodega(f.nombre),
       claves_marcas: f.marcas.map(claveTexto).filter((m) => m !== ""),
     },

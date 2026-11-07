@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { urlEjecucionActions } from "../../lib/ejecucion.ts";
 import { igualesJson } from "../../lib/json.ts";
-import { camposCambiados, candidatosSlug } from "./guardar.ts";
+import { camposAnteriores, camposCambiados, candidatosSlug } from "./guardar.ts";
 import { normalizarFicha } from "./normalizar.ts";
 import { parsearFicha, parsearListado, ubicacionDesdeIframe, urlListado } from "./parsear.ts";
 
@@ -146,6 +146,18 @@ describe("guardado (lógica pura)", () => {
     expect(camposCambiados(n.campos, n.campos)).toEqual([]);
     expect(camposCambiados(n.campos, { ...n.campos, telefono: "+34 983 000 000" })).toEqual(["telefono"]);
     expect(camposCambiados(null, n.campos)).toHaveLength(10);
+  });
+
+  it("compara con lo escrito la vez anterior, para que lleguen las mejoras de normalización", () => {
+    expect(n.datos.campos).toEqual(n.campos);
+    // Primera carga real (antes de guardar `campos`): se reescribe todo una vez.
+    const { campos: _sin, ...datosAntiguos } = n.datos;
+    void _sin;
+    expect(camposAnteriores(datosAntiguos)).toBeNull();
+    // Nombre guardado con la normalización antigua («…, SDAD. COOP»): se corrige.
+    const antes = { ...n.campos, nombre: "Bodega San Roque de la Encina, SDAD. COOP" };
+    const ahora = { ...n.campos, nombre: "Bodega San Roque de la Encina" };
+    expect(camposCambiados(camposAnteriores({ ...n.datos, campos: antes }), ahora)).toEqual(["nombre"]);
   });
 
   it("compara jsonb sin depender del orden de claves", () => {

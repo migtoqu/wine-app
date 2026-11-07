@@ -67,7 +67,7 @@ scrapers/
 - `registros_fuente.id_externo` = `nodo:<id de nodo Drupal>` (estable aunque cambie el slug; si falta, `slug:<slug>`). `datos` guarda la ficha cruda (dirección, contacto, coordenadas, **marcas**) y las claves normalizadas `clave_nombre` / `claves_marcas` para emparejar vinos después.
 - `bodegas.nombre` es la razón social sin forma societaria (S.L., S.A., S.L.U., Soc. Coop.…) y sin mayúsculas forzadas. El slug es propio y estable: se fija al crear (`nombre` → `nombre-municipio` → `nombre-2`…) y no se regenera.
 - Vinculación: registro existente → su bodega; si no, bodega con la misma clave de nombre (p. ej. creada a mano; solo se rellenan sus huecos); si no, bodega nueva.
-- En ejecuciones posteriores solo se reescriben los campos cuyo valor **en la fuente** cambió desde la anterior, para no pisar correcciones del admin.
+- En ejecuciones posteriores solo se reescriben los campos cuyo valor normalizado cambió respecto a lo que esta fuente escribió la vez anterior (`datos.campos`). Así no se pisan correcciones del admin, y sí llegan los cambios de la fuente y las mejoras de normalización. Los registros de la primera carga no tienen `campos` y se reescriben enteros una vez.
 - Ribera del Duero se añade como D.O. de la bodega (principal si no tiene otra).
 - Si el listado trae menos del 50 % de las bodegas conocidas, la ejecución queda `parcial`.
 
