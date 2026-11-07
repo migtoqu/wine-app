@@ -121,4 +121,4 @@ npm run typecheck
 - Tablas en plural; tablas puente `<a>_<b>` (`bodega_denominaciones`). PK `id uuid`, FKs `<entidad>_id`.
 - `created_at` / `updated_at` en cada tabla; `updated_at` lo mantiene el trigger `public.set_updated_at()`.
 - RLS activada en **todas** las tablas. El catálogo es de lectura pública y solo lo escriben los admin (`public.is_admin()`); scrapers y comprobador de enlaces usan la *service role key*.
-- `supabase/tests/rls_check.sql` y `supabase/tests/auth_check.sql` comprueban las políticas como anon, usuario y admin (y el registro por invitación) dentro de una transacción que se deshace (`begin … rollback`).
+- `supabase/tests/rls_check.sql`, `supabase/tests/auth_check.sql` y `supabase/tests/espacio_personal_check.sql` (favoritos y notas, aislamiento entre usuarios) comprueban las políticas como anon, usuario y admin (y el registro por invitación) dentro de una transacción que se deshace (`begin … rollback`).
