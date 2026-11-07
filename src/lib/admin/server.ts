@@ -25,10 +25,7 @@ export async function adminAction(form: Pick<FormData, "get">, path = "/admin") 
   return { lang, user, supabase: await createClient() };
 }
 
-export function adminPath(lang: Locale, path: string, params?: Record<string, string>) {
-  const query = params ? `?${new URLSearchParams(params)}` : "";
-  return `${localePath(lang, `/admin${path}`)}${query}`;
-}
+export { adminPath } from "./paths";
 
 // Invalida todas las lecturas cacheadas del catálogo público
 // (src/lib/catalog/queries.ts): el admin ve su cambio al momento.
@@ -96,4 +93,10 @@ export function failure(
 
 export function success(): AdminFormState {
   return { status: "success", seq: Date.now() };
+}
+
+// Error al guardar una ficha: el slug duplicado va al campo slug.
+export function saveFailure(form: Form, error: DbError): AdminFormState {
+  const key = dbErrorKey(error);
+  return failure(form, key === "slugTaken" ? { errors: { slug: key } } : { message: key });
 }
