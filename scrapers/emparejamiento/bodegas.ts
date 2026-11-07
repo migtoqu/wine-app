@@ -1,7 +1,9 @@
 // Emparejamiento vino de tienda → bodega del catálogo (SCOPE §7.2).
 // Señales, de más a menos fiable:
 //   1. nombre de la bodega que da la tienda frente al nombre de la bodega;
-//   2. nombre del vino frente a las «Marcas» que publica el Consejo Regulador;
+//   2. nombre del vino frente a las «Marcas» que publica el Consejo Regulador
+//      (la marca registrada manda aunque la tienda atribuya el vino a otra filial);
+//      y nombre de bodega de la tienda que es una marca registrada («Bodegas Briego»);
 //   3. grupo / propietario (item_brand, «Bodeguero»), solo como apoyo.
 // La puntuación es la mejor señal. Se empareja si supera el umbral y saca
 // suficiente margen a la segunda bodega; si no, el registro va a revisión.
@@ -30,7 +32,14 @@ export interface SenalesVino {
   vino: string;
 }
 
-export type Motivo = "bodega_exacta" | "bodega_contenida" | "bodega_similar" | "marca" | "marca_similar" | "grupo";
+export type Motivo =
+  | "bodega_exacta"
+  | "bodega_contenida"
+  | "bodega_similar"
+  | "bodega_es_marca"
+  | "marca"
+  | "marca_similar"
+  | "grupo";
 
 export interface Candidato {
   id: string;
@@ -105,13 +114,21 @@ export class Emparejador {
       if (clave === b.clave) probar(1, "bodega_exacta");
       else if (contenida(clave, b.clave) || contenida(b.clave, clave)) probar(0.9, "bodega_contenida");
       else probar(similitud(clave, b.clave), "bodega_similar");
+      // La tienda da como bodega una marca exclusiva de esta bodega («Bodegas Briego» → BRIEGO).
+      for (const m of b.marcas) {
+        if ((this.usosMarca.get(m) ?? 1) === 1 && claveNombreBodega(m) === clave) probar(0.9, "bodega_es_marca");
+      }
     }
 
     const vino = claveTexto(s.vino);
     for (const m of b.marcas) {
       const unica = (this.usosMarca.get(m) ?? 1) === 1;
-      if (empiezaPor(vino, m)) probar(unica ? 0.95 : 0.8, "marca");
-      else probar(similitud(vino, m) * (unica ? 0.9 : 0.75), "marca_similar");
+      if (empiezaPor(vino, m)) {
+        // Marca idéntica = 1; prefijo = 0,9 + 0,05 × parte del nombre que cubre, para que
+        // gane la marca más específica («EMINA PASIÓN» frente a «EMINA»).
+        const cobertura = m.split(" ").length / vino.split(" ").length;
+        probar(unica ? (vino === m ? 1 : 0.9 + 0.05 * cobertura) : 0.8, "marca");
+      } else probar(similitud(vino, m) * (unica ? 0.9 : 0.75), "marca_similar");
     }
 
     for (const g of s.grupo) {

@@ -69,7 +69,14 @@ export async function scraperRibera(ctx: Contexto): Promise<void> {
         ctx.log.info(`normalizada: ${normalizada.campos.nombre}`);
       }
     } catch (e) {
-      if (e instanceof ParadaFuente || e instanceof RobotsDenegado) throw e;
+      // Las URLs de entrada ya se comprobaron al empezar: una ficha suelta que
+      // robots.txt no permite se salta (respetándolo) sin detener la fuente.
+      if (e instanceof RobotsDenegado) {
+        ctx.contadores.omitidas++;
+        ctx.log.warn(`Omitida por robots.txt: ${url}`);
+        continue;
+      }
+      if (e instanceof ParadaFuente) throw e;
       ctx.contadores.errores++;
       ctx.log.error(`${url}: ${(e as Error).message}`);
     }

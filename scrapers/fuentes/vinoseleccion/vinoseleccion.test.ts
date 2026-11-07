@@ -151,6 +151,14 @@ describe("normalizadores", () => {
     expect(esPack("Celeste Crianza | 2 botellas + 2 copas")).toBe(true);
     expect(esPack("Colección Ribera del Duero Tempranillo")).toBe(true);
     expect(esPack("Estuche Pesquera 3 bot")).toBe(true);
+    expect(esPack("Matarromera Crianza 2022 | 2 botellas + decantador")).toBe(true);
+    expect(esPack("Protos Genesis 2024 y Bela Crianza 2023")).toBe(true);
+    expect(esPack("Colección Riberas exclusivos")).toBe(true);
+    expect(esPack("Panorámica de la Selección Privada – Julio 2024")).toBe(true);
+    expect(esPack("Collection Ribera del Duero : vins de différents vieillissements")).toBe(true);
+    // Una sola botella en estuche sí es un vino.
+    expect(esPack("Arzuaga Reserva Especial Mágnum 2020 | Estuche")).toBe(false);
+    expect(nombreVino("Arzuaga Reserva Especial Mágnum 2020 | Estuche")).toBe("Arzuaga Reserva Especial");
     expect(esPack("Protos 27 2016")).toBe(false);
     expect(esPack("La Capilla Crianza Mágnum 2022")).toBe(false);
   });

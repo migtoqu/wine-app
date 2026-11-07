@@ -45,7 +45,7 @@ Cada fuente tiene su workflow con `schedule` semanal en una franja propia y `wor
 ## Reglas de rastreo (comunes, `lib/http.ts`)
 
 - User-Agent `wine-app-bot/0.1 (+https://github.com/migtoqu/wine-app; contacto: …)` y `Accept-Language: es-ES`.
-- `robots.txt` descargado una vez por ejecución y evaluado con `robots-parser` antes de cada URL; si excluye una URL necesaria, la fuente se aborta. 4xx = sin restricciones; 5xx = no se rastrea.
+- `robots.txt` descargado una vez por ejecución y evaluado con `robots-parser` antes de cada URL. Si excluye las URLs de entrada (listado, paginación), la fuente se aborta; si excluye una ficha suelta enlazada desde el listado (p. ej. bajo `/app/` en Vinoselección), esa ficha se omite y se cuenta como «omitida por robots.txt». 4xx = sin restricciones; 5xx = no se rastrea.
 - Una conexión por dominio y 3–5 s (con *jitter*) entre peticiones.
 - Reintentos (10 s, 30 s, 90 s) solo ante 5xx, timeouts y errores de red. **403/429 detienen la fuente** sin insistir. Redirecciones a otro dominio se rechazan.
 - Solo datos factuales: nunca descripciones, notas de cata ni imágenes copiadas (las imágenes solo se enlazan).
@@ -75,7 +75,7 @@ scrapers/
 
 - Recorre la categoría `/vinos/espana/ribera-duero` y `?p=2..N` (solo URLs limpias y `?p=N`, como exige su robots.txt). Para al repetir productos o al pasar el máximo del paginador (por encima de la última página la web devuelve productos repetidos). Unas 30 páginas + unas 350 fichas.
 - De la ficha: JSON-LD `Product` (nombre, SKU, precio, disponibilidad, imagen sin `/cache/`), «Características generales» (tipo, variedades, barrica, capacidad), temperatura de servicio y bloque «La bodega». De la tarjeta del listado, el JSON de analítica (`grape_variety_wine`, `vintage_year_wine`, `capacity`, `num_bottles`, `item_brand`…). **Nunca** descripción, notas de cata ni maridaje.
-- **Descartes** (`registros_fuente.estado_emparejamiento = 'descartado'`, sin vino): packs, estuches y colecciones, y productos cuya ficha no es de la D.O. Ribera del Duero.
+- **Descartes** (`registros_fuente.estado_emparejamiento = 'descartado'`, sin vino): packs y lotes («| 2 botellas», «+ copas», dos añadas en el nombre), colecciones y selecciones mensuales, y productos cuya ficha no es de la D.O. Ribera del Duero. Un mágnum «| Estuche» sin número sí es un vino.
 - **Normalización**:
   - Vino: nombre sin añada ni formato («La Capilla Crianza Mágnum 2022» → «La Capilla Crianza»).
   - Tipo: sale de «Tipo de vino». Si no se encuentra, la ficha va a revisión.
@@ -105,10 +105,18 @@ Se calcula en TypeScript con el mismo algoritmo de trigramas que `pg_trgm` (`lib
    | Nombre de bodega de la tienda idéntico a la clave | 1 |
    | Uno contenido en el otro | 0,9 |
    | Si no, similitud por trigramas | trigramas |
-   | Nombre del vino que empieza por una **marca** del Consejo Regulador exclusiva de una bodega | 0,95 |
-   | Ídem con una marca compartida | 0,8 |
+   | Nombre del vino igual a una **marca** del Consejo Regulador exclusiva de una bodega | 1 |
+   | Nombre del vino que empieza por esa marca | 0,9 + 0,05 × parte del nombre que cubre (gana la más específica) |
+   | Ídem con una marca compartida por varias bodegas | 0,8 |
+   | Nombre de bodega de la tienda que es una marca exclusiva de la bodega («Bodegas Briego» → marca BRIEGO de Alberto y Benito) | 0,9 |
    | Grupo o propietario de la tienda («Bodeguero», `item_brand`) | 0,8 como mucho: por sí solo nunca basta |
+
+   Se ignoran las marcas genéricas («RIBERA DUERO») y los años dentro de las marcas. La marca registrada en el Consejo Regulador manda aunque la tienda atribuya el vino a otra bodega o filial: por ejemplo, «Emina Pasión» es marca de Bodega Matarromera, y en una ficha la tienda pone «Bodega Lagarde» para un Legaris.
 
 3. Se empareja si la puntuación es **≥ UMBRAL y saca ≥ MARGEN a la segunda bodega**. Si no, **no se crea el vino**: el registro queda `revision` con `confianza` y los 3 mejores candidatos en `datos.emparejamiento`, para la cola del admin.
 
-Valores: `UMBRAL = 0.85`, `MARGEN = 0.05` (ver el dry-run del PR B).
+Valores: **`UMBRAL = 0.85`, `MARGEN = 0.05`**. Se calibraron con un dry-run de toda la categoría (2026-11-07, 355 productos frente a las 302 bodegas de Ribera):
+
+- Todos los emparejados puntúan ≥ 0,90.
+- En revisión, la mejor puntuación es 0,8 (solo el grupo), salvo empates reales a 1 entre dos bodegas, como Bardos, que figura como bodega propia y como marca de otra.
+- 0,85 queda en ese hueco. Si se baja de 0,8, los vinos con solo la señal de grupo (p. ej. Viña Mayor → Entrecanales Domecq e Hijos) se emparejarían sin otra prueba.

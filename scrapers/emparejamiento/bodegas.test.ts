@@ -49,7 +49,7 @@ describe("Emparejador", () => {
 
   it("marca del Consejo Regulador cuando la tienda no da bodega", () => {
     const r = e.emparejar({ bodega: null, grupo: [], vino: "Páramos de Legaris" });
-    expect(r).toMatchObject({ estado: "emparejado", bodegaId: "legaris", confianza: 0.95 });
+    expect(r).toMatchObject({ estado: "emparejado", bodegaId: "legaris", confianza: 1 });
     const c = e.emparejar({ bodega: null, grupo: ["Familia Torres"], vino: "Celeste Crianza" });
     expect(c).toMatchObject({ estado: "emparejado", bodegaId: "cielo" });
   });
@@ -133,6 +133,51 @@ describe("Emparejador con casos reales", () => {
     expect(r.estado).toBe("emparejado");
     expect(r.bodegaId).toBe(esperada);
     expect(r.candidatos[0]!.motivo).toBe(motivo);
+  });
+
+  it("gana la marca más específica (EMINA PASIÓN es marca de Matarromera, EMINA de Emina)", () => {
+    const m = new Emparejador([
+      bodega("emina", "Bodega Emina", ["EMINA"]),
+      bodega("matarromera", "Bodega Matarromera", ["EMINA PASIÓN", "EMINA CRIANZA"]),
+    ]);
+    expect(m.emparejar({ bodega: "Bodega Emina Ribera", grupo: [], vino: "Emina Pasión" })).toMatchObject({
+      estado: "emparejado",
+      bodegaId: "matarromera",
+    });
+  });
+
+  it("el grupo propietario solo no basta (Viña Mayor → Entrecanales Domecq e Hijos)", () => {
+    const m = new Emparejador([bodega("entrecanales", "Entrecanales Domecq e Hijos", ["CAMPARRÓN"])]);
+    const r = m.emparejar({
+      bodega: "Bodegas y Viñedos Viña Mayor",
+      grupo: ["Entrecanales Domecq e Hijos"],
+      vino: "Viña Mayor Crianza",
+    });
+    expect(r).toMatchObject({ estado: "revision", confianza: 0.8 });
+  });
+
+  it("la bodega de la tienda es una marca registrada de otra razón social", () => {
+    const m = new Emparejador([
+      bodega("alberto-benito", "Alberto y Benito", ["BRIEGO", "BRIEGO FIEL"]),
+      bodega("grandes", "Grandes Bodegas", ["MARQUÉS DE VELILLA", "FINCA LA MARÍA MARQUÉS DE VELILLA"]),
+    ]);
+    expect(m.emparejar({ bodega: "Bodegas Briego", grupo: [], vino: "Supernova Crianza" })).toMatchObject({
+      estado: "emparejado",
+      bodegaId: "alberto-benito",
+      confianza: 0.9,
+    });
+    expect(m.emparejar({ bodega: "Marqués de Velilla", grupo: [], vino: "Núa Crianza" })).toMatchObject({
+      estado: "emparejado",
+      bodegaId: "grandes",
+    });
+  });
+
+  it("dos bodegas con la misma puntuación máxima → revisión (Bardos)", () => {
+    const m = new Emparejador([
+      bodega("bardos", "Bodega Bardos", []),
+      bodega("hoz", "Bodegas y Viñedos de Hoz Sualdea", ["BARDOS ROMÁNTICA", "BARDOS SUPREMA"]),
+    ]);
+    expect(m.emparejar({ bodega: "Bodegas De Bardos", grupo: [], vino: "Bardos Suprema" }).estado).toBe("revision");
   });
 
   it("una bodega de la tienda que no está en Ribera va a revisión", () => {

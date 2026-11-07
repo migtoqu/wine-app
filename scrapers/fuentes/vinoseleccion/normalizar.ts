@@ -63,12 +63,15 @@ export interface DatosRegistroVs {
 
 const clave = (s: string) => claveTexto(s);
 
-// Packs, estuches y lotes: no son un vino (se guardan como 'descartado').
+// Packs, lotes y colecciones: no son un vino (se guardan como 'descartado').
+// Un estuche o caja sin número («Mágnum 2020 | Estuche») es una sola botella y sí cuenta.
 const PACK =
-  /\|\s*\d|\b\d+\s*(?:bot(?:ellas?)?|copas?|uds?|unidades)\b|\b(?:estuche|colecci[oó]n|caja|pack|lote|surtido|degustaci[oó]n)\b|\+\s*\d/i;
+  /\|\s*\d|\b\d+\s*(?:bot(?:ellas?)?|copas?|uds?|unidades)\b|\b(?:colecci[oó]n|collection|pack|lote|surtido|degustaci[oó]n|selecci[oó]n (?:mensual|privada))\b|\+\s*\S/i;
 
 export function esPack(nombre: string): boolean {
-  return PACK.test(nombre);
+  // Dos añadas en el nombre = dos vinos («Protos Genesis 2024 y Bela Crianza 2023»).
+  const anios = nombre.match(/\b(19[5-9]\d|20[0-4]\d)\b/g) ?? [];
+  return PACK.test(nombre) || new Set(anios).size > 1;
 }
 
 /** Año de la añada: del nombre («… 2023») o del JSON de la tarjeta. */

@@ -14,6 +14,8 @@ export interface Contadores {
   descartados: number;
   /** Fichas que no superan el umbral de emparejamiento (cola de revisión del admin). */
   revision: number;
+  /** Fichas que robots.txt no permite pedir (se saltan sin detener la fuente). */
+  omitidas: number;
   errores: number;
 }
 
@@ -75,7 +77,7 @@ export async function ejecutar(
     log,
     db: null,
     fuenteId: null,
-    contadores: { nuevos: 0, actualizados: 0, sinCambios: 0, descartados: 0, revision: 0, errores: 0 },
+    contadores: { nuevos: 0, actualizados: 0, sinCambios: 0, descartados: 0, revision: 0, omitidas: 0, errores: 0 },
     rutaBodegas: opciones.rutaBodegas ?? null,
     salida: [],
     marcarParcial(motivo) {
@@ -130,7 +132,8 @@ export async function ejecutar(
   const c = ctx.contadores;
   log.info(
     `Fin (${estado}): ${c.nuevos} nuevos, ${c.actualizados} actualizados, ${c.sinCambios} sin cambios, ` +
-      `${c.descartados} descartados, ${c.revision} a revisión, ${c.errores} errores; ${ctx.http.peticiones} peticiones en ` +
+      `${c.descartados} descartados, ${c.revision} a revisión, ${c.omitidas} omitidas por robots.txt, ` +
+      `${c.errores} errores; ${ctx.http.peticiones} peticiones en ` +
       `${Math.round((fin.getTime() - inicio.getTime()) / 1000)} s`,
   );
 
