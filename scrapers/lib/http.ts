@@ -1,0 +1,153 @@
+// Cliente HTTP "educado": UA identificable, una conexión y 3–5 s por dominio,
+// robots.txt antes de cada URL, reintentos solo para 5xx/timeouts y parada
+// inmediata ante 403/429 (no se insiste ni se cambia de UA).
+import type { Log } from "./log.ts";
+import { dormir, LimitadorPorHost } from "./rate-limit.ts";
+import { permitido, RobotsDenegado, robotsDesdeRespuesta, type Robots } from "./robots.ts";
+
+export const USER_AGENT =
+  "wine-app-bot/0.1 (+https://github.com/migtoqu/wine-app; contacto: migueltoquerob@gmail.com)";
+
+/** La fuente nos pide parar (403/429) o hay un desafío anti-bot: se aborta la fuente. */
+export class ParadaFuente extends Error {
+  status: number;
+  constructor(url: string, status: number) {
+    super(`HTTP ${status} en ${url}: se detiene la fuente`);
+    this.name = "ParadaFuente";
+    this.status = status;
+  }
+}
+
+/** Error HTTP no reintentable (404, 410…): afecta solo a esa URL. */
+export class ErrorHttp extends Error {
+  status: number;
+  constructor(url: string, status: number) {
+    super(`HTTP ${status} en ${url}`);
+    this.name = "ErrorHttp";
+    this.status = status;
+  }
+}
+
+export interface Respuesta {
+  url: string;
+  status: number;
+  texto: string;
+}
+
+export interface OpcionesCliente {
+  log: Log;
+  userAgent?: string;
+  limitador?: LimitadorPorHost;
+  fetch?: typeof fetch;
+  dormir?: (ms: number) => Promise<void>;
+  timeoutMs?: number;
+  /** Esperas antes de cada reintento; su longitud es el número de reintentos. */
+  backoffMs?: number[];
+}
+
+class Reintentable extends Error {}
+
+export class ClienteHttp {
+  readonly userAgent: string;
+  private log: Log;
+  private limitador: LimitadorPorHost;
+  private fetchFn: typeof fetch;
+  private dormirFn: (ms: number) => Promise<void>;
+  private timeoutMs: number;
+  private backoffMs: number[];
+  private robots = new Map<string, Promise<Robots>>();
+  peticiones = 0;
+
+  constructor(o: OpcionesCliente) {
+    this.log = o.log;
+    this.userAgent = o.userAgent ?? USER_AGENT;
+    this.limitador = o.limitador ?? new LimitadorPorHost({ minMs: 3000, maxMs: 5000 });
+    this.fetchFn = o.fetch ?? fetch;
+    this.dormirFn = o.dormir ?? dormir;
+    this.timeoutMs = o.timeoutMs ?? 30_000;
+    this.backoffMs = o.backoffMs ?? [10_000, 30_000, 90_000];
+  }
+
+  /** robots.txt del origen, descargado una sola vez por ejecución. */
+  robotsDe(origen: string): Promise<Robots> {
+    let r = this.robots.get(origen);
+    if (!r) {
+      const url = new URL("/robots.txt", origen).href;
+      r = this.pedir(url).then((res) => {
+        this.log.info(`robots.txt de ${origen}: HTTP ${res.status}`);
+        return robotsDesdeRespuesta(url, res.status, res.texto);
+      });
+      this.robots.set(origen, r);
+    }
+    return r;
+  }
+
+  /** Lanza RobotsDenegado si el robots.txt actual no permite la URL. */
+  async comprobarRobots(url: string): Promise<void> {
+    const robots = await this.robotsDe(new URL(url).origin);
+    if (!permitido(robots, url, this.userAgent)) throw new RobotsDenegado(url);
+  }
+
+  /** GET de una página HTML respetando robots.txt. */
+  async get(url: string): Promise<Respuesta> {
+    await this.comprobarRobots(url);
+    const res = await this.pedir(url);
+    if (res.status >= 400) throw new ErrorHttp(url, res.status);
+    const final = new URL(res.url);
+    if (final.host !== new URL(url).host) {
+      throw new Error(`${url} redirige a otro dominio (${final.host})`);
+    }
+    if (res.url !== url) await this.comprobarRobots(res.url);
+    return res;
+  }
+
+  /** Petición con limitador y reintentos; devuelve también respuestas 4xx (salvo 403/429). */
+  private async pedir(url: string): Promise<Respuesta> {
+    const host = new URL(url).host;
+    for (let intento = 0; ; intento++) {
+      try {
+        return await this.limitador.ejecutar(host, () => this.unaPeticion(url));
+      } catch (e) {
+        if (!(e instanceof Reintentable) || intento >= this.backoffMs.length) {
+          throw e instanceof Reintentable ? new Error(e.message) : e;
+        }
+        const espera = this.backoffMs[intento]!;
+        this.log.warn(`${e.message}; reintento ${intento + 1}/${this.backoffMs.length} en ${espera / 1000} s`);
+        await this.dormirFn(espera);
+      }
+    }
+  }
+
+  private async unaPeticion(url: string): Promise<Respuesta> {
+    this.peticiones++;
+    let res: Response;
+    try {
+      res = await this.fetchFn(url, {
+        headers: {
+          "User-Agent": this.userAgent,
+          "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
+          "Accept-Language": "es-ES,es;q=0.9",
+        },
+        redirect: "follow",
+        signal: AbortSignal.timeout(this.timeoutMs),
+      });
+    } catch (e) {
+      // Timeout o error de red: reintentable.
+      throw new Reintentable(`GET ${url} falló: ${(e as Error).message}`);
+    }
+    this.log.debug(`GET ${url} → ${res.status}`);
+    if (res.status === 403 || res.status === 429) {
+      await res.body?.cancel();
+      throw new ParadaFuente(url, res.status);
+    }
+    if (res.status >= 500) {
+      await res.body?.cancel();
+      throw new Reintentable(`GET ${url} → HTTP ${res.status}`);
+    }
+    try {
+      return { url: res.url || url, status: res.status, texto: await res.text() };
+    } catch (e) {
+      throw new Reintentable(`GET ${url}: cuerpo incompleto: ${(e as Error).message}`);
+    }
+  }
+}

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "next typegen && tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit && tsc -p scrapers",
     "db:login": "supabase login",
     "db:link": "supabase link --project-ref mvatmmdifnmqnxikgatp",
     "db:new": "supabase migration new",
@@ -15,7 +15,8 @@
     "db:push": "supabase db push --remote",
     "db:types": "supabase gen types --remote=mvatmmdifnmqnxikgatp --lang typescript --schema public > src/lib/supabase/database.types.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "scrape": "node scrapers/cli.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -30,8 +31,10 @@
     "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cheerio": "1.2.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
+    "robots-parser": "3.0.1",
     "supabase": "^3.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
