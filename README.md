@@ -64,6 +64,18 @@ Los textos legales largos viven en `src/content/legal/` (con `TODO` en los datos
 - Cookies técnicas (`theme`, `age_ok`, `NEXT_LOCALE`, sesión de Supabase): si añades otra, documéntala en `/legal/cookies`.
 - Iconos de la PWA: tras cambiar el logo, `node scripts/generate-icons.mjs`.
 
+### Checks
+
+```bash
+npm run lint         # ESLint
+npm run typecheck    # genera los tipos de rutas de Next y ejecuta tsc
+npm test             # tests unitarios (Vitest, una pasada)
+npm run test:watch   # Vitest en modo watch
+npm run build        # build de producción (no necesita variables de entorno)
+```
+
+La versión de Node recomendada está en `.nvmrc` (24). El workflow `.github/workflows/ci.yml` ejecuta estos cinco checks en cada pull request y en cada push a `main`. Los tests viven junto al código (`src/**/*.test.ts`).
+
 Cada push a `main` se despliega en producción en Vercel; el resto de ramas genera previews.
 
 ## Base de datos y migraciones
