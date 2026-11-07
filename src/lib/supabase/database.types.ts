@@ -470,6 +470,42 @@ export type Database = {
           },
         ]
       }
+      invitaciones: {
+        Row: {
+          caduca: string | null
+          created_at: string
+          creada_por: string | null
+          email: string
+          id: string
+          rol: Database["public"]["Enums"]["rol_usuario"]
+          updated_at: string
+          usada_en: string | null
+          usada_por: string | null
+        }
+        Insert: {
+          caduca?: string | null
+          created_at?: string
+          creada_por?: string | null
+          email: string
+          id?: string
+          rol?: Database["public"]["Enums"]["rol_usuario"]
+          updated_at?: string
+          usada_en?: string | null
+          usada_por?: string | null
+        }
+        Update: {
+          caduca?: string | null
+          created_at?: string
+          creada_por?: string | null
+          email?: string
+          id?: string
+          rol?: Database["public"]["Enums"]["rol_usuario"]
+          updated_at?: string
+          usada_en?: string | null
+          usada_por?: string | null
+        }
+        Relationships: []
+      }
       perfiles: {
         Row: {
           created_at: string
@@ -503,6 +539,42 @@ export type Database = {
           rol?: Database["public"]["Enums"]["rol_usuario"]
           tema?: Database["public"]["Enums"]["tema"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      preferencias_vino: {
+        Row: {
+          created_at: string
+          crianzas: Database["public"]["Enums"]["crianza_vino"][]
+          denominacion_ids: string[]
+          precio_max: number | null
+          precio_min: number | null
+          tipos: Database["public"]["Enums"]["tipo_vino"][]
+          updated_at: string
+          usuario_id: string
+          variedad_uva_ids: string[]
+        }
+        Insert: {
+          created_at?: string
+          crianzas?: Database["public"]["Enums"]["crianza_vino"][]
+          denominacion_ids?: string[]
+          precio_max?: number | null
+          precio_min?: number | null
+          tipos?: Database["public"]["Enums"]["tipo_vino"][]
+          updated_at?: string
+          usuario_id: string
+          variedad_uva_ids?: string[]
+        }
+        Update: {
+          created_at?: string
+          crianzas?: Database["public"]["Enums"]["crianza_vino"][]
+          denominacion_ids?: string[]
+          precio_max?: number | null
+          precio_min?: number | null
+          tipos?: Database["public"]["Enums"]["tipo_vino"][]
+          updated_at?: string
+          usuario_id?: string
+          variedad_uva_ids?: string[]
         }
         Relationships: []
       }
@@ -715,6 +787,7 @@ export type Database = {
     }
     Functions: {
       f_unaccent: { Args: { "": string }; Returns: string }
+      hook_antes_de_crear_usuario: { Args: { event: Json }; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {

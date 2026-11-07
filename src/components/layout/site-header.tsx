@@ -1,10 +1,12 @@
 import NextLink from "next/link";
+import { Suspense } from "react";
 import { localePath, type Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/es";
 import { Container } from "./container";
 import { LanguageSwitcher } from "./language-switcher";
 import { LogoMark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { LoginLink, UserMenu } from "./user-menu";
 
 type Props = { lang: Locale; dict: Dictionary };
 
@@ -20,7 +22,7 @@ export function SiteHeader({ lang, dict }: Props) {
           className="flex items-center gap-2 text-primary"
         >
           <LogoMark />
-          <span className="font-display text-xl font-semibold tracking-tight text-fg">
+          <span className="font-display text-xl font-semibold tracking-tight text-fg max-sm:sr-only">
             wine-app
           </span>
         </NextLink>
@@ -31,6 +33,9 @@ export function SiteHeader({ lang, dict }: Props) {
             short={dict.language.short}
           />
           <ThemeToggle labels={dict.theme} />
+          <Suspense fallback={<LoginLink lang={lang} labels={dict.auth.menu} />}>
+            <UserMenu lang={lang} labels={dict.auth.menu} />
+          </Suspense>
         </div>
       </Container>
     </header>

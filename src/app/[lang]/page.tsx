@@ -25,7 +25,7 @@ export default async function Home() {
             {landing.ctaLogin}
           </NextLink>
           <NextLink
-            href={localePath(lang, "/login")}
+            href={localePath(lang, "/registro")}
             className={buttonStyles({ size: "lg", variant: "secondary" })}
           >
             {landing.ctaInvite}

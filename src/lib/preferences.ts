@@ -2,7 +2,7 @@
 
 export const THEME_COOKIE = "theme";
 export const AGE_COOKIE = "age_ok";
-const ONE_YEAR = 60 * 60 * 24 * 365;
+export const ONE_YEAR = 60 * 60 * 24 * 365;
 
 export type ThemePreference = "light" | "dark" | "system";
 
