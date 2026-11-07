@@ -1,26 +1,164 @@
 @import "tailwindcss";
 
+/* El modo oscuro lo decide el atributo data-theme de <html> (ver ThemeScript), no la media query. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Tokens semánticos. Los componentes usan solo estos nombres (bg-surface, text-muted, …);
+ * el tema oscuro redefine las variables y nada más. Pares texto/fondo verificados con contraste AA.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --surface-2: #f3ede4;
+  --fg: #1f1a17;
+  --muted: #5f5550;
+  --border: #e2d8cc;
+  --border-strong: #8f8073;
+  --primary: #7b1e3a;
+  --primary-hover: #651530;
+  --primary-fg: #ffffff;
+  --primary-soft: #f6e4e9;
+  --primary-soft-fg: #6a1832;
+  --accent-soft: #f3e3c3;
+  --accent-soft-fg: #5e410c;
+  --success-soft: #dcefe1;
+  --success-soft-fg: #1d5b30;
+  --warning-soft: #fbe8c8;
+  --warning-soft-fg: #7a4206;
+  --danger: #b42318;
+  --danger-hover: #931c13;
+  --danger-fg: #ffffff;
+  --ring: #7b1e3a;
+  --overlay: rgb(31 26 23 / 0.6);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #161012;
+  --surface: #1f171a;
+  --surface-2: #2a2024;
+  --fg: #f3ece6;
+  --muted: #b8aaa3;
+  --border: #3a2d32;
+  --border-strong: #7d6b72;
+  --primary: #e8a3b5;
+  --primary-hover: #f0bccb;
+  --primary-fg: #2a0a15;
+  --primary-soft: #3d1a25;
+  --primary-soft-fg: #f2c3cf;
+  --accent-soft: #3d2f14;
+  --accent-soft-fg: #f0d48e;
+  --success-soft: #16301f;
+  --success-soft-fg: #9fd8ae;
+  --warning-soft: #3a2a10;
+  --warning-soft-fg: #f5c77e;
+  --danger: #f97066;
+  --danger-hover: #fb9189;
+  --danger-fg: #2a0705;
+  --ring: #e8a3b5;
+  --overlay: rgb(0 0 0 / 0.7);
 }
 
+/* Sin JS no hay data-theme: seguimos la preferencia del sistema. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --bg: #161012;
+    --surface: #1f171a;
+    --surface-2: #2a2024;
+    --fg: #f3ece6;
+    --muted: #b8aaa3;
+    --border: #3a2d32;
+    --border-strong: #7d6b72;
+    --primary: #e8a3b5;
+    --primary-hover: #f0bccb;
+    --primary-fg: #2a0a15;
+    --primary-soft: #3d1a25;
+    --primary-soft-fg: #f2c3cf;
+    --ring: #e8a3b5;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-fg: var(--primary-soft-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-soft-fg: var(--accent-soft-fg);
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-fg: var(--success-soft-fg);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-fg: var(--warning-soft-fg);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-fg: var(--danger-fg);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+
+  /* Escala tipográfica fluida para titulares. */
+  --text-display: clamp(2.25rem, 1.6rem + 3vw, 3.75rem);
+  --text-display--line-height: 1.05;
+
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(31 26 23 / 0.06), 0 4px 16px rgb(31 26 23 / 0.06);
+  --shadow-overlay: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+
+  /* Foco visible y consistente para teclado en todo lo interactivo. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Puerta +18: el script de <head> marca <html data-age-ok> si ya se verificó la edad. */
+[data-age-ok] .age-gate {
+  display: none;
 }
