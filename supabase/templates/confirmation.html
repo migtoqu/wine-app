@@ -1,0 +1,10 @@
+<!--
+  Plantilla "Confirm signup" para cuando haya SMTP propio (en el plan Free con el
+  proveedor de email por defecto, Supabase no deja cambiar las plantillas).
+  Usa el flujo token_hash: /auth/confirm hace verifyOtp y funciona en cualquier
+  navegador. RedirectTo = <origen>/auth/confirm?next=/<lang>/yo (lo envía la app).
+  No está declarada en supabase/config.toml: se pega en el dashboard al activarla.
+-->
+<h2>Confirma tu email · Confirm your email</h2>
+<p>Pulsa el enlace para activar tu cuenta de wine-app.<br />Click the link to activate your wine-app account.</p>
+<p><a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email">Confirmar mi cuenta · Confirm my account</a></p>

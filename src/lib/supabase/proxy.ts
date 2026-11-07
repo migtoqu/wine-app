@@ -3,7 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 
 // Refresca la sesión de Supabase en cada petición y reescribe las cookies.
-export async function updateSession(request: NextRequest) {
+// Devuelve también el id del usuario (verificado con getClaims) para que el proxy
+// decida si deja pasar o redirige al login.
+export async function updateSession(
+  request: NextRequest,
+): Promise<{ response: NextResponse; userId: string | null }> {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient<Database>(
@@ -31,7 +35,7 @@ export async function updateSession(request: NextRequest) {
   );
 
   // No pongas código entre createServerClient y getClaims().
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
 
-  return response;
+  return { response, userId: data?.claims.sub ?? null };
 }

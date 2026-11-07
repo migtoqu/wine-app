@@ -1,43 +1,55 @@
 import type { Metadata } from "next";
-import NextLink from "next/link";
-import { Container } from "@/components/layout/container";
-import { buttonStyles, EmptyState } from "@/components/ui";
-import { localePath } from "@/i18n/config";
+import { Suspense } from "react";
+import { LoginForm } from "@/components/auth/auth-forms";
+import { AuthShell, FormFallback } from "@/components/auth/auth-shell";
+import { Link } from "@/components/ui";
+import { localePath, type Locale } from "@/i18n/config";
+import type { Dictionary } from "@/i18n/dictionaries/es";
 import { getDictionary, getLocale } from "@/i18n/server";
 
-// Placeholder hasta la sesión de autenticación.
 export async function generateMetadata(): Promise<Metadata> {
-  const { login } = await getDictionary();
-  return { title: login.title };
+  const { auth } = await getDictionary();
+  return { title: auth.loginTitle };
 }
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: PageProps<"/[lang]/login">) {
   const lang = await getLocale();
-  const { login, common } = await getDictionary();
+  const { auth } = await getDictionary();
 
   return (
-    <Container className="max-w-xl py-16">
-      <EmptyState
-        as="h1"
-        title={login.title}
-        description={
-          <>
-            <p className="font-medium text-fg">{common.comingSoon}</p>
-            <p className="mt-1">{login.text}</p>
-          </>
-        }
-        icon={
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-            <rect x="5" y="11" width="14" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-          </svg>
-        }
-        action={
-          <NextLink href={localePath(lang)} className={buttonStyles({ variant: "secondary" })}>
-            {login.back}
-          </NextLink>
-        }
-      />
-    </Container>
+    <AuthShell
+      title={auth.loginTitle}
+      intro={auth.loginIntro}
+      footer={
+        <p>
+          {auth.noAccount} <Link href={localePath(lang, "/registro")}>{auth.toRegister}</Link>
+        </p>
+      }
+    >
+      <Suspense fallback={<FormFallback />}>
+        <LoginFormWithParams lang={lang} labels={auth} searchParams={searchParams} />
+      </Suspense>
+    </AuthShell>
+  );
+}
+
+// searchParams es dato de la petición: va dentro de Suspense para no bloquear el shell.
+async function LoginFormWithParams({
+  lang,
+  labels,
+  searchParams,
+}: {
+  lang: Locale;
+  labels: Dictionary["auth"];
+  searchParams: PageProps<"/[lang]/login">["searchParams"];
+}) {
+  const { next, error } = await searchParams;
+  return (
+    <LoginForm
+      lang={lang}
+      labels={labels}
+      next={typeof next === "string" ? next : null}
+      linkError={error === "enlace"}
+    />
   );
 }

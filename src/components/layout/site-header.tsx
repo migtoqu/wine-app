@@ -1,10 +1,13 @@
 import NextLink from "next/link";
+import { Suspense } from "react";
+import { SearchIcon } from "@/components/catalog/icons";
 import { localePath, type Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/es";
 import { Container } from "./container";
 import { LanguageSwitcher } from "./language-switcher";
 import { LogoMark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { LoginLink, UserMenu } from "./user-menu";
 
 type Props = { lang: Locale; dict: Dictionary };
 
@@ -20,17 +23,30 @@ export function SiteHeader({ lang, dict }: Props) {
           className="flex items-center gap-2 text-primary"
         >
           <LogoMark />
-          <span className="font-display text-xl font-semibold tracking-tight text-fg">
+          <span className="font-display text-xl font-semibold tracking-tight text-fg max-sm:sr-only">
             wine-app
           </span>
         </NextLink>
         <div className="flex items-center gap-2">
+          <NextLink
+            href={localePath(lang, "/buscar")}
+            aria-label={dict.search.label}
+            className="inline-flex h-10 min-w-10 items-center justify-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-semibold text-fg hover:bg-surface-2"
+          >
+            <SearchIcon className="size-5" />
+            <span aria-hidden className="hidden sm:inline">
+              {dict.search.nav}
+            </span>
+          </NextLink>
           <LanguageSwitcher
             target={other}
             label={dict.language.switchTo}
             short={dict.language.short}
           />
           <ThemeToggle labels={dict.theme} />
+          <Suspense fallback={<LoginLink lang={lang} labels={dict.auth.menu} />}>
+            <UserMenu lang={lang} labels={dict.auth.menu} />
+          </Suspense>
         </div>
       </Container>
     </header>
