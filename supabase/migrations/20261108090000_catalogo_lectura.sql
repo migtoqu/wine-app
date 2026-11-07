@@ -3,15 +3,18 @@
 -- 20261107170000_catalogo_inicial.sql.
 --
 -- Todas son security invoker (se aplica la RLS de lectura pública del
--- catálogo), stable y con search_path vacío: todo va cualificado, también los
--- operadores de pg_trgm (operator(extensions.<%)).
+-- catálogo), stable y con search_path vacío: todo va cualificado, también las
+-- funciones de pg_trgm (extensions.word_similarity).
 --
 -- Tolerancia a tildes y erratas: se compara la consulta normalizada contra
 -- public.f_unaccent(nombre), la misma expresión que indexan
 -- bodegas_nombre_trgm_idx y vinos_nombre_trgm_idx, con:
---   * `q <% nombre` (word_similarity ≥ umbral): erratas y palabras sueltas;
---   * `nombre ilike '%q%'`: subcadenas exactas (también usa el índice GIN).
--- El umbral se fija por función (0,4; el de pg_trgm por defecto es 0,6).
+--   * `word_similarity(q, nombre) >= 0.4`: erratas y palabras sueltas;
+--   * `nombre ilike '%q%'`: subcadenas exactas (usa el índice GIN).
+-- El umbral va escrito en la comparación y no con el operador `<%` más
+-- `set pg_trgm.word_similarity_threshold`: Supabase no deja fijar ese
+-- parámetro en una función (42501). La comparación explícita no usa el
+-- índice, pero con ~2.000 vinos el recorrido secuencial cuesta milisegundos.
 --
 -- Los parámetros se referencian cualificados con el nombre de la función
 -- (listar_vinos.anio…): en funciones SQL las columnas tienen prioridad sobre
@@ -95,7 +98,6 @@ returns table (
 language sql
 stable
 set search_path = ''
-set pg_trgm.word_similarity_threshold = 0.4
 as $$
   with consulta as (
     select
@@ -107,7 +109,7 @@ as $$
     from public.bodegas b, consulta c
     where length(c.qn) >= 2
       and (
-        public.normalizar_busqueda(buscar_catalogo.q) operator(extensions.<%) public.f_unaccent(b.nombre)
+        extensions.word_similarity(public.normalizar_busqueda(buscar_catalogo.q), public.f_unaccent(b.nombre)) >= 0.4
         or public.f_unaccent(b.nombre) ilike public.patron_contiene(buscar_catalogo.q)
       )
   ),
@@ -118,7 +120,7 @@ as $$
       from public.vinos v, consulta c
       where length(c.qn) >= 2
         and (
-          public.normalizar_busqueda(buscar_catalogo.q) operator(extensions.<%) public.f_unaccent(v.nombre)
+          extensions.word_similarity(public.normalizar_busqueda(buscar_catalogo.q), public.f_unaccent(v.nombre)) >= 0.4
           or public.f_unaccent(v.nombre) ilike public.patron_contiene(buscar_catalogo.q)
         )
       union all
@@ -191,20 +193,19 @@ returns table (
 language sql
 stable
 set search_path = ''
-set pg_trgm.word_similarity_threshold = 0.4
 as $$
   with coincidencias as (
     select x.id, max(x.rel) as rel
     from (
       select v.id, public.relevancia_nombre(public.normalizar_busqueda(listar_vinos.q), v.nombre) as rel
       from public.vinos v
-      where public.normalizar_busqueda(listar_vinos.q) operator(extensions.<%) public.f_unaccent(v.nombre)
+      where extensions.word_similarity(public.normalizar_busqueda(listar_vinos.q), public.f_unaccent(v.nombre)) >= 0.4
          or public.f_unaccent(v.nombre) ilike public.patron_contiene(listar_vinos.q)
       union all
       select v.id, (public.relevancia_nombre(public.normalizar_busqueda(listar_vinos.q), b.nombre) * 0.8)::real
       from public.bodegas b
       join public.vinos v on v.bodega_id = b.id
-      where public.normalizar_busqueda(listar_vinos.q) operator(extensions.<%) public.f_unaccent(b.nombre)
+      where extensions.word_similarity(public.normalizar_busqueda(listar_vinos.q), public.f_unaccent(b.nombre)) >= 0.4
          or public.f_unaccent(b.nombre) ilike public.patron_contiene(listar_vinos.q)
     ) x
     group by x.id
@@ -315,7 +316,6 @@ returns table (
 language sql
 stable
 set search_path = ''
-set pg_trgm.word_similarity_threshold = 0.4
 as $$
   with filtradas as (
     select
@@ -327,7 +327,7 @@ as $$
     from public.bodegas b
     where (
         coalesce(length(public.normalizar_busqueda(listar_bodegas.q)), 0) < 2
-        or public.normalizar_busqueda(listar_bodegas.q) operator(extensions.<%) public.f_unaccent(b.nombre)
+        or extensions.word_similarity(public.normalizar_busqueda(listar_bodegas.q), public.f_unaccent(b.nombre)) >= 0.4
         or public.f_unaccent(b.nombre) ilike public.patron_contiene(listar_bodegas.q)
       )
       and (
