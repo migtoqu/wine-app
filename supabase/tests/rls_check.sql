@@ -36,6 +36,13 @@ $$;
 -- Usuarios:
 --   …0001 usuario normal   …0002 otro usuario normal   …0003 admin
 
+-- Registro solo por invitación (migración 20261107190000_auth_invitaciones):
+-- sin invitación el alta se rechaza. El rol sale de la invitación.
+insert into public.invitaciones (email, rol) values
+  ('rls-usuario@example.test', 'user'),
+  ('rls-otro@example.test', 'user'),
+  ('rls-admin@example.test', 'admin');
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-4000-8000-000000000001', 'rls-usuario@example.test',
    '{"nombre": " Usuaria ", "mayor_de_edad_confirmado": true, "idioma": "en"}'),
@@ -62,13 +69,12 @@ begin
     raise exception 'FALLO: perfil 2 mal inicializado (metadatos inválidos): %', row_to_json(p);
   end if;
 
-  if not exists (select 1 from public.perfiles where id = '00000000-0000-4000-8000-000000000003') then
-    raise exception 'FALLO: perfil 3 no creado con metadatos nulos';
+  if (select rol from public.perfiles where id = '00000000-0000-4000-8000-000000000003')
+     is distinct from 'admin' then
+    raise exception 'FALLO: perfil 3 no creado con metadatos nulos o sin el rol de su invitación';
   end if;
 end
 $$;
-
-update public.perfiles set rol = 'admin' where id = '00000000-0000-4000-8000-000000000003';
 
 insert into public.fuentes (id, nombre, slug, tipo, url_base) values
   ('10000000-0000-4000-8000-000000000001', 'Fuente RLS', 'rls-fuente', 'tienda',

@@ -78,6 +78,16 @@ La versión de Node recomendada está en `.nvmrc` (24). El workflow `.github/wor
 
 Cada push a `main` se despliega en producción en Vercel; el resto de ramas genera previews.
 
+## Autenticación
+
+Supabase Auth con email y contraseña. **Registro solo por invitación** (fase privada): sin una fila válida en `invitaciones` (no usada, no caducada) el alta se rechaza en la BD; el perfil recibe el `rol` de la invitación.
+
+- Páginas: `/[lang]/login`, `registro`, `recuperar`, `restablecer`; ajustes en `/[lang]/yo/ajustes`. Los enlaces de los emails van a `/auth/confirm`, que admite `?code=` (PKCE, plantillas por defecto de Supabase: hay que abrir el enlace en el mismo navegador) y `?token_hash=&type=` (plantillas propias de `supabase/templates/`, que requieren SMTP propio; en el plan Free con el email por defecto no se pueden cambiar).
+- Rutas públicas sin sesión: landing, `login`, `registro`, `recuperar`, `restablecer`, `legal/*` y `/auth/*`. El resto redirige a login con `?next=` (lo hace `src/proxy.ts` con la lógica de `src/lib/auth/routes.ts`).
+- En servidor: `getCurrentUser()`, `getProfile()`, `requireUser()` y `requireAdmin()` de `@/lib/auth/server`. Las Server Actions vuelven a comprobar la sesión; `/[lang]/admin/**` exige admin (si no, 404).
+- Las Server Actions no pueden usar `next/root-params`: el idioma llega en un campo oculto `lang`.
+- Validación de formularios en `src/lib/auth/validation.ts` (pura, con tests); los errores son claves de `dict.auth.errors`.
+
 ## Base de datos y migraciones
 
 El esquema se gestiona con [Supabase CLI](https://supabase.com/docs/guides/cli) (incluida como dependencia de desarrollo). No se usa base de datos local: las migraciones se aplican directamente al proyecto remoto.
@@ -111,4 +121,4 @@ npm run typecheck
 - Tablas en plural; tablas puente `<a>_<b>` (`bodega_denominaciones`). PK `id uuid`, FKs `<entidad>_id`.
 - `created_at` / `updated_at` en cada tabla; `updated_at` lo mantiene el trigger `public.set_updated_at()`.
 - RLS activada en **todas** las tablas. El catálogo es de lectura pública y solo lo escriben los admin (`public.is_admin()`); scrapers y comprobador de enlaces usan la *service role key*.
-- `supabase/tests/rls_check.sql` comprueba las políticas como anon, usuario y admin dentro de una transacción que se deshace (`begin … rollback`).
+- `supabase/tests/rls_check.sql` y `supabase/tests/auth_check.sql` comprueban las políticas como anon, usuario y admin (y el registro por invitación) dentro de una transacción que se deshace (`begin … rollback`).

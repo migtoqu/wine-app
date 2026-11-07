@@ -1,0 +1,8 @@
+<!--
+  Plantilla "Reset password" para cuando haya SMTP propio (ver confirmation.html).
+  RedirectTo = <origen>/auth/confirm?next=/<lang>/restablecer (lo envía la app).
+  No está declarada en supabase/config.toml: se pega en el dashboard al activarla.
+-->
+<h2>Restablecer contraseña · Reset password</h2>
+<p>Has pedido elegir una contraseña nueva. Si no fuiste tú, ignora este email.<br />You asked to choose a new password. If it wasn't you, ignore this email.</p>
+<p><a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery">Elegir una contraseña nueva · Choose a new password</a></p>
