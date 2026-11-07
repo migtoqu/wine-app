@@ -786,6 +786,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      buscar_catalogo: {
+        Args: { limite?: number; q: string }
+        Returns: {
+          entidad: string
+          id: string
+          nombre: string
+          relevancia: number
+          slug: string
+          subtitulo: string
+          tipo_vino: Database["public"]["Enums"]["tipo_vino"]
+        }[]
+      }
       f_unaccent: { Args: { "": string }; Returns: string }
       hook_antes_de_crear_usuario: { Args: { event: Json }; Returns: Json }
       invitacion_valida: {
@@ -809,6 +821,73 @@ export type Database = {
         }
       }
       is_admin: { Args: never; Returns: boolean }
+      listar_bodegas: {
+        Args: {
+          denominacion?: string
+          desplazamiento?: number
+          limite?: number
+          q?: string
+        }
+        Returns: {
+          denominacion_nombre: string
+          id: string
+          imagen_alt: string
+          imagen_url: string
+          municipio: string
+          nombre: string
+          num_vinos: number
+          provincia: string
+          relevancia: number
+          slug: string
+          total: number
+        }[]
+      }
+      listar_vinos: {
+        Args: {
+          anio?: number
+          bodega?: string
+          crianzas?: Database["public"]["Enums"]["crianza_vino"][]
+          denominaciones?: string[]
+          desplazamiento?: number
+          limite?: number
+          orden?: string
+          q?: string
+          sin_anada?: boolean
+          tipos?: Database["public"]["Enums"]["tipo_vino"][]
+          variedades?: string[]
+        }
+        Returns: {
+          anios: number[]
+          bodega_nombre: string
+          bodega_slug: string
+          crianza: Database["public"]["Enums"]["crianza_vino"]
+          denominacion_nombre: string
+          denominacion_slug: string
+          id: string
+          imagen_alt: string
+          imagen_url: string
+          nombre: string
+          relevancia: number
+          slug: string
+          tipo: Database["public"]["Enums"]["tipo_vino"]
+          total: number
+        }[]
+      }
+      normalizar_busqueda: { Args: { q: string }; Returns: string }
+      opciones_filtro_vinos: {
+        Args: never
+        Returns: {
+          etiqueta: string
+          grupo: string
+          num: number
+          valor: string
+        }[]
+      }
+      patron_contiene: { Args: { q: string }; Returns: string }
+      relevancia_nombre: {
+        Args: { nombre: string; qn: string }
+        Returns: number
+      }
     }
     Enums: {
       color_uva: "tinta" | "blanca" | "rosada"
