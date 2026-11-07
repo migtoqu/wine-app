@@ -13,6 +13,7 @@ import {
   tipoDesde,
   variedadesDesde,
 } from "./normalizar.ts";
+import { variedadesAnteriores } from "./guardar.ts";
 import { datosDeOnclick, parsearFicha, parsearListado, rutaProducto, urlListado } from "./parsear.ts";
 
 const fixture = (f: string) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url), "utf8");
@@ -242,5 +243,15 @@ describe("normalizadores", () => {
       { nombre: "Tempranillo", porcentaje: null },
     ]);
     expect(variedadesDesde("")).toEqual([]);
+  });
+});
+
+describe("correcciones del admin", () => {
+  it("lee la composición escrita la vez anterior; sin ella, undefined", () => {
+    const v = [{ nombre: "Tempranillo", porcentaje: 100 }];
+    expect(variedadesAnteriores({ nombre: "x", variedades: v })).toEqual(v);
+    expect(variedadesAnteriores({ nombre: "x", variedades: [] })).toEqual([]);
+    expect(variedadesAnteriores({ nombre: "x" })).toBeUndefined();
+    expect(variedadesAnteriores(null)).toBeUndefined();
   });
 });

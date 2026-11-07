@@ -27,3 +27,37 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # Migraciones y tests SQL contra un Postgres local de Supabase (Docker), en
+  # paralelo a `check`. Recoge cualquier supabase/tests/*.sql. Nunca toca la
+  # base remota. El CLI sale de node_modules (versión fijada en package-lock,
+  # con la caché de npm).
+  db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Arrancar Postgres local y aplicar migraciones
+        run: >-
+          npx supabase start
+          -x realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+      - name: Tests SQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          shopt -s nullglob
+          files=(supabase/tests/*.sql)
+          [ ${#files[@]} -gt 0 ] || { echo "No hay tests SQL"; exit 1; }
+          for f in "${files[@]}"; do
+            echo "::group::$f"
+            psql "postgresql://postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -q -f "$f"
+            echo "::endgroup::"
+          done
+      - name: Parar Supabase
+        if: always()
+        run: npx supabase stop --no-backup
