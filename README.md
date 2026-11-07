@@ -37,6 +37,18 @@ npm run dev
 - `src/lib/supabase/server.ts`: cliente para Server Components, Server Actions y Route Handlers.
 - `src/proxy.ts`: refresca la sesión de Supabase en cada petición.
 
+### Checks
+
+```bash
+npm run lint         # ESLint
+npm run typecheck    # genera los tipos de rutas de Next y ejecuta tsc
+npm test             # tests unitarios (Vitest, una pasada)
+npm run test:watch   # Vitest en modo watch
+npm run build        # build de producción (no necesita variables de entorno)
+```
+
+La versión de Node recomendada está en `.nvmrc` (24). El workflow `.github/workflows/ci.yml` ejecuta estos cinco checks en cada pull request y en cada push a `main`. Los tests viven junto al código (`src/**/*.test.ts`).
+
 Cada push a `main` se despliega en producción en Vercel; el resto de ramas genera previews.
 
 ## Base de datos y migraciones
