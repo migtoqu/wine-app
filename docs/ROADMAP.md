@@ -10,18 +10,18 @@
 Objetivo: proyecto listo para construir encima, sin funcionalidad de producto todavía.
 
 - [x] Resolver las preguntas abiertas de SCOPE.md (§12)
-- [ ] Revisar `robots.txt` y términos de uso del C.R. D.O. Ribera del Duero y de Vinoselección
-- [ ] Hacer público el repositorio y comprobar que no hay secretos en el historial
+- [x] Revisar `robots.txt` y términos de uso del C.R. D.O. Ribera del Duero y de Vinoselección
+- [ ] Hacer público el repositorio y comprobar que no hay secretos en el historial (auditoría hecha: sin secretos; falta cambiar la visibilidad)
 - [x] Crear app Next.js (App Router, TypeScript) y desplegarla en Vercel
 - [x] Configurar Supabase: extensiones `pg_trgm`, `unaccent`, `postgis`
 - [x] Flujo de migraciones con Supabase CLI y tipos TypeScript generados
-- [ ] Migración inicial del esquema de catálogo (§6.1) con índices
-- [ ] Políticas RLS base: catálogo de solo lectura, escritura solo para admin
-- [ ] i18n con rutas `/es` y `/en`
-- [ ] Sistema de diseño base: tipografía, colores, claro/oscuro, componentes
-- [ ] PWA: manifest, iconos
-- [ ] CI en GitHub: lint, typecheck, tests en cada PR
-- [ ] Páginas legales (privacidad, cookies, aviso legal) y puerta +18
+- [x] Migración inicial del esquema de catálogo (§6.1) con índices
+- [x] Políticas RLS base: catálogo de solo lectura, escritura solo para admin
+- [x] i18n con rutas `/es` y `/en`
+- [x] Sistema de diseño base: tipografía, colores, claro/oscuro, componentes
+- [x] PWA: manifest, iconos
+- [x] CI en GitHub: lint, typecheck, tests en cada PR
+- [x] Páginas legales (privacidad, cookies, aviso legal) y puerta +18
 
 **Criterio de salida:** la app desplegada muestra una página con la puerta +18 en ambos idiomas y el esquema existe en Supabase.
 
