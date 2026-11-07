@@ -7,13 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "db:login": "supabase login",
     "db:link": "supabase link --project-ref mvatmmdifnmqnxikgatp",
     "db:new": "supabase migration new",
     "db:status": "supabase migration list --remote",
     "db:push": "supabase db push --remote",
-    "db:types": "supabase gen types --remote=mvatmmdifnmqnxikgatp --lang typescript --schema public > src/lib/supabase/database.types.ts"
+    "db:types": "supabase gen types --remote=mvatmmdifnmqnxikgatp --lang typescript --schema public > src/lib/supabase/database.types.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -25,13 +27,17 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24.19.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
     "supabase": "^3.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.1.0"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
