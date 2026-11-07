@@ -106,12 +106,12 @@ const en = {
     toLogin: "Sign in",
     checkEmailTitle: "Check your inbox",
     registerDone:
-      "We've sent you a link to confirm your email. Open it on this device to sign in.",
+      "We've sent you a link to confirm your email. Open it in this same browser to sign in.",
     recoverTitle: "Reset password",
     recoverIntro: "Enter your email and we'll send you a link to choose a new password.",
     recoverSubmit: "Send link",
     recoverDone:
-      "If there's an account with that email, we've sent you a link to reset your password.",
+      "If there's an account with that email, we've sent you a link to reset your password. Open it in this same browser.",
     resetTitle: "New password",
     resetIntro: "Choose a new password for your account.",
     resetSubmit: "Save password",

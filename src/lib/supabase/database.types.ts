@@ -473,8 +473,8 @@ export type Database = {
       invitaciones: {
         Row: {
           caduca: string | null
-          created_at: string
           creada_por: string | null
+          created_at: string
           email: string
           id: string
           rol: Database["public"]["Enums"]["rol_usuario"]
@@ -484,8 +484,8 @@ export type Database = {
         }
         Insert: {
           caduca?: string | null
-          created_at?: string
           creada_por?: string | null
+          created_at?: string
           email: string
           id?: string
           rol?: Database["public"]["Enums"]["rol_usuario"]
@@ -495,8 +495,8 @@ export type Database = {
         }
         Update: {
           caduca?: string | null
-          created_at?: string
           creada_por?: string | null
+          created_at?: string
           email?: string
           id?: string
           rol?: Database["public"]["Enums"]["rol_usuario"]
@@ -788,6 +788,26 @@ export type Database = {
     Functions: {
       f_unaccent: { Args: { "": string }; Returns: string }
       hook_antes_de_crear_usuario: { Args: { event: Json }; Returns: Json }
+      invitacion_valida: {
+        Args: { p_email: string }
+        Returns: {
+          caduca: string | null
+          creada_por: string | null
+          created_at: string
+          email: string
+          id: string
+          rol: Database["public"]["Enums"]["rol_usuario"]
+          updated_at: string
+          usada_en: string | null
+          usada_por: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invitaciones"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {

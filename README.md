@@ -82,7 +82,7 @@ Cada push a `main` se despliega en producción en Vercel; el resto de ramas gene
 
 Supabase Auth con email y contraseña. **Registro solo por invitación** (fase privada): sin una fila válida en `invitaciones` (no usada, no caducada) el alta se rechaza en la BD; el perfil recibe el `rol` de la invitación.
 
-- Páginas: `/[lang]/login`, `registro`, `recuperar`, `restablecer`; ajustes en `/[lang]/yo/ajustes`. Los enlaces de los emails van a `/auth/confirm` (`token_hash` + `verifyOtp`).
+- Páginas: `/[lang]/login`, `registro`, `recuperar`, `restablecer`; ajustes en `/[lang]/yo/ajustes`. Los enlaces de los emails van a `/auth/confirm`, que admite `?code=` (PKCE, plantillas por defecto de Supabase: hay que abrir el enlace en el mismo navegador) y `?token_hash=&type=` (plantillas propias de `supabase/templates/`, que requieren SMTP propio; en el plan Free con el email por defecto no se pueden cambiar).
 - Rutas públicas sin sesión: landing, `login`, `registro`, `recuperar`, `restablecer`, `legal/*` y `/auth/*`. El resto redirige a login con `?next=` (lo hace `src/proxy.ts` con la lógica de `src/lib/auth/routes.ts`).
 - En servidor: `getCurrentUser()`, `getProfile()`, `requireUser()` y `requireAdmin()` de `@/lib/auth/server`. Las Server Actions vuelven a comprobar la sesión; `/[lang]/admin/**` exige admin (si no, 404).
 - Las Server Actions no pueden usar `next/root-params`: el idioma llega en un campo oculto `lang`.

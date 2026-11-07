@@ -105,12 +105,12 @@ const es = {
     toLogin: "Inicia sesión",
     checkEmailTitle: "Revisa tu correo",
     registerDone:
-      "Te hemos enviado un enlace para confirmar tu email. Ábrelo desde este dispositivo para entrar.",
+      "Te hemos enviado un enlace para confirmar tu email. Ábrelo en este mismo navegador para entrar.",
     recoverTitle: "Recuperar contraseña",
     recoverIntro: "Escribe tu email y te enviaremos un enlace para elegir una contraseña nueva.",
     recoverSubmit: "Enviar enlace",
     recoverDone:
-      "Si hay una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña.",
+      "Si hay una cuenta con ese email, te hemos enviado un enlace para restablecer la contraseña. Ábrelo en este mismo navegador.",
     resetTitle: "Nueva contraseña",
     resetIntro: "Elige una contraseña nueva para tu cuenta.",
     resetSubmit: "Guardar contraseña",

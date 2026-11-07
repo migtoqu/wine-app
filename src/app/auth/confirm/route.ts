@@ -5,8 +5,16 @@ import { HOME_PATH, localeFromNext, safeNext } from "@/lib/auth/routes";
 import { createClient } from "@/lib/supabase/server";
 
 // Destino de los enlaces de los emails de Supabase (confirmar alta, recuperar
-// contraseña…). Las plantillas envían aquí con token_hash y type; verifyOtp crea
-// la sesión (cookies) y se redirige a `next`. Fuera de [lang]: el proxy no pasa por aquí.
+// contraseña…). Crea la sesión (cookies) y redirige a `next`. Fuera de [lang]:
+// el proxy no pasa por aquí. Admite dos flujos:
+//
+// * `code` (PKCE): el de las plantillas por defecto. El enlace pasa por
+//   /auth/v1/verify de Supabase y vuelve aquí con ?code=…; se canjea con el
+//   code_verifier que @supabase/ssr guardó en una cookie al pedir el email, así
+//   que hay que abrirlo en el mismo navegador. No trae `type`: el destino sale
+//   de `next` (/restablecer en la recuperación de contraseña).
+// * `token_hash` + `type`: el de las plantillas propias de supabase/templates
+//   (requieren SMTP propio). Funciona en cualquier navegador.
 
 const OTP_TYPES: readonly EmailOtpType[] = [
   "signup",
@@ -23,6 +31,7 @@ function isOtpType(value: string | null): value is EmailOtpType {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
+  const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type");
   const next = searchParams.get("next");
@@ -30,12 +39,17 @@ export async function GET(request: NextRequest) {
   const saved = request.cookies.get(LOCALE_COOKIE)?.value;
   const lang = localeFromNext(next, hasLocale(saved) ? saved : undefined);
   const fallback = localePath(lang, type === "recovery" ? "/restablecer" : HOME_PATH);
+  const success = () => NextResponse.redirect(new URL(safeNext(next, fallback), request.url));
 
-  if (tokenHash && isOtpType(type)) {
+  // Supabase devuelve ?error=…&error_description=… si el enlace caducó o ya se usó.
+  if (!searchParams.has("error")) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-    if (!error) {
-      return NextResponse.redirect(new URL(safeNext(next, fallback), request.url));
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) return success();
+    } else if (tokenHash && isOtpType(type)) {
+      const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+      if (!error) return success();
     }
   }
 
