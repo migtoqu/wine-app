@@ -44,8 +44,11 @@ async function requestOrigin(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-function confirmUrl(origin: string, next: string) {
-  return `${origin}/auth/confirm?next=${encodeURIComponent(next)}`;
+function confirmUrl(origin: string, next: string, email?: string) {
+  const query = new URLSearchParams({ next });
+  // En el alta, para rellenar el login si el enlace se abre en otro navegador.
+  if (email) query.set("email", email);
+  return `${origin}/auth/confirm?${query}`;
 }
 
 function isRateLimit(error: AuthError) {
@@ -119,7 +122,7 @@ export async function signUp(_prev: FormState, form: FormData): Promise<FormStat
     options: {
       // Los lee handle_new_user() al crear el perfil.
       data: { nombre, mayor_de_edad_confirmado: true, idioma: lang },
-      emailRedirectTo: confirmUrl(await requestOrigin(), localePath(lang, HOME_PATH)),
+      emailRedirectTo: confirmUrl(await requestOrigin(), localePath(lang, HOME_PATH), email),
     },
   });
 

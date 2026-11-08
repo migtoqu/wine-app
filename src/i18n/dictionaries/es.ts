@@ -264,7 +264,7 @@ const es = {
     toLogin: "Inicia sesión",
     checkEmailTitle: "Revisa tu correo",
     registerDone:
-      "Te hemos enviado un enlace para confirmar tu email. Ábrelo en este mismo navegador para entrar.",
+      "Te hemos enviado un enlace para confirmar tu email. Si lo abres en este navegador entrarás directamente; si no, inicia sesión después con tu email y contraseña.",
     recoverTitle: "Recuperar contraseña",
     recoverIntro: "Escribe tu email y te enviaremos un enlace para elegir una contraseña nueva.",
     recoverSubmit: "Enviar enlace",
@@ -277,6 +277,9 @@ const es = {
       "El enlace no es válido o ha caducado. Pide uno nuevo para restablecer la contraseña.",
     resetRequestNew: "Pedir un enlace nuevo",
     linkError: "El enlace no es válido o ha caducado. Vuelve a intentarlo.",
+    confirmedNotice: "Email confirmado. Inicia sesión con tu contraseña.",
+    browserMismatch:
+      "Abre el enlace en el mismo navegador donde lo pediste: no ha funcionado porque se abrió en otra app o navegador. Pide otro aquí abajo.",
     backHome: "Volver al inicio",
     errors: {
       required: "Este campo es obligatorio.",
