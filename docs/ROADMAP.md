@@ -30,42 +30,44 @@ Objetivo: proyecto listo para construir encima, sin funcionalidad de producto to
 Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar favoritos y notas.
 
 ### Auth y usuarios
-- [ ] Registro email + contraseña con verificación, login, logout, recuperar contraseña
-- [ ] SMTP propio configurado en Supabase Auth
-- [ ] Registro solo por invitación (tabla `invitaciones` + gestión en admin)
-- [ ] Perfil y ajustes: idioma, tema, preferencias de email
-- [ ] Preferencias de vino (tipos, uvas, D.O., rango de precio)
-- [ ] Tablas de usuario (§6.5) con RLS y tests de aislamiento entre usuarios
+- [x] Registro email + contraseña con verificación, login, logout, recuperar contraseña
+- [ ] SMTP propio configurado en Supabase Auth (aplazado: sin él, los emails usan las plantillas por defecto de Supabase)
+- [x] Registro solo por invitación (tabla `invitaciones` + gestión en admin)
+- [x] Perfil y ajustes: idioma, tema, preferencias de email
+- [x] Preferencias de vino (tipos, uvas, D.O., rango de precio)
+- [x] Tablas de usuario (§6.5) con RLS y tests de aislamiento entre usuarios
 
 ### Catálogo y búsqueda
-- [ ] Ficha de bodega: datos, contacto, imágenes, lista de sus vinos
-- [ ] Ficha de vino: datos, bodega, selector de añadas, otros vinos de la bodega
-- [ ] Buscador global con autocompletado, tolerante a tildes y erratas
-- [ ] Filtros: tipo, crianza, D.O., uva, añada, bodega · ordenación · paginación
-- [ ] Imágenes enlazadas con *placeholder* si fallan
-- [ ] Atribución de fuente y fecha de actualización en cada ficha
+- [x] Ficha de bodega: datos, contacto, imágenes, lista de sus vinos
+- [x] Ficha de vino: datos, bodega, selector de añadas, otros vinos de la bodega
+- [x] Buscador global con autocompletado, tolerante a tildes y erratas
+- [x] Filtros: tipo, crianza, D.O., uva, añada, bodega · ordenación · paginación
+- [x] Imágenes enlazadas con *placeholder* si fallan
+- [x] Atribución de fuente y fecha de actualización en cada ficha
 
 ### Espacio personal
-- [ ] Favoritos de vinos y bodegas
-- [ ] Notas privadas en vinos, añadas y bodegas
-- [ ] Página `/yo` con favoritos y notas
+- [x] Favoritos de vinos y bodegas
+- [x] Notas privadas en vinos, añadas y bodegas
+- [x] Página `/yo` con favoritos y notas
 
 ### Datos
-- [ ] Infra de scrapers en GitHub Actions: estructura extraer → normalizar → emparejar → guardar
-- [ ] Utilidades comunes: rate limiting, robots.txt, User-Agent, reintentos, registro de ejecución
-- [ ] Scraper 1: Consejo Regulador D.O. Ribera del Duero (bodegas)
-- [ ] Scraper 2: Vinoselección (vinos, añadas, imagen)
-- [ ] Normalización y emparejamiento básico con tests
-- [ ] Carga de semillas: D.O. y variedades de uva españolas
-- [ ] Comprobador de enlaces semanal con ocultación tras 2 fallos consecutivos
+- [x] Infra de scrapers en GitHub Actions: estructura extraer → normalizar → emparejar → guardar
+- [x] Utilidades comunes: rate limiting, robots.txt, User-Agent, reintentos, registro de ejecución
+- [x] Scraper 1: Consejo Regulador D.O. Ribera del Duero (bodegas)
+- [x] Scraper 2: Vinoselección (vinos, añadas, imagen)
+- [x] Normalización y emparejamiento básico con tests
+- [x] Carga de semillas: D.O. y variedades de uva españolas
+- [ ] Comprobador de enlaces semanal con ocultación tras 2 fallos consecutivos (aplazado)
 
 ### Admin
-- [ ] Rol admin y protección de `/admin`
-- [ ] CRUD de bodegas, vinos, añadas, D.O., uvas
-- [ ] Vista de ejecuciones de scrapers
-- [ ] Vista de enlaces rotos con acciones
+- [x] Rol admin y protección de `/admin`
+- [x] CRUD de bodegas, vinos, añadas, D.O., uvas
+- [ ] Vista de ejecuciones de scrapers (aplazado)
+- [ ] Vista de enlaces rotos con acciones (aplazado)
 
 **Criterio de salida:** D.O. Ribera del Duero cubierta (~300 bodegas, ~2.000 vinos); los invitados usan la app en móvil sin errores graves.
+
+> Estado (2026-11-08): MVP desplegado. Primera carga: 302 bodegas (C.R. Ribera del Duero) y 199 vinos / 265 añadas (Vinoselección, 39 fichas a revisión). Vinoselección solo cubre ~350 referencias de Ribera: para llegar a ~2.000 vinos hace falta otra fuente.
 
 ## Fase 2 — Precios, premios y enoturismo (P1)
 
