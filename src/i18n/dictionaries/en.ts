@@ -283,7 +283,7 @@ const en = {
     toLogin: "Sign in",
     checkEmailTitle: "Check your inbox",
     registerDone:
-      "We've sent you a link to confirm your email. Open it in this same browser to sign in.",
+      "We've sent you a link to confirm your email. If you open it in this browser you'll be signed in straight away; otherwise, sign in afterwards with your email and password.",
     recoverTitle: "Reset password",
     recoverIntro: "Enter your email and we'll send you a link to choose a new password.",
     recoverSubmit: "Send link",
@@ -295,6 +295,9 @@ const en = {
     resetNoSession: "The link is invalid or has expired. Request a new one to reset your password.",
     resetRequestNew: "Request a new link",
     linkError: "The link is invalid or has expired. Please try again.",
+    confirmedNotice: "Email confirmed. Sign in with your password.",
+    browserMismatch:
+      "Open the link in the same browser where you requested it: it didn't work because it was opened in another app or browser. Request a new one below.",
     backHome: "Back to home",
     errors: {
       required: "This field is required.",

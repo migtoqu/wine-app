@@ -43,13 +43,14 @@ async function LoginFormWithParams({
   labels: Dictionary["auth"];
   searchParams: PageProps<"/[lang]/login">["searchParams"];
 }) {
-  const { next, error } = await searchParams;
+  const { next, error, confirmado, email } = await searchParams;
   return (
     <LoginForm
       lang={lang}
       labels={labels}
       next={typeof next === "string" ? next : null}
-      linkError={error === "enlace"}
+      notice={confirmado === "1" ? "confirmed" : error === "enlace" ? "linkError" : null}
+      email={typeof email === "string" ? email.slice(0, 254) : null}
     />
   );
 }

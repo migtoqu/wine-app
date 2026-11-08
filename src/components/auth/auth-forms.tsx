@@ -48,12 +48,15 @@ export function LoginForm({
   lang,
   labels,
   next,
-  linkError,
+  notice,
+  email,
 }: {
   lang: Locale;
   labels: Labels;
   next: string | null;
-  linkError: boolean;
+  // Aviso al llegar desde /auth/confirm: enlace no válido o email ya confirmado.
+  notice: "linkError" | "confirmed" | null;
+  email: string | null;
 }) {
   const [state, action, pending] = useActionState(signIn, initialFormState);
   const { field, message } = useErrors(labels, state);
@@ -61,14 +64,20 @@ export function LoginForm({
   return (
     <form action={action} className="flex flex-col gap-5" noValidate>
       <Hidden lang={lang} next={next} />
-      {message ? <FormAlert>{message}</FormAlert> : linkError && <FormAlert>{labels.linkError}</FormAlert>}
+      {message ? (
+        <FormAlert>{message}</FormAlert>
+      ) : notice === "confirmed" ? (
+        <FormAlert tone="success">{labels.confirmedNotice}</FormAlert>
+      ) : (
+        notice === "linkError" && <FormAlert>{labels.linkError}</FormAlert>
+      )}
       <Input
         label={labels.email}
         name="email"
         type="email"
         autoComplete="email"
         required
-        defaultValue={state.values?.email}
+        defaultValue={state.values?.email ?? email ?? undefined}
         error={field("email")}
       />
       <Input
@@ -157,7 +166,16 @@ export function RegisterForm({ lang, labels }: { lang: Locale; labels: Labels })
   );
 }
 
-export function RecoverForm({ lang, labels }: { lang: Locale; labels: Labels }) {
+export function RecoverForm({
+  lang,
+  labels,
+  browserError = false,
+}: {
+  lang: Locale;
+  labels: Labels;
+  // Llega desde /auth/confirm: el enlace se abrió en otro navegador.
+  browserError?: boolean;
+}) {
   const [state, action, pending] = useActionState(requestPasswordReset, initialFormState);
   const { field, message } = useErrors(labels, state);
 
@@ -168,7 +186,11 @@ export function RecoverForm({ lang, labels }: { lang: Locale; labels: Labels }) 
   return (
     <form action={action} className="flex flex-col gap-5" noValidate>
       <Hidden lang={lang} />
-      {message && <FormAlert>{message}</FormAlert>}
+      {message ? (
+        <FormAlert>{message}</FormAlert>
+      ) : (
+        browserError && <FormAlert>{labels.browserMismatch}</FormAlert>
+      )}
       <Input
         label={labels.email}
         name="email"
