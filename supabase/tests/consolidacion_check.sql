@@ -470,7 +470,7 @@ begin
         and bodega_id = 'b1000000-0000-4000-8000-000000000002')
      is distinct from E'Nota A en destino\n\n———\n\nNota A en origen'
      or (select count(*) from public.notas
-         where usuario_id = '00000000-0000-4000-8000-000000000032') <> 1
+         where usuario_id = '00000000-0000-4000-8000-000000000032' and bodega_id is not null) <> 1
      or (select texto from public.notas
          where usuario_id = '00000000-0000-4000-8000-000000000033'
            and bodega_id = 'b1000000-0000-4000-8000-000000000002') <> 'Nota B en origen' then

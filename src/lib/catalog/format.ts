@@ -165,3 +165,24 @@ export function imageForAnada(
     null
   );
 }
+
+// Duración de un servicio: 90 → «1 h 30 min», 45 → «45 min».
+export function formatDuration(minutes: number | null): string | null {
+  if (minutes === null || minutes <= 0) return null;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
+// Idiomas ISO 639-1 → nombres en el idioma de la interfaz («en» → «inglés»).
+export function formatLanguages(lang: string, codes: string[]): string | null {
+  if (codes.length === 0) return null;
+  let names: Intl.DisplayNames | null = null;
+  try {
+    names = new Intl.DisplayNames([lang], { type: "language" });
+  } catch {
+    names = null;
+  }
+  return codes.map((c) => names?.of(c) ?? c).join(", ");
+}

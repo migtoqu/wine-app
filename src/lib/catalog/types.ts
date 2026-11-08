@@ -108,6 +108,33 @@ export type CatalogImage = {
 
 export type Fuente = { nombre: string; url_base: string } | null;
 
+export type OrigenDato = Enums<"origen_dato">;
+
+// De dónde sale el valor vigente de un campo (procedencia_campos), para la
+// atribución por bloque en las fichas.
+export type ProcedenciaCampo = {
+  origen: OrigenDato;
+  fuente: Fuente;
+  url: string | null;
+  observado_en: string;
+};
+export type Procedencias = Record<string, ProcedenciaCampo>;
+
+// Resúmenes propios generados a partir de hechos (es/en), con sus fuentes.
+export type Resumen = { campo: string; idioma: "es" | "en"; texto: string; fuentes: NonNullable<Fuente>[] };
+
+export type ServicioBodega = {
+  id: string;
+  tipo: Enums<"tipo_servicio">;
+  titulo: string;
+  descripcion: string | null;
+  precio_desde: number | null;
+  duracion_minutos: number | null;
+  idiomas: string[];
+  horario: string | null;
+  url_reserva: string | null;
+};
+
 export type DenominacionRef = { slug: string; nombre: string; tipo: TipoDenominacion };
 
 export type AnadaVariedad = {
@@ -127,9 +154,15 @@ export type Anada = {
   temp_servicio_min: number | null;
   temp_servicio_max: number | null;
   produccion_botellas: number | null;
+  elaboracion: string | null;
+  cata_vista: string | null;
+  cata_nariz: string | null;
+  cata_boca: string | null;
   updated_at: string;
   variedades: AnadaVariedad[];
   imagenes: CatalogImage[];
+  procedencia: Procedencias;
+  resumenes: Resumen[];
 };
 
 export type VinoFicha = {
@@ -139,7 +172,9 @@ export type VinoFicha = {
   tipo: TipoVino;
   crianza: CrianzaVino | null;
   descripcion: string | null;
+  elaboracion: string | null;
   updated_at: string;
+  procedencia: Procedencias;
   bodega: { slug: string; nombre: string; municipio: string | null; provincia: string | null };
   denominacion: DenominacionRef | null;
   fuente: Fuente;
@@ -165,6 +200,13 @@ export type BodegaFicha = {
   anio_fundacion: number | null;
   hectareas: number | null;
   estado: Enums<"estado_bodega">;
+  historia: string | null;
+  enoturismo_web: string | null;
+  enoturismo_email: string | null;
+  enoturismo_telefono: string | null;
+  servicios: ServicioBodega[];
+  procedencia: Procedencias;
+  resumenes: Resumen[];
   updated_at: string;
   fuente: Fuente;
   // La principal primero.
