@@ -7,6 +7,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | `ribera` | `cr-ribera-del-duero` | `bodegas`, `bodega_denominaciones`, `registros_fuente` | `scrape-ribera.yml` (lunes 03:17 UTC) |
 | `vinoseleccion` | `vinoseleccion` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `registros_fuente` | `scrape-vinoseleccion.yml` (miércoles 03:47 UTC) |
 | `vinopremier` | `vinopremier` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `codigos_ean`, `registros_fuente` | `scrape-vinopremier.yml` (jueves 04:23 UTC) |
+| `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 | `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves 02:37 UTC, 3 lotes) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
@@ -108,7 +109,16 @@ Tienda Magento (`vinopremier.com`, sin `www`). Mismo flujo que Vinoselección, c
 - **Descartes**: packs y lotes (mismas reglas que Vinoselección) y productos sin tipo de vino reconocible («Sidra…»). Un estuche de una sola botella sí cuenta.
 - **Emparejamiento**: primero por **EAN** contra `codigos_ean`. Si el EAN ya es de un vino del catálogo y el nombre de bodega de la tienda no basta, el EAN decide la bodega; si el nombre apunta a *otra* bodega, va a revisión («EAN de otra bodega»). Un EAN de otra añada del mismo vino se asocia a esa añada, sin revisión. Sin EAN, o si no se encuentra: bodega (`Emparejador`) y nombre dentro de la bodega (`EmparejadorVinos`). **Una tienda no crea bodegas**: sin bodega candidata la ficha va a la cola de revisión.
 - `--bodegas ruta.json` en dry-run acepta también una instantánea del catálogo `{bodegas:[{id,nombre,marcas?}], vinos:[{id,bodegaId,nombre,tipo,crianza}], eans:[{ean,vinoId}]}` para calcular cuántos vinos ya existen.
-- Orden de carga: después de Ribera y de Rioja (las bodegas deben existir).
+- Ritmo: 10–14 s entre peticiones y tope de 450 por ejecución (ver incidente en `docs/SOURCES.md` §4.1). Orden de carga: después de Ribera y de Rioja (las bodegas deben existir).
+
+## Rioja (C.R. DOCa Rioja, `riojawine.com`)
+
+- Parte de `sitemap-es-es.xml` (≈213 bodegas, ≈700 vinos, ≈371 experiencias) y pide directamente `/es/<ruta>/` (las URLs del sitemap redirigen). ≈1.290 peticiones, ≈90 min; `--limit N` se aplica **por tipo**. Orden: bodegas → vinos → experiencias; el progreso se registra por tipo.
+- `id_externo`: `bodega:<slug>`, `vino:<slug>`, `exp:<slug>`. Idempotente: una ejecución cortada se repite entera sin duplicar.
+- **Bodegas**: contacto, web, municipio, dirección, coordenadas, año de fundación (solo «desde/fundada en AAAA» en la línea destacada) y D.O. Rioja. Provincia/comunidad: por código postal (01 Álava, 09 Burgos, 26 La Rioja, 31 Navarra), tabla de municipios o zona «Rioja Alavesa»; nunca La Rioja por defecto (si no hay pista, queda vacía).
+- **Vinos**: la ficha solo da el nombre de la bodega (sin enlace). Bodega por: enlace explícito desde la ficha de bodega (si lo hubiera) → clave de nombre → vinos hermanos («Más vinos de la bodega»). Ambiguo o sin candidata → `revision`. Tipo, crianza (palabras del nombre/«Envejecimiento»; «Genérico» no dice nada), añada y uvas (sin porcentajes). Registro sobre la añada → resumen propio `elaboracion`. El precio queda en `datos`.
+- **Experiencias** → `servicios_bodega` (`tipo`, `precio_desde` mínimo, duración, idiomas, horario, `url_reserva`). Bodega por el enlace «Sobre la bodega»; sin él → `revision`.
+- No se copian descripciones ni imágenes ni redes sociales. Aviso legal del Consejo: prohíbe el uso comercial (la app es privada).
 
 ## Webs de bodegas (`fuentes/webs-bodegas/`)
 

@@ -6,7 +6,8 @@ import { Emparejador, type BodegaCandidata, type ResultadoEmparejamiento } from 
 import { EmparejadorVinos, type VinoCatalogo } from "../../emparejamiento/vinos.ts";
 import { registrosConocidos } from "../../lib/db.ts";
 import type { Contexto } from "../../lib/ejecucion.ts";
-import { ParadaFuente } from "../../lib/http.ts";
+import { ClienteHttp, ParadaFuente } from "../../lib/http.ts";
+import { LimitadorPorHost } from "../../lib/rate-limit.ts";
 import { RobotsDenegado } from "../../lib/robots.ts";
 import { claveNombreBodega } from "../../lib/texto.ts";
 import { decisionAdmin } from "../../lib/consolidacion/supresiones.ts";
@@ -19,6 +20,10 @@ export const SLUG_FUENTE = "vinopremier";
 
 // Ribera tiene 369 productos (24 por página → 16 páginas); el tope protege de un paginador anómalo.
 const MAX_PAGINAS = 40;
+/** Tope de peticiones por ejecución (listados + fichas + robots): ~387 productos hoy. */
+export const MAX_PETICIONES = 450;
+/** Pausa entre peticiones: ≥10 s tras el incidente de bloqueo de IP del 2026-11-08. */
+export const PAUSA_MS = { minMs: 10_000, maxMs: 14_000 };
 
 interface TarjetaCat extends TarjetaVp {
   categoria: Categoria;
@@ -88,6 +93,10 @@ export function resolverBodega(
 }
 
 export async function scraperVinopremier(ctx: Contexto): Promise<void> {
+  // Ritmo propio, más lento que el de las demás fuentes (salvo que ya venga uno inyectado).
+  if (ctx.http.peticiones === 0 && ctx.http instanceof ClienteHttp) {
+    ctx.http = new ClienteHttp({ log: ctx.log, limitador: new LimitadorPorHost(PAUSA_MS) });
+  }
   // robots.txt: cada categoría y su paginación ?p=N deben seguir permitidas.
   for (const c of CATEGORIAS) {
     await ctx.http.comprobarRobots(urlListado(c, 1));
@@ -122,6 +131,10 @@ export async function scraperVinopremier(ctx: Contexto): Promise<void> {
   }
 
   for (const tarjeta of tarjetas) {
+    if (ctx.http.peticiones >= MAX_PETICIONES) {
+      ctx.marcarParcial(`Tope de ${MAX_PETICIONES} peticiones alcanzado; se detiene la ejecución`);
+      break;
+    }
     try {
       const res = await ctx.http.get(tarjeta.url);
       const n = normalizarVino(parsearFicha(res.texto, tarjeta.url), tarjeta.categoria);
