@@ -13,6 +13,7 @@ export type ClaveHecho =
   | "bodega.fundacion_anio"  // number
   | "bodega.hectareas"       // number, unidad «ha»
   | "bodega.enoturismo"      // boolean: ofrece visitas
+  | "bodega.horario_visitas" // string: «Lunes a Viernes: 10:00 h - 17:00 h; …»
   | "bodega.fundadores"      // string, sujeto = clave del nombre: un fundador por hecho
   | "bodega.familia"         // string: apellido(s) de la familia propietaria («Fernández Rivera»)
   | "bodega.generacion"      // number: generación que dirige hoy la bodega (4 = cuarta)
