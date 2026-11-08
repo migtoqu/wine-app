@@ -72,7 +72,7 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 
 **Criterio de salida:** D.O. Ribera del Duero cubierta (~300 bodegas, ~2.000 vinos); los invitados usan la app en móvil sin errores graves.
 
-> Estado (2026-11-08): MVP desplegado. Tras la ola 4 (Rioja + webs de bodegas): 511 bodegas, 1.204 vinos / 1.373 añadas, 508 servicios de enoturismo y 3.312 resúmenes propios; unas 270 fichas en `/admin/revision`. Ribera aún no llega a ~2.000 vinos: faltan Vinopremier y afinar el emparejador (duplicados claros quedan en ~0,85 y van a revisión).
+> Estado (2026-11-08): MVP desplegado. Tras la ola 4 (Rioja + webs de bodegas): 511 bodegas, 1.204 vinos / 1.373 añadas, 508 servicios de enoturismo y 3.312 resúmenes propios; unas 300 fichas en `/admin/revision`. Ribera aún no llega a ~2.000 vinos: faltan Vinopremier y afinar el emparejador (duplicados claros quedan en ~0,85 y van a revisión).
 >
 > Pendiente del usuario: permiso escrito de la Ruta del Vino (info@riberate.com) y aviso al C.R. Rioja antes de la fase pública.
 
