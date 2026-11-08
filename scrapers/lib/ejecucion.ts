@@ -35,6 +35,8 @@ export interface Contexto {
   rutaBodegas: string | null;
   /** Resultado normalizado de cada ficha, para el JSON de --dry-run. */
   salida: unknown[];
+  /** Opciones propias de una fuente (`--webs`, `--dominio`, `--lote`…), tal como llegan de la CLI. */
+  opciones: Record<string, string | undefined>;
   /** La ejecución terminará como 'parcial' aunque no haya errores de ficha. */
   marcarParcial(motivo: string): void;
 }
@@ -47,6 +49,8 @@ export interface OpcionesEjecucion {
   rutaSalida?: string;
   rutaBodegas?: string;
   verbose?: boolean;
+  /** Opciones propias de una fuente (ver Contexto.opciones). */
+  opciones?: Record<string, string | undefined>;
   /** Para tests: cliente HTTP ya construido. */
   http?: ClienteHttp;
 }
@@ -80,6 +84,7 @@ export async function ejecutar(
     contadores: { nuevos: 0, actualizados: 0, sinCambios: 0, descartados: 0, revision: 0, omitidas: 0, errores: 0 },
     rutaBodegas: opciones.rutaBodegas ?? null,
     salida: [],
+    opciones: opciones.opciones ?? {},
     marcarParcial(motivo) {
       log.warn(motivo);
       motivosParcial.push(motivo);

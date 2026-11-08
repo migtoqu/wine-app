@@ -1,0 +1,10 @@
+{
+  "excluidos": [
+    {
+      "dominio": "abadiadeacon.com",
+      "motivo": "El aviso legal prohíbe expresamente «robots», «spiders» y «crawlers» y reclama indemnización (SOURCES §3)",
+      "fecha": "2026-11-08"
+    }
+  ],
+  "permitidos": []
+}
