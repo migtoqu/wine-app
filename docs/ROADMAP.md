@@ -56,6 +56,11 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [x] Scraper 1: Consejo Regulador D.O. Ribera del Duero (bodegas)
 - [x] Scraper 2: Vinoselección (vinos, añadas, imagen)
 - [x] Normalización y emparejamiento básico con tests
+- [x] Consolidación entre fuentes: prioridad por campo, procedencia, supresiones, fusión en admin y resúmenes propios (es/en) con enlace
+- [x] Scraper 3: C.R. DOCa Rioja (bodegas, vinos, experiencias)
+- [x] Scraper 4: webs oficiales de bodegas (historia, vinos, enoturismo), con puerta legal por sitio
+- [x] Scraper 5: Ruta del Vino Ribera del Duero (inactiva hasta tener permiso escrito)
+- [ ] Scraper 6: Vinopremier (EAN) — PR #20 en espera: la web dejó de responder durante el dry-run
 - [x] Carga de semillas: D.O. y variedades de uva españolas
 - [ ] Comprobador de enlaces semanal con ocultación tras 2 fallos consecutivos (aplazado)
 
@@ -67,7 +72,9 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 
 **Criterio de salida:** D.O. Ribera del Duero cubierta (~300 bodegas, ~2.000 vinos); los invitados usan la app en móvil sin errores graves.
 
-> Estado (2026-11-08): MVP desplegado. Primera carga: 302 bodegas (C.R. Ribera del Duero) y 199 vinos / 265 añadas (Vinoselección, 39 fichas a revisión). Vinoselección solo cubre ~350 referencias de Ribera: para llegar a ~2.000 vinos hace falta otra fuente.
+> Estado (2026-11-08): MVP desplegado. Tras la ola 4 (Rioja + webs de bodegas): 511 bodegas, 1.204 vinos / 1.373 añadas, 508 servicios de enoturismo y 3.312 resúmenes propios; unas 270 fichas en `/admin/revision`. Ribera aún no llega a ~2.000 vinos: faltan Vinopremier y afinar el emparejador (duplicados claros quedan en ~0,85 y van a revisión).
+>
+> Pendiente del usuario: permiso escrito de la Ruta del Vino (info@riberate.com) y aviso al C.R. Rioja antes de la fase pública.
 
 ## Fase 2 — Precios, premios y enoturismo (P1)
 
@@ -75,11 +82,11 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [ ] Bloque "Dónde comprar" en la ficha de vino (75 cl por defecto + selector de formato)
 - [ ] Gráfica de historial de precios y mínimo histórico
 - [ ] Más tiendas (objetivo: 3–5) y emparejamiento por EAN
-- [ ] Cola de duplicados/emparejamiento en admin
+- [x] Cola de duplicados/emparejamiento en admin (`/admin/revision`)
 - [ ] Premios y puntuaciones: tablas (§6.3), scraper de al menos una guía y un concurso
 - [ ] Reseñas externas (extracto + enlace)
-- [ ] Servicios de enoturismo en la ficha de bodega
-- [ ] Scraper/carga semiautomática de webs de bodegas (enoturismo, fotos)
+- [x] Servicios de enoturismo en la ficha de bodega
+- [x] Scraper de webs de bodegas (enoturismo; fotos pendientes)
 - [ ] Geocodificación de bodegas
 - [ ] Mapa de bodegas (MapLibre + OSM) con clustering
 - [ ] "Cerca de mí" y ubicación de referencia del usuario
