@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Attribution } from "@/components/catalog/attribution";
 import { CatalogImage } from "@/components/catalog/catalog-image";
-import { UserActions } from "@/components/catalog/user-actions";
+import { AnadaNote, VinoActions } from "@/components/catalog/personal-actions";
 import { WineCard, wineCardLabels } from "@/components/catalog/wine-card";
 import { Container } from "@/components/layout/container";
 import { Badge, Link } from "@/components/ui";
@@ -93,7 +93,13 @@ export default async function WinePage({ params, searchParams }: Props) {
               <p className="max-w-prose whitespace-pre-line text-lg text-muted">{vino.descripcion}</p>
             )}
 
-            <UserActions entityType="vino" entityId={vino.id} labels={catalog.userActions} />
+            <VinoActions
+              lang={lang}
+              dict={dict}
+              vinoId={vino.id}
+              slug={vino.slug}
+              anadaIds={vino.anadas.map((a) => a.id)}
+            />
           </div>
         </div>
 
@@ -164,7 +170,22 @@ async function SelectedVintage({
   searchParams,
 }: { lang: Locale; vino: VinoFicha; dict: Dictionary } & SearchParamsProp) {
   const anada = pickAnada(vino.anadas, (await searchParams).anada);
-  return <VintageDetails lang={lang} vino={vino} anada={anada} dict={dict} />;
+  return (
+    <>
+      <VintageDetails lang={lang} vino={vino} anada={anada} dict={dict} />
+      {anada && (
+        <AnadaNote
+          lang={lang}
+          dict={dict}
+          vinoId={vino.id}
+          slug={vino.slug}
+          anadaId={anada.id}
+          anadaIds={vino.anadas.map((a) => a.id)}
+          anio={anada.anio}
+        />
+      )}
+    </>
+  );
 }
 
 function VintageDetails({

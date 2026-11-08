@@ -341,6 +341,45 @@ export type Database = {
           },
         ]
       }
+      favoritos: {
+        Row: {
+          bodega_id: string | null
+          created_at: string
+          id: string
+          usuario_id: string
+          vino_id: string | null
+        }
+        Insert: {
+          bodega_id?: string | null
+          created_at?: string
+          id?: string
+          usuario_id: string
+          vino_id?: string | null
+        }
+        Update: {
+          bodega_id?: string | null
+          created_at?: string
+          id?: string
+          usuario_id?: string
+          vino_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favoritos_bodega_id_fkey"
+            columns: ["bodega_id"]
+            isOneToOne: false
+            referencedRelation: "bodegas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "favoritos_vino_id_fkey"
+            columns: ["vino_id"]
+            isOneToOne: false
+            referencedRelation: "vinos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fuentes: {
         Row: {
           activa: boolean
@@ -505,6 +544,61 @@ export type Database = {
           usada_por?: string | null
         }
         Relationships: []
+      }
+      notas: {
+        Row: {
+          anada_id: string | null
+          bodega_id: string | null
+          created_at: string
+          id: string
+          texto: string
+          updated_at: string
+          usuario_id: string
+          vino_id: string | null
+        }
+        Insert: {
+          anada_id?: string | null
+          bodega_id?: string | null
+          created_at?: string
+          id?: string
+          texto: string
+          updated_at?: string
+          usuario_id: string
+          vino_id?: string | null
+        }
+        Update: {
+          anada_id?: string | null
+          bodega_id?: string | null
+          created_at?: string
+          id?: string
+          texto?: string
+          updated_at?: string
+          usuario_id?: string
+          vino_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notas_anada_id_fkey"
+            columns: ["anada_id"]
+            isOneToOne: false
+            referencedRelation: "anadas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_bodega_id_fkey"
+            columns: ["bodega_id"]
+            isOneToOne: false
+            referencedRelation: "bodegas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_vino_id_fkey"
+            columns: ["vino_id"]
+            isOneToOne: false
+            referencedRelation: "vinos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       perfiles: {
         Row: {

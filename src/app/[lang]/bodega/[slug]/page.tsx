@@ -4,7 +4,7 @@ import { Attribution } from "@/components/catalog/attribution";
 import { BodegaWines } from "@/components/catalog/bodega-wines";
 import { CatalogImage } from "@/components/catalog/catalog-image";
 import { ExternalIcon } from "@/components/catalog/icons";
-import { UserActions } from "@/components/catalog/user-actions";
+import { BodegaActions } from "@/components/catalog/personal-actions";
 import { wineCardLabels } from "@/components/catalog/wine-card";
 import { Container } from "@/components/layout/container";
 import { Badge, EmptyState } from "@/components/ui";
@@ -100,7 +100,7 @@ export default async function WineryPage({ params }: Props) {
                 {bodega.estado === "cerrada" && <Badge tone="warning">{winery.closed}</Badge>}
               </div>
             </div>
-            <UserActions entityType="bodega" entityId={bodega.id} labels={catalog.userActions} />
+            <BodegaActions lang={lang} dict={dict} bodegaId={bodega.id} slug={bodega.slug} />
           </div>
         </header>
 

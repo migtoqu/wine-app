@@ -121,7 +121,7 @@ npm run typecheck
 - Tablas en plural; tablas puente `<a>_<b>` (`bodega_denominaciones`). PK `id uuid`, FKs `<entidad>_id`.
 - `created_at` / `updated_at` en cada tabla; `updated_at` lo mantiene el trigger `public.set_updated_at()`.
 - RLS activada en **todas** las tablas. El catálogo es de lectura pública y solo lo escriben los admin (`public.is_admin()`); scrapers y comprobador de enlaces usan la *service role key*.
-- `supabase/tests/*.sql` (`rls_check`, `auth_check`, `admin_check`…) comprueban las políticas como anon, usuario y admin, el registro por invitación y el panel de admin dentro de una transacción que se deshace (`begin … rollback`). El job `db` del CI los ejecuta todos contra un Supabase local (`supabase start`, Docker) con `ON_ERROR_STOP=1`; nunca contra la base remota.
+- `supabase/tests/*.sql` (`rls_check`, `auth_check`, `admin_check`, `espacio_personal_check`…) comprueban las políticas como anon, usuario y admin, el registro por invitación y el panel de admin dentro de una transacción que se deshace (`begin … rollback`). El job `db` del CI los ejecuta todos contra un Supabase local (`supabase start`, Docker) con `ON_ERROR_STOP=1`; nunca contra la base remota.
 
 ### Panel de admin
 
