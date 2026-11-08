@@ -3,11 +3,13 @@ import { parseArgs } from "node:util";
 import { ejecutar, type Scraper } from "./lib/ejecucion.ts";
 import { scraperRibera, SLUG_FUENTE as SLUG_RIBERA } from "./fuentes/ribera/index.ts";
 import { scraperVinoseleccion, SLUG_FUENTE as SLUG_VINOSELECCION } from "./fuentes/vinoseleccion/index.ts";
+import { scraperWebsBodegas, SLUG_FUENTE as SLUG_WEBS_BODEGAS } from "./fuentes/webs-bodegas/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
 const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   ribera: { slug: SLUG_RIBERA, scraper: scraperRibera },
   vinoseleccion: { slug: SLUG_VINOSELECCION, scraper: scraperVinoseleccion },
+  "webs-bodegas": { slug: SLUG_WEBS_BODEGAS, scraper: scraperWebsBodegas },
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]
@@ -20,6 +22,12 @@ Opciones:
   --out RUTA     fichero JSON de salida del dry-run
   --bodegas RUTA (vinoseleccion, dry-run) JSON de un dry-run de Ribera con las bodegas para emparejar
   --verbose      muestra también los logs de depuración
+
+Webs de bodegas (webs-bodegas):
+  --webs RUTA|URLS     (dry-run) fichero .txt con una URL por línea, JSON de un dry-run de ribera o URLs separadas por comas
+  --dominio DOMINIO    solo ese sitio (p. ej. aalto.es)
+  --lote I/N           solo los sitios del lote I de N (reparto estable por hash del dominio)
+  --presupuesto-min N  no empieza sitios nuevos pasados N minutos (por defecto 45)
 `;
 
 async function main(): Promise<number> {
@@ -31,6 +39,10 @@ async function main(): Promise<number> {
       out: { type: "string" },
       bodegas: { type: "string" },
       verbose: { type: "boolean", default: false },
+      webs: { type: "string" },
+      dominio: { type: "string" },
+      lote: { type: "string" },
+      "presupuesto-min": { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -57,6 +69,12 @@ async function main(): Promise<number> {
     rutaSalida: values.out,
     rutaBodegas: values.bodegas,
     verbose: values.verbose,
+    opciones: {
+      webs: values.webs,
+      dominio: values.dominio,
+      lote: values.lote,
+      presupuestoMin: values["presupuesto-min"],
+    },
   });
 }
 

@@ -32,6 +32,16 @@ export interface Respuesta {
   url: string;
   status: number;
   texto: string;
+  /** Cabeceras de la respuesta (X-Robots-Tag, X-WP-TotalPages, Content-Type…). */
+  cabeceras?: Headers;
+}
+
+export interface OpcionesGet {
+  /**
+   * Acepta que la URL redirija a otro dominio (solo para la portada de una web cuyo dominio
+   * cambió). Quien llama debe pasar la puerta completa por el host final antes de pedir nada más.
+   */
+  permitirOtroHost?: boolean;
 }
 
 export interface OpcionesCliente {
@@ -56,6 +66,7 @@ export class ClienteHttp {
   private timeoutMs: number;
   private backoffMs: number[];
   private robots = new Map<string, Promise<Robots>>();
+  private textosRobots = new Map<string, string>();
   peticiones = 0;
 
   constructor(o: OpcionesCliente) {
@@ -75,11 +86,18 @@ export class ClienteHttp {
       const url = new URL("/robots.txt", origen).href;
       r = this.pedir(url).then((res) => {
         this.log.info(`robots.txt de ${origen}: HTTP ${res.status}`);
+        if (res.status >= 200 && res.status < 300) this.textosRobots.set(origen, res.texto);
         return robotsDesdeRespuesta(url, res.status, res.texto);
       });
       this.robots.set(origen, r);
     }
     return r;
+  }
+
+  /** Texto del robots.txt ya descargado (para leer `Content-Signal`, `Sitemap:`…); null si no hay. */
+  async textoRobots(origen: string): Promise<string | null> {
+    await this.robotsDe(origen);
+    return this.textosRobots.get(origen) ?? null;
   }
 
   /** Lanza RobotsDenegado si el robots.txt actual no permite la URL. */
@@ -89,12 +107,12 @@ export class ClienteHttp {
   }
 
   /** GET de una página HTML respetando robots.txt. */
-  async get(url: string): Promise<Respuesta> {
+  async get(url: string, opciones: OpcionesGet = {}): Promise<Respuesta> {
     await this.comprobarRobots(url);
     const res = await this.pedir(url);
     if (res.status >= 400) throw new ErrorHttp(url, res.status);
     const final = new URL(res.url);
-    if (final.host !== new URL(url).host) {
+    if (final.host !== new URL(url).host && !opciones.permitirOtroHost) {
       throw new Error(`${url} redirige a otro dominio (${final.host})`);
     }
     if (res.url !== url) await this.comprobarRobots(res.url);
@@ -145,7 +163,7 @@ export class ClienteHttp {
       throw new Reintentable(`GET ${url} → HTTP ${res.status}`);
     }
     try {
-      return { url: res.url || url, status: res.status, texto: await res.text() };
+      return { url: res.url || url, status: res.status, texto: await res.text(), cabeceras: res.headers };
     } catch (e) {
       throw new Reintentable(`GET ${url}: cuerpo incompleto: ${(e as Error).message}`);
     }

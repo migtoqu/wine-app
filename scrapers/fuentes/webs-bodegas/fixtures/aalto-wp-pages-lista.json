@@ -1,0 +1,47 @@
+[
+ {
+  "id": 30,
+  "link": "https://aalto.es/la-bodega/",
+  "slug": "la-bodega",
+  "type": "page",
+  "title": {
+   "rendered": "La Bodega"
+  }
+ },
+ {
+  "id": 8855,
+  "link": "https://aalto.es/vino-aalto-2024/",
+  "slug": "vino-aalto-2024",
+  "type": "page",
+  "title": {
+   "rendered": "Vino Aalto 2024"
+  }
+ },
+ {
+  "id": 314,
+  "link": "https://aalto.es/visitas/",
+  "slug": "visitas",
+  "type": "page",
+  "title": {
+   "rendered": "Visitas"
+  }
+ },
+ {
+  "id": 9001,
+  "link": "https://aalto.es/en/wine-aalto-2024/",
+  "slug": "wine-aalto-2024",
+  "type": "page",
+  "title": {
+   "rendered": "Wine Aalto 2024"
+  }
+ },
+ {
+  "id": 9002,
+  "link": "https://aalto.es/aviso-legal/",
+  "slug": "aviso-legal",
+  "type": "page",
+  "title": {
+   "rendered": "Aviso legal"
+  }
+ }
+]

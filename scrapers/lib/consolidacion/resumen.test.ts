@@ -114,6 +114,36 @@ describe("PlantillasEsEn", () => {
     expect(await g.generar({ entidad: "vino", campo: "historia", idioma: "es", hechos: bodega })).toBeNull();
   });
 
+  it("historia de bodega con hechos de la web oficial", async () => {
+    const h = consolidarHechos([
+      ...hechosDe(CR, F, [{ clave: "bodega.nombre", valor: "Emina" }]),
+      ...hechosDe(WEB, F, [
+        { clave: "bodega.fundacion_anio", valor: 1988 },
+        { clave: "bodega.fundadores", valor: "Carlos Moro", sujeto: "carlos moro" },
+        { clave: "bodega.familia", valor: "Moro" },
+        { clave: "bodega.generacion", valor: 3 },
+        { clave: "bodega.primera_anada", valor: 1994 },
+        { clave: "bodega.hectareas", valor: 150 },
+        { clave: "bodega.vinedo_municipio", valor: "Valbuena de Duero", sujeto: "valbuena de duero" },
+        { clave: "bodega.vinedo_municipio", valor: "Olivares de Duero", sujeto: "olivares de duero" },
+        { clave: "bodega.altitud", valor: 750 },
+      ]),
+    ]);
+    expect(await g.generar({ entidad: "bodega", campo: "historia", idioma: "es", hechos: h })).toBe(
+      "Emina se fundó en 1988 por iniciativa de Carlos Moro. Es propiedad de la familia Moro, que la dirige ya en su " +
+        "tercera generación. Su primera añada fue la de 1994. Cultiva 150 ha de viñedo en Olivares de Duero y " +
+        "Valbuena de Duero, a unos 750 m de altitud.",
+    );
+    expect(await g.generar({ entidad: "bodega", campo: "historia", idioma: "en", hechos: h })).toBe(
+      "Emina was founded in 1988 by Carlos Moro. It is owned by the Moro family, now in its third generation. " +
+        "Its first vintage was 1994. It farms 150 ha of vineyards in Olivares de Duero and Valbuena de Duero, " +
+        "at around 750 m above sea level.",
+    );
+    // Sin ningún hecho histórico no hay historia (la descripción ya cubre ubicación y hectáreas).
+    const sinHistoria = hechosDe(WEB, F, [{ clave: "bodega.nombre", valor: "Emina" }, { clave: "bodega.hectareas", valor: 150 }]);
+    expect(await g.generar({ entidad: "bodega", campo: "historia", idioma: "es", hechos: sinHistoria })).toBeNull();
+  });
+
   it("elaboración de añada", async () => {
     const h = consolidarHechos(hechosDe(TIENDA, F, [
       { clave: "vino.tipo", valor: "tinto" },

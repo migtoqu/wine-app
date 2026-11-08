@@ -1,0 +1,92 @@
+name: Scraper webs de bodegas
+
+# Semanal (SCOPE §7.2), en su propia franja: jueves 02:37 UTC (después de Ribera, que
+# carga bodegas.web el lunes). Nunca se ejecuta en pull requests: solo cron y lanzamiento manual.
+#
+# Matriz de 3 lotes con reparto estable por hash del dominio (--lote I/3): los lotes
+# nunca escriben el mismo sitio y cada uno registra su propia ejecución en
+# ejecuciones_scraper. Cada lote para de empezar sitios a los 45 min (--presupuesto-min)
+# y la siguiente ejecución sigue por los sitios vistos hace más tiempo.
+on:
+  schedule:
+    - cron: "37 2 * * 4"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run: no toca la BD y sube el JSON con puertas, hechos y resúmenes como artefacto"
+        type: boolean
+        default: false
+      limit:
+        description: "Máximo de sitios por lote (vacío = todos)"
+        type: string
+        default: ""
+      dominio:
+        description: "Solo este dominio (p. ej. aalto.es); corre en un único job"
+        type: string
+        default: ""
+      webs:
+        description: "Dry-run: URLs separadas por comas. Vacío = las webs de un dry-run de Ribera (40 fichas)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-webs-bodegas
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        lote: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v6
+        # Con un dominio concreto basta un job: los otros dos lotes no hacen nada.
+        if: ${{ inputs.dominio == '' || matrix.lote == 1 }}
+      - uses: actions/setup-node@v7
+        if: ${{ inputs.dominio == '' || matrix.lote == 1 }}
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+        if: ${{ inputs.dominio == '' || matrix.lote == 1 }}
+
+      - name: Webs para el dry-run (desde un dry-run de Ribera)
+        if: ${{ inputs.dry_run && inputs.webs == '' && (inputs.dominio == '' || matrix.lote == 1) }}
+        run: node scrapers/cli.ts ribera --dry-run --limit 40 --out scrapers/out/ribera.json
+
+      - name: Ejecutar scraper
+        if: ${{ inputs.dominio == '' || matrix.lote == 1 }}
+        env:
+          # Solo se pasan en ejecuciones reales; en dry-run no hacen falta.
+          SUPABASE_URL: ${{ !inputs.dry_run && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ !inputs.dry_run && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+          LIMIT: ${{ inputs.limit }}
+          DOMINIO: ${{ inputs.dominio }}
+          WEBS: ${{ inputs.webs }}
+          LOTE: ${{ matrix.lote }}
+        run: |
+          args=(webs-bodegas --presupuesto-min 45)
+          if [ -n "$DOMINIO" ]; then args+=(--dominio "$DOMINIO"); else args+=(--lote "$LOTE/3"); fi
+          if [ -n "$DRY_RUN" ]; then
+            args+=(--dry-run --out "scrapers/out/webs-bodegas-$LOTE.json")
+            if [ -n "$WEBS" ]; then args+=(--webs "$WEBS"); else args+=(--webs scrapers/out/ribera.json); fi
+          fi
+          if [ -n "$LIMIT" ]; then args+=(--limit "$LIMIT"); fi
+          node scrapers/cli.ts "${args[@]}"
+
+      - name: Subir resultado del dry-run
+        if: ${{ always() && inputs.dry_run && (inputs.dominio == '' || matrix.lote == 1) }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: webs-bodegas-dry-run-${{ matrix.lote }}
+          path: scrapers/out/webs-bodegas-${{ matrix.lote }}.json
+          if-no-files-found: ignore
+          retention-days: 14

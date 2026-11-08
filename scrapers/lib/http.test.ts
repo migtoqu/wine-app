@@ -166,6 +166,33 @@ describe("ClienteHttp", () => {
     await expect(http.get("https://a.es/x")).rejects.toThrow(/otro dominio/);
   });
 
+  it("con permitirOtroHost acepta la redirección, comprueba el robots.txt del host final y expone las cabeceras", async () => {
+    const { http, fetchFalso } = cliente((u) => {
+      if (u === "https://a.com/robots.txt") return respuesta(404);
+      if (u === "https://a.es/robots.txt") return respuesta(200, "User-agent: *\nDisallow: /privado\n");
+      const r = new Response("portada", { status: 200, headers: { "X-Robots-Tag": "noai" } });
+      Object.defineProperty(r, "url", { value: "https://a.es/" });
+      return r;
+    });
+    const res = await http.get("https://a.com/", { permitirOtroHost: true });
+    expect(res.url).toBe("https://a.es/");
+    expect(res.cabeceras?.get("x-robots-tag")).toBe("noai");
+    expect(fetchFalso.mock.calls.map((c) => String(c[0]))).toEqual([
+      "https://a.com/robots.txt", "https://a.com/", "https://a.es/robots.txt",
+    ]);
+    // El resto de peticiones siguen sin aceptar otro dominio.
+    await expect(http.get("https://a.com/x")).rejects.toThrow(/otro dominio/);
+  });
+
+  it("con permitirOtroHost respeta el robots.txt del host final", async () => {
+    const { http } = cliente((u) => {
+      if (u === "https://a.com/robots.txt") return respuesta(404);
+      if (u === "https://a.es/robots.txt") return respuesta(200, "User-agent: *\nDisallow: /\n");
+      return respuesta(200, "", "https://a.es/");
+    });
+    await expect(http.get("https://a.com/", { permitirOtroHost: true })).rejects.toBeInstanceOf(RobotsDenegado);
+  });
+
   it("aborta si robots.txt da 5xx", async () => {
     const { http } = cliente((u) => (u.endsWith("/robots.txt") ? respuesta(500) : respuesta(200)));
     await expect(http.get("https://a.es/x")).rejects.toThrow(/robots/);
