@@ -6,6 +6,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | --- | --- | --- | --- |
 | `ribera` | `cr-ribera-del-duero` | `bodegas`, `bodega_denominaciones`, `registros_fuente` | `scrape-ribera.yml` (lunes 03:17 UTC) |
 | `vinoseleccion` | `vinoseleccion` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `registros_fuente` | `scrape-vinoseleccion.yml` (miércoles 03:47 UTC) |
+| `vinopremier` | `vinopremier` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `codigos_ean`, `registros_fuente` | `scrape-vinopremier.yml` (jueves 04:23 UTC) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
 
@@ -96,6 +97,17 @@ scrapers/
   - El vino se busca dentro de su bodega con `EmparejadorVinos` (EAN, nombre normalizado); uno muy parecido va a revisión. Si la ficha trae EAN, se guarda en `codigos_ean`.
   - Lo que el admin borra (bodega, vino, añada, imagen) o fusiona no se recrea: ver supresiones.
   - Hechos: tipo, uvas, barrica, grado y temperatura → resumen propio `elaboracion` de la añada (es/en).
+
+## Vinopremier
+
+Tienda Magento (`vinopremier.com`, sin `www`). Mismo flujo que Vinoselección, con estas diferencias:
+
+- Recorre `/vinos/denominaciones/d-o-ribera-del-duero` (24 por página) y `/d-o-rioja`, con `?p=N`. La D.O. del vino (`ribera-del-duero` o `rioja`, por slug) sale de la categoría que lo lista; solo se lee la rejilla de `.column.main`, no los carruseles del menú. Unas 17 páginas + unas 390 fichas (~7 s por petición: ~50 min).
+- De la ficha: JSON-LD `Product` (nombre, SKU, precio, disponibilidad, imagen enlazada), EAN visible, bodega (`h2.page-bodega`) y, del texto libre de la descripción, solo **cifras y nombres**: uvas («Uva: …» o «combinando A, B y C»), meses de barrica, temperatura de servicio y grado si están rotulados. El texto nunca se guarda. La ficha casi nunca trae cata ni maridaje, así que no hay hechos de esos tipos.
+- **Descartes**: packs y lotes (mismas reglas que Vinoselección) y productos sin tipo de vino reconocible («Sidra…»). Un estuche de una sola botella sí cuenta.
+- **Emparejamiento**: primero por **EAN** contra `codigos_ean`. Si el EAN ya es de un vino del catálogo y el nombre de bodega de la tienda no basta, el EAN decide la bodega; si el nombre apunta a *otra* bodega, va a revisión («EAN de otra bodega»). Un EAN de otra añada del mismo vino se asocia a esa añada, sin revisión. Sin EAN, o si no se encuentra: bodega (`Emparejador`) y nombre dentro de la bodega (`EmparejadorVinos`). **Una tienda no crea bodegas**: sin bodega candidata la ficha va a la cola de revisión.
+- `--bodegas ruta.json` en dry-run acepta también una instantánea del catálogo `{bodegas:[{id,nombre,marcas?}], vinos:[{id,bodegaId,nombre,tipo,crianza}], eans:[{ean,vinoId}]}` para calcular cuántos vinos ya existen.
+- Orden de carga: después de Ribera y de Rioja (las bodegas deben existir).
 
 ## Emparejamiento vino → bodega (`emparejamiento/bodegas.ts`)
 

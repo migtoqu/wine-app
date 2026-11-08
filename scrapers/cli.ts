@@ -3,11 +3,13 @@ import { parseArgs } from "node:util";
 import { ejecutar, type Scraper } from "./lib/ejecucion.ts";
 import { scraperRibera, SLUG_FUENTE as SLUG_RIBERA } from "./fuentes/ribera/index.ts";
 import { scraperVinoseleccion, SLUG_FUENTE as SLUG_VINOSELECCION } from "./fuentes/vinoseleccion/index.ts";
+import { scraperVinopremier, SLUG_FUENTE as SLUG_VINOPREMIER } from "./fuentes/vinopremier/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
 const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   ribera: { slug: SLUG_RIBERA, scraper: scraperRibera },
   vinoseleccion: { slug: SLUG_VINOSELECCION, scraper: scraperVinoseleccion },
+  vinopremier: { slug: SLUG_VINOPREMIER, scraper: scraperVinopremier },
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]
