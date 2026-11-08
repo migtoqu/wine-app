@@ -12,6 +12,7 @@ const admin = {
     vinos: "Vinos",
     denominaciones: "D.O.",
     uvas: "Uvas",
+    revision: "Revisión",
   },
   home: {
     intro: "Gestiona quién entra y corrige el catálogo.",
@@ -22,6 +23,7 @@ const admin = {
       vinos: "Vinos, sus añadas y la composición de uvas.",
       denominaciones: "Denominaciones de origen.",
       uvas: "Variedades de uva y sus sinónimos.",
+      revision: "Fichas de fuentes dudosas y fusión de duplicados.",
     },
     pending: "pendientes",
   },
@@ -44,7 +46,7 @@ const admin = {
     edit: "Editar",
     total: "Total",
     scraperNote:
-      "Tus cambios se mantienen aunque vuelvan a pasar los scrapers, salvo que la fuente cambie ese mismo dato después.",
+      "Tus cambios se mantienen aunque vuelvan a pasar los scrapers: lo editado por el admin siempre tiene prioridad.",
     slugHint: "Se genera a partir del nombre si lo dejas vacío. Cambiarlo cambia la URL pública.",
   },
   delete: {
@@ -55,7 +57,7 @@ const admin = {
     confirm: "Entiendo que no se puede deshacer",
     button: "Borrar definitivamente",
     scraperNote:
-      "Si la ficha vino de un scraper, la siguiente ejecución puede volver a crearla.",
+      "Si la ficha vino de un scraper, no se volverá a crear: el borrado queda registrado.",
   },
   errors: {
     required: "Este campo es obligatorio.",
@@ -79,6 +81,7 @@ const admin = {
     lastAdmin: "Tiene que quedar al menos un admin.",
     notFound: "No existe o ya se borró.",
     checkFields: "Revisa los campos marcados.",
+    sameEntity: "Origen y destino tienen que ser fichas distintas.",
     generic: "No se ha podido guardar. Inténtalo de nuevo.",
   },
   fields: {
@@ -215,6 +218,40 @@ const admin = {
     title: "Denominaciones de origen",
     new: "Nueva D.O.",
     blocked: { bodegas: "Bodegas", vinos: "Vinos" },
+  },
+  revision: {
+    title: "Cola de revisión",
+    intro:
+      "Fichas de las fuentes que no se han podido emparejar con seguridad. Elige qué hacer con cada una: la decisión se aplica en la siguiente ejecución del scraper y no se vuelve a preguntar.",
+    empty: "No hay nada pendiente de revisar.",
+    source: "Fuente",
+    confidence: "Confianza",
+    reason: "Motivo",
+    candidates: "Candidatas",
+    noCandidates: "Ninguna bodega candidata.",
+    similarWines: "Vinos parecidos en la bodega",
+    kindBodega: "Bodega",
+    kindVino: "Vino",
+    associate: "Asociar",
+    associateTo: "Asociar a otra por slug",
+    slug: "Slug",
+    kind: "Tipo",
+    createWinery: "Crear bodega nueva",
+    createWineIn: "Crear vino nuevo en esta bodega",
+    discard: "Descartar",
+    mergeCandidates: "Fusionar la 2.ª en la 1.ª y asociar",
+    openSource: "Ver en la fuente",
+    decided: "Decisión guardada: se aplicará en la próxima ejecución.",
+    merged: "Fichas fusionadas.",
+    mergeTitle: "Fusionar duplicados",
+    mergeIntro:
+      "Pasa todo lo de la ficha de origen (vinos, añadas, favoritos, notas, imágenes, servicios y registros de fuente) a la de destino y borra la de origen. Los scrapers no las volverán a separar.",
+    origin: "Origen (se borra)",
+    destination: "Destino (se conserva)",
+    merge: "Fusionar",
+    confirm: "Entiendo que no se puede deshacer",
+    previous: "Anteriores",
+    next: "Siguientes",
   },
   uvas: {
     title: "Variedades de uva",

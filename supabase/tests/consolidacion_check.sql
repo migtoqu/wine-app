@@ -121,6 +121,10 @@ insert into public.notas (usuario_id, bodega_id, texto) values
 insert into public.notas (usuario_id, anada_id, texto) values
   ('00000000-0000-4000-8000-000000000033', 'c2000000-0000-4000-8000-000000000002', 'Nota B añada 2020 origen'),
   ('00000000-0000-4000-8000-000000000033', 'c2000000-0000-4000-8000-000000000003', 'Nota B añada 2020 destino');
+-- Notas de 5.000 caracteres en los dos vinos que se funden: no se pierde texto.
+insert into public.notas (usuario_id, vino_id, texto) values
+  ('00000000-0000-4000-8000-000000000032', 'c1000000-0000-4000-8000-000000000001', repeat('o', 5000)),
+  ('00000000-0000-4000-8000-000000000032', 'c1000000-0000-4000-8000-000000000002', repeat('d', 5000));
 
 -- =====================================================================
 -- 2. Utilidades, columnas generadas y permisos
@@ -478,6 +482,22 @@ begin
      is distinct from E'Nota B añada 2020 destino\n\n———\n\nNota B añada 2020 origen' then
     raise exception 'FALLO (personales): notas de añada mal fusionadas';
   end if;
+  if (select texto from public.notas
+      where usuario_id = '00000000-0000-4000-8000-000000000032'
+        and vino_id = 'c1000000-0000-4000-8000-000000000002')
+     is distinct from repeat('d', 5000) || E'\n\n———\n\n' || repeat('o', 5000)
+     or not (select fusionada from public.notas
+             where usuario_id = '00000000-0000-4000-8000-000000000032'
+               and vino_id = 'c1000000-0000-4000-8000-000000000002') then
+    raise exception 'FALLO (personales): al fusionar notas largas se perdió texto';
+  end if;
+  -- Las notas normales siguen limitadas a 5.000.
+  begin
+    insert into public.notas (usuario_id, vino_id, texto)
+    values ('00000000-0000-4000-8000-000000000033', 'c1000000-0000-4000-8000-000000000002', repeat('x', 5001));
+    raise exception 'FALLO (personales): nota normal de más de 5000 caracteres';
+  exception when check_violation then null;
+  end;
 end
 $$;
 

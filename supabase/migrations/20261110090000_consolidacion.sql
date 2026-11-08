@@ -426,12 +426,14 @@ create trigger registrar_supresion before delete on public.imagenes
 -- Fusión de duplicados
 -- =====================================================================
 
--- Las notas fusionadas concatenan dos textos de hasta 5.000 caracteres: el
--- límite de la base sube para no perder texto (la app sigue limitando cada
--- edición a 5.000, NOTA_MAX).
+-- Una nota fusionada concatena dos textos de hasta 5.000 caracteres: para no
+-- perder texto, las marcadas como fusionadas admiten hasta 20.000. El resto
+-- sigue en 5.000 (NOTA_MAX en la app).
+alter table public.notas add column fusionada boolean not null default false;
 alter table public.notas drop constraint notas_texto_check;
 alter table public.notas add constraint notas_texto_check
-  check (btrim(texto) <> '' and char_length(texto) <= 20000);
+  check (btrim(texto) <> ''
+         and char_length(texto) <= case when fusionada then 20000 else 5000 end);
 
 -- Favoritos y notas tienen RLS de solo-propietario: un admin con security
 -- invoker no los ve. Esta función (security definer, excepción acordada) solo
@@ -472,7 +474,7 @@ begin
   end if;
 
   execute format(
-    'update public.notas n set texto = n.texto || E''\n\n———\n\n'' || o.texto
+    'update public.notas n set texto = n.texto || E''\n\n———\n\n'' || o.texto, fusionada = true
        from public.notas o
       where n.%1$I = $2 and o.%1$I = $1 and o.usuario_id = n.usuario_id',
     col) using p_origen, p_destino;

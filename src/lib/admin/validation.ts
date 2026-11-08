@@ -41,6 +41,7 @@ export type AdminErrorKey =
   | "pendingInvite"
   | "lastAdmin"
   | "notFound"
+  | "sameEntity"
   | "checkFields"
   | "generic";
 

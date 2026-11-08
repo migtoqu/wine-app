@@ -578,6 +578,7 @@ export type Database = {
       }
       notas: {
         Row: {
+          fusionada: boolean
           anada_id: string | null
           bodega_id: string | null
           created_at: string
@@ -588,6 +589,7 @@ export type Database = {
           vino_id: string | null
         }
         Insert: {
+          fusionada?: boolean
           anada_id?: string | null
           bodega_id?: string | null
           created_at?: string
@@ -598,6 +600,7 @@ export type Database = {
           vino_id?: string | null
         }
         Update: {
+          fusionada?: boolean
           anada_id?: string | null
           bodega_id?: string | null
           created_at?: string
