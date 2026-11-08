@@ -145,7 +145,7 @@ const PRIORIDAD_CLASE: Clase[] = ["vino", "historia", "enoturismo", "contacto"];
 const TIPOS_WP_IGNORADOS = /^(attachment|nav_menu_item|wp_|post$|jp_|elementor|e-landing|oembed|revision|customize|user_request|wpcf7|acf|br_|et_|ct_|fl-|mc4wp|product_variation|shop_)/;
 const SUBSITEMAP_UTIL = /page|product|vino|wine|visita|experienc|enoturismo|portfolio|project|anada|pagina/i;
 const SUBSITEMAP_INUTIL = /category|tag|author|attachment|post-sitemap|user|product_cat|product_tag|format|archive|news|noticia|blog/i;
-const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos)$/i;
+const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos?|wines?|tinto|blanco|rosado)$/i;
 const CATEGORIA_NO_VINO = /gourmet|alimentaci[oó]n|delicatessen|merchandising|regalos?|packs?|lotes?|accesorios|aceites?|conservas|queso/i;
 const RUTA_NOTICIA = /\/(noticias?\d*|news|blog|actualidad|prensa|press|tag|category|categoria|author)(?:[\/._?-]|$)/i;
 const RUTA_PRIVADA = /\/(wp-login|wp-admin|login|mi-cuenta|my-account|cuenta|account|carrito|cart|checkout|finalizar-compra)(?:[\/.?]|$)/i;
@@ -376,7 +376,7 @@ export class RastreadorSitio {
   private vinos(contenidos: Contenido[], hoy: number): VinoSitio[] {
     const out = new Map<string, VinoSitio>();
     const meter = (v: VinoSitio) => {
-      if (!v.nombre || v.nombre.length < 2 || v.nombre.length > 80 || !esNombreDeVino(v.nombre)) return;
+      if (!v.nombre || v.nombre.length < 2 || v.nombre.length > 80 || !esNombreDeVino(v.nombre) || TITULO_NO_VINO.test(v.nombre)) return;
       const k = `${claveTexto(v.nombre)}|${v.anio ?? ""}`;
       const previo = out.get(k);
       if (!previo || v.evidencias > previo.evidencias) out.set(k, v);
