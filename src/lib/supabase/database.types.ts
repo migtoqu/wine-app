@@ -786,6 +786,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_guardar_denominaciones_bodega: {
+        Args: {
+          p_bodega_id: string
+          p_denominacion_ids: string[]
+          p_principal?: string
+        }
+        Returns: undefined
+      }
+      admin_guardar_variedades_anada: {
+        Args: { p_anada_id: string; p_variedades: Json }
+        Returns: undefined
+      }
+      admin_listar_usuarios: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          last_sign_in_at: string
+          nombre: string
+          rol: Database["public"]["Enums"]["rol_usuario"]
+        }[]
+      }
       buscar_catalogo: {
         Args: { limite?: number; q: string }
         Returns: {

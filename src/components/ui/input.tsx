@@ -1,7 +1,7 @@
-import { useId, type InputHTMLAttributes } from "react";
+import { useId, type ComponentProps } from "react";
 import { cn } from "@/lib/cn";
 
-type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+type InputProps = ComponentProps<"input"> & {
   // La etiqueta es obligatoria por accesibilidad; usa hideLabel si el diseño no la muestra.
   label: string;
   hideLabel?: boolean;

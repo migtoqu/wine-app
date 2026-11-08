@@ -1,7 +1,9 @@
+import admin from "./admin/en";
 import type { Dictionary } from "./es";
 
 // `satisfies Dictionary` hace fallar el typecheck si falta o sobra alguna clave respecto a es.ts.
 const en = {
+  admin,
   meta: {
     title: "wine-app",
     description:

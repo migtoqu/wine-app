@@ -37,6 +37,16 @@ async function paginar<T>(
   }
 }
 
+/**
+ * Composición que esta fuente escribió la vez anterior (`datos.variedades`). undefined si el
+ * registro es anterior a este campo: entonces no se sabe qué escribió la fuente y solo se rellena
+ * una añada sin uvas, para no pisar lo que haya corregido el admin.
+ */
+export function variedadesAnteriores(datos: unknown): Variedad[] | undefined {
+  const v = (datos as { variedades?: unknown } | null)?.variedades;
+  return Array.isArray(v) ? (v as Variedad[]) : undefined;
+}
+
 function sinEmparejamiento(datos: unknown): unknown {
   if (!datos || typeof datos !== "object") return datos;
   return Object.fromEntries(Object.entries(datos).filter(([k]) => k !== "emparejamiento"));
@@ -139,10 +149,11 @@ export class GuardadoVinoseleccion {
     anadaId: string | null,
     emparejamiento: ResultadoEmparejamiento | { motivo: string } | null,
   ) {
-    // Con añada se guardan también sus campos, para detectar cambios en la próxima ejecución.
-    const datos: DatosRegistroVs & { anada?: CamposAnada } = {
+    // Con añada se guardan también sus campos y su composición, para detectar cambios en la
+    // próxima ejecución.
+    const datos: DatosRegistroVs & { anada?: CamposAnada; variedades?: Variedad[] } = {
       ...n.datos,
-      ...(anadaId ? { anada: n.anada } : {}),
+      ...(anadaId ? { anada: n.anada, variedades: n.variedades } : {}),
       ...(emparejamiento ? { emparejamiento } : {}),
     };
     sinError(
@@ -204,11 +215,13 @@ export class GuardadoVinoseleccion {
       }
     }
 
-    if (await this.guardarVariedades(anadaId, n.variedades)) cambios = true;
+    // Como con los campos de la añada: solo se escribe si la composición cambió en la fuente.
+    const antes = nuevo ? null : variedadesAnteriores(previo?.datos);
+    if (await this.guardarVariedades(anadaId, n.variedades, antes)) cambios = true;
     if (await this.guardarImagen(anadaId, n)) cambios = true;
 
     const datosCambiados = previo
-      ? !igualesJson(sinEmparejamiento(previo.datos), { ...n.datos, anada: n.anada })
+      ? !igualesJson(sinEmparejamiento(previo.datos), { ...n.datos, anada: n.anada, variedades: n.variedades })
       : false;
     return {
       anadaId,
@@ -253,8 +266,17 @@ export class GuardadoVinoseleccion {
     return this.variedades.get(c) ?? (alias ? this.slugsVariedad.get(alias) ?? null : null);
   }
 
-  /** Upsert de la composición; las variedades desconocidas se omiten y se registran. */
-  private async guardarVariedades(anadaId: string, variedades: Variedad[]): Promise<boolean> {
+  /**
+   * Upsert de la composición; las variedades desconocidas se omiten y se registran.
+   * `antes`: null = añada nueva (se escribe); array = lo escrito la vez anterior (solo se escribe si
+   * cambió); undefined = registro antiguo sin ese dato (solo si la añada no tiene uvas).
+   */
+  private async guardarVariedades(
+    anadaId: string,
+    variedades: Variedad[],
+    antes: Variedad[] | null | undefined,
+  ): Promise<boolean> {
+    if (antes && igualesJson(antes, variedades)) return false;
     const filas = new Map<string, number | null>();
     for (const v of variedades) {
       const id = this.idVariedad(v.nombre);
@@ -272,7 +294,7 @@ export class GuardadoVinoseleccion {
     const iguales =
       actuales.length === filas.size &&
       actuales.every((a) => filas.has(a.variedad_id) && Number(a.porcentaje ?? NaN) === Number(filas.get(a.variedad_id) ?? NaN));
-    if (iguales) return false;
+    if (iguales || (antes === undefined && actuales.length > 0)) return false;
     sinError(
       await this.db.from("anada_variedades").upsert(
         [...filas].map(([variedad_id, porcentaje]) => ({ anada_id: anadaId, variedad_id, porcentaje })),

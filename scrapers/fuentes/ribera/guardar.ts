@@ -98,6 +98,7 @@ export class GuardadoRibera {
         ? reg.entidad_id
         : null;
     let resultado: Resultado;
+    const yaVinculada = bodegaId !== null;
 
     if (bodegaId) {
       // Solo se escribe lo que cambió en la fuente: así no se pisan las
@@ -119,7 +120,8 @@ export class GuardadoRibera {
       }
     }
 
-    await this.asegurarDenominacion(bodegaId);
+    // Solo al vincular por primera vez: si después el admin le quita la D.O., no se vuelve a poner.
+    if (!yaVinculada) await this.asegurarDenominacion(bodegaId);
 
     sinError(
       await this.db.from("registros_fuente").upsert(
