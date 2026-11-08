@@ -7,6 +7,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | `ribera` | `cr-ribera-del-duero` | `bodegas`, `bodega_denominaciones`, `registros_fuente` | `scrape-ribera.yml` (lunes 03:17 UTC) |
 | `vinoseleccion` | `vinoseleccion` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `registros_fuente` | `scrape-vinoseleccion.yml` (miércoles 03:47 UTC) |
 | `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
+| `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 | `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves 02:37 UTC, 3 lotes) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
@@ -107,6 +108,15 @@ scrapers/
 - **Fichas**: se emparejan con `EmparejadorBodegas` (dominio web, nombre + municipio). **Nunca crea bodegas**: dudoso → `revision`; sin candidata (restaurantes, hoteles, bodegas fuera de la D.O.) → `descartado` y se reevalúa cada semana. Con origen `guia` (por debajo de la web de la bodega y del Consejo Regulador) aporta teléfono, email, web, dirección, código postal y año de fundación (solo si la prosa dice «fundada en AAAA» una sola vez); hechos `bodega.enoturismo`, `bodega.fundacion_anio` y `bodega.horario_visitas`.
 - **Eventos fechados** (`tribe_events`, 679): fuera del MVP. Caducan, se duplican en ES/EN y no son catálogo estable; exigirían agenda y caducidad.
 - Cargar **después de Ribera** (lunes) para tener las bodegas. Dry-run: `node scrapers/cli.ts ruta-ribera --dry-run --bodegas scrapers/out/ribera.json`.
+## Rioja (C.R. DOCa Rioja, `riojawine.com`)
+
+- Parte de `sitemap-es-es.xml` (≈213 bodegas, ≈700 vinos, ≈371 experiencias) y pide directamente `/es/<ruta>/` (las URLs del sitemap redirigen). ≈1.290 peticiones, ≈90 min; `--limit N` se aplica **por tipo**. Orden: bodegas → vinos → experiencias; el progreso se registra por tipo.
+- `id_externo`: `bodega:<slug>`, `vino:<slug>`, `exp:<slug>`. Idempotente: una ejecución cortada se repite entera sin duplicar.
+- **Bodegas**: contacto, web, municipio, dirección, coordenadas, año de fundación (solo «desde/fundada en AAAA» en la línea destacada) y D.O. Rioja. Provincia/comunidad: por código postal (01 Álava, 09 Burgos, 26 La Rioja, 31 Navarra), tabla de municipios o zona «Rioja Alavesa»; nunca La Rioja por defecto (si no hay pista, queda vacía).
+- **Vinos**: la ficha solo da el nombre de la bodega (sin enlace). Bodega por: enlace explícito desde la ficha de bodega (si lo hubiera) → clave de nombre → vinos hermanos («Más vinos de la bodega»). Ambiguo o sin candidata → `revision`. Tipo, crianza (palabras del nombre/«Envejecimiento»; «Genérico» no dice nada), añada y uvas (sin porcentajes). Registro sobre la añada → resumen propio `elaboracion`. El precio queda en `datos`.
+- **Experiencias** → `servicios_bodega` (`tipo`, `precio_desde` mínimo, duración, idiomas, horario, `url_reserva`). Bodega por el enlace «Sobre la bodega»; sin él → `revision`.
+- No se copian descripciones ni imágenes ni redes sociales. Aviso legal del Consejo: prohíbe el uso comercial (la app es privada).
+
 ## Webs de bodegas (`fuentes/webs-bodegas/`)
 
 Crawler genérico de las webs oficiales (`bodegas.web`). Fase A: WordPress (API REST y Store API de WooCommerce) y HTML genérico (sitemap y enlaces). Shopify y Wix tienen su punto de extensión (`EXTRACTORES` en `sitio.ts`), que hoy cae en sitemap + HTML y lo dice en el log. Ver SOURCES §3.
