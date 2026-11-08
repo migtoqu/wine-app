@@ -6,7 +6,8 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | --- | --- | --- | --- |
 | `ribera` | `cr-ribera-del-duero` | `bodegas`, `bodega_denominaciones`, `registros_fuente` | `scrape-ribera.yml` (lunes 03:17 UTC) |
 | `vinoseleccion` | `vinoseleccion` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `registros_fuente` | `scrape-vinoseleccion.yml` (miércoles 03:47 UTC) |
-| `vinopremier` | `vinopremier` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `codigos_ean`, `registros_fuente` | `scrape-vinopremier.yml` (jueves 04:23 UTC) |
+| `vinopremier` | `vinopremier` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `codigos_ean`, `registros_fuente` | `scrape-vinopremier.yml` (manual (cron desactivado hasta que la web responda)) |
+| `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
 | `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 | `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves 02:37 UTC, 3 lotes) |
 
@@ -111,6 +112,15 @@ Tienda Magento (`vinopremier.com`, sin `www`). Mismo flujo que Vinoselección, c
 - `--bodegas ruta.json` en dry-run acepta también una instantánea del catálogo `{bodegas:[{id,nombre,marcas?}], vinos:[{id,bodegaId,nombre,tipo,crianza}], eans:[{ean,vinoId}]}` para calcular cuántos vinos ya existen.
 - Ritmo: 10–14 s entre peticiones y tope de 450 por ejecución (ver incidente en `docs/SOURCES.md` §4.1). Orden de carga: después de Ribera y de Rioja (las bodegas deben existir).
 
+
+## Ruta del Vino Ribera del Duero (`ruta-ribera`)
+
+- **Fuente inactiva** (`fuentes.activa = false`, migración `20261111100000`): su aviso legal exige permiso previo por escrito. Mientras esté inactiva, `ejecutar()` sale con 0 sin llamar al scraper (ni siquiera crea la ejecución); solo `--dry-run` funciona. Activarla es decisión del admin una vez resuelto el permiso.
+- **Sin API**: el `robots.txt` de la Ruta prohíbe `/wp-json/` y `/?rest_route=` (la auditoría de SOURCES §6.1 lo daba por permitido), así que se usan solo los sitemaps que anuncia (`product-sitemap.xml`, `directories-sitemap.xml`) y el HTML público: `/producto/<slug>/` (título, precio, URL de reserva en el `form.cart`, categoría en la clase `product_cat-…`) y `/directories/<slug>/` (categoría = icono bajo el título; teléfono, email, web, dirección y «Horario de visitas»). ~430 fichas de directorio (hay que abrirlas para saber si son bodega: unas 80) + ~85 productos: ~515 peticiones, ~40 min.
+- **Servicios**: la bodega es el prefijo del nombre del producto («Bodegas Pradorey Visita premium»); gana el prefijo más largo entre los nombres del directorio y del catálogo. Sin prefijo o ambiguo → `revision` (el admin puede asociar una bodega); packs («AA.VV. Top Ribera…», «Ribiértete…») y spa/bienestar sin bodega → `descartado`. Las URLs en inglés (`/en/`) se ignoran. Tipo `visita`/`cata`/`otra` por palabras del nombre; `precio_desde` (0 → null); duración e idiomas solo si la descripción los dice claramente («Duración: 2 horas», «Idiomas: …»); `horario` solo para las categorías de temporada («Noviembre, Mes del Enoturismo», «Vendimia»); sin descripción. Un servicio que deja de aparecer se marca `activo = false`.
+- **Fichas**: se emparejan con `EmparejadorBodegas` (dominio web, nombre + municipio). **Nunca crea bodegas**: dudoso → `revision`; sin candidata (restaurantes, hoteles, bodegas fuera de la D.O.) → `descartado` y se reevalúa cada semana. Con origen `guia` (por debajo de la web de la bodega y del Consejo Regulador) aporta teléfono, email, web, dirección, código postal y año de fundación (solo si la prosa dice «fundada en AAAA» una sola vez); hechos `bodega.enoturismo`, `bodega.fundacion_anio` y `bodega.horario_visitas`.
+- **Eventos fechados** (`tribe_events`, 679): fuera del MVP. Caducan, se duplican en ES/EN y no son catálogo estable; exigirían agenda y caducidad.
+- Cargar **después de Ribera** (lunes) para tener las bodegas. Dry-run: `node scrapers/cli.ts ruta-ribera --dry-run --bodegas scrapers/out/ribera.json`.
 ## Rioja (C.R. DOCa Rioja, `riojawine.com`)
 
 - Parte de `sitemap-es-es.xml` (≈213 bodegas, ≈700 vinos, ≈371 experiencias) y pide directamente `/es/<ruta>/` (las URLs del sitemap redirigen). ≈1.290 peticiones, ≈90 min; `--limit N` se aplica **por tipo**. Orden: bodegas → vinos → experiencias; el progreso se registra por tipo.
@@ -162,6 +172,7 @@ Fuera quedan otros idiomas (`/en/`, `/pt-pt/`, `?lang=en`), noticias y blog, y c
 - `vino:<ruta>[#<nombre>]` → añada: `EmparejadorVinos` dentro de la bodega (EAN, nombre; parecido o tipo desconocido → `revision`). Alta con la D.O. principal de la bodega, añada, uvas (solo si cambiaron; sin % no pisa un % existente), `codigos_ean` y `Consolidador` para tipo, crianza, grado, barrica y temperaturas. El nombre solo se fija al crear. Resúmenes `elaboracion` y `cata`.
 - `servicio:<tipo>:<título>` → `servicios_bodega` (por bodega + tipo + título normalizado) y `Consolidador` para precio, duración, idiomas y URL de reserva.
 - Supresiones y decisiones del admin respetadas en los tres.
+
 
 ## Emparejamiento vino → bodega (`emparejamiento/bodegas.ts`)
 
