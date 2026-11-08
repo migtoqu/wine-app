@@ -44,6 +44,8 @@ export function clasificar(s: SenalesPagina): Clase {
   const migas = plano((s.migas ?? []).join(" "));
   if (ruta === "") return "historia"; // portada: respaldo para la historia
   // La ruta manda; después título y migas. El orden resuelve «visita-la-bodega» (enoturismo) frente a «la-bodega».
+  // Fichas técnicas y notas de cata son de vinos, aunque digan «cata».
+  if (/\b(fichas?(?: tecnicas?)?(?: de)? vinos?|fichas? tecnicas?|notas? de cata|ficha de cata)\b/.test(`${ruta} ${titulo}`)) return "vino";
   for (const texto of [ruta, titulo, migas]) {
     for (const clase of ["legal", "enoturismo", "vino", "historia", "contacto"] as const) {
       if (RE[clase].test(texto)) return clase;

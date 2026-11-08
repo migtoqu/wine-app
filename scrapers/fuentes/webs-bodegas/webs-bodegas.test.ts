@@ -100,6 +100,8 @@ describe("clasificación y huella", () => {
     ["https://x.es/contacto/", "contacto"],
     ["https://x.es/", "historia"],
     ["https://x.es/carrito/", "otra"],
+    ["https://dariolubiano.com/ficha-de-cata-2024/", "vino"],
+    ["https://balbas.es/ficha-vinos/gran-reserva/", "vino"],
   ])("%s → %s", (url, clase) => {
     expect(clasificar({ url })).toBe(clase);
   });
@@ -170,6 +172,9 @@ describe("extracción: bodega", () => {
     expect(h.fundacion_anio).toBeNull();
     expect(h.hectareas).toBeNull();
     expect(extraerBodega("Nuestro enólogo nació en 1950 en Roa.", { municipios, esHistoria: true, anioActual: HOY }).fundacion_anio).toBeNull();
+    // Un salto de línea corta el apellido; «Familia Gente» no es una familia.
+    expect(extraerBodega("Bodega de la familia Postigo\nPasión por el vino", { municipios, esHistoria: true }).familia).toBe("Postigo");
+    expect(extraerBodega("Somos Familia Gente de campo", { municipios, esHistoria: true }).familia).toBeNull();
   });
 });
 
@@ -204,6 +209,11 @@ describe("extracción: vino", () => {
     expect(esNombreDeVino("Marcoli, 30 meses")).toBe(true);
     expect(esNombreDeVino("Aalto Gran Reserva")).toBe(true);
     expect(esNombreDeVino("Visita y cata en bodega")).toBe(false);
+    // Falsos positivos vistos en el dry-run de Ribera (tiendas con comida y páginas en inglés).
+    expect(esNombreDeVino("Queso curado de oveja Dehesa la Granja")).toBe(false);
+    expect(esNombreDeVino("Garbanzos IGP Fuentesauco")).toBe(false);
+    expect(esNombreDeVino("Private Visit and Wine Tasting")).toBe(false);
+    expect(esNombreDeVino("Estate wines")).toBe(false);
   });
 
   it("Aalto 2024 (página de WordPress): añada del título, uvas, barrica y grado", () => {
@@ -225,6 +235,7 @@ describe("extracción: vino", () => {
     expect(nombreVino("Vino Aalto 2021 Mágnum")).toBe("Aalto");
     expect(nombreVino("Doble R Crianza D.O. Ribera del Duero 75cl")).toBe("Doble R Crianza");
     expect(nombreVino("EMINA CRIANZA 2020")).toBe("Emina Crianza");
+    expect(nombreVino("Vino aalto ps 2024")).toBe("Aalto Ps");
   });
 
   it("uvas: «tempranillo blanco» no es tempranillo; los % deben sumar ≤ 100", () => {
@@ -239,6 +250,10 @@ describe("extracción: vino", () => {
     ]);
     // Sumas imposibles → solo menciones, sin porcentajes.
     expect(extraerVariedades("Tempranillo 90%, Merlot 40%").every((v) => v.porcentaje === null)).toBe(true);
+    expect(extraerVariedades("Verdejo y un 2% de Sauvignon Blanc")).toEqual([
+      { nombre: "Sauvignon Blanc", porcentaje: 2 },
+      { nombre: "Verdejo", porcentaje: null },
+    ]);
   });
 
   it("barrica, grado y temperatura", () => {
@@ -295,6 +310,8 @@ describe("extracción: enoturismo", () => {
     expect(tipoServicio("Restaurante El Lagar")).toBe("restaurante");
     expect(tipoServicio("Paseo en bicicleta por el viñedo")).toBe("actividad");
     expect(extraerServicio("Enoturismo", "", [], "x.es", "x.es").titulo).toBe("Visita a la bodega");
+    expect(extraerServicio("¿Eres un apasionado del vino?", "", [], "x.es", "x.es").titulo).toBe("Visita a la bodega");
+    expect(extraerServicio("Eventos", "Celebra tu evento", [], "x.es", "x.es").titulo).toBe("Eventos en la bodega");
   });
 });
 

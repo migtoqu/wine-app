@@ -145,7 +145,8 @@ const PRIORIDAD_CLASE: Clase[] = ["vino", "historia", "enoturismo", "contacto"];
 const TIPOS_WP_IGNORADOS = /^(attachment|nav_menu_item|wp_|post$|jp_|elementor|e-landing|oembed|revision|customize|user_request|wpcf7|acf|br_|et_|ct_|fl-|mc4wp|product_variation|shop_)/;
 const SUBSITEMAP_UTIL = /page|product|vino|wine|visita|experienc|enoturismo|portfolio|project|anada|pagina/i;
 const SUBSITEMAP_INUTIL = /category|tag|author|attachment|post-sitemap|user|product_cat|product_tag|format|archive|news|noticia|blog/i;
-const TITULO_NO_VINO = /^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos)$/i;
+const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos)$/i;
+const CATEGORIA_NO_VINO = /gourmet|alimentaci[oó]n|delicatessen|merchandising|regalos?|packs?|lotes?|accesorios|aceites?|conservas|queso/i;
 const RUTA_NOTICIA = /\/(noticias?\d*|news|blog|actualidad|prensa|press|tag|category|categoria|author)(?:[\/._?-]|$)/i;
 const RUTA_PRIVADA = /\/(wp-login|wp-admin|login|mi-cuenta|my-account|cuenta|account|carrito|cart|checkout|finalizar-compra)(?:[\/.?]|$)/i;
 const PROTEGIDA = /class=["'][^"']*post-password-form|<title>[^<]*(protegid[oa] con contraseña|password protected)/i;
@@ -520,11 +521,16 @@ async function tiendaWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[]): 
   if (productos.length === 0) return false;
   for (const p of productos) {
     if (!p.permalink || esOtroIdioma(p.permalink)) continue;
+    try {
+      if (new URL(p.permalink, ctx.origen).host !== new URL(ctx.origen).host) continue;
+    } catch {
+      continue;
+    }
     const nombre = decodificarEntidades(p.name ?? "");
     const cats = (p.categories ?? []).map((c) => c.name).join(" ");
     const servicio = ES_SERVICIO.test(nombre) || /visita|experienc|enoturismo|cata/i.test(cats);
     const clase: Clase = servicio ? "enoturismo" : "vino";
-    if (clase === "vino" && !esNombreDeVino(nombre)) continue;
+    if (clase === "vino" && (!esNombreDeVino(nombre) || CATEGORIA_NO_VINO.test(cats) && !/vino|wine/i.test(cats))) continue;
     contenidos.push({ url: p.permalink, clase, origen: "woo", titulo: nombre, bloques: [], enlaces: [], producto: p });
   }
   return true;
@@ -565,7 +571,13 @@ async function wpRest(ctx: ContextoDescubrimiento, contenidos: Contenido[], conW
       if (pagina >= Number(lista.res.cabeceras?.get("x-wp-totalpages") ?? 1)) break;
     }
     for (const item of items) {
-      if (RUTA_NOTICIA.test(item.link)) continue;
+      // Enlaces relativos y páginas que apuntan a otro sitio (tienda o reservas de un tercero): fuera.
+      try {
+        item.link = new URL(item.link, ctx.origen).href;
+      } catch {
+        continue;
+      }
+      if (new URL(item.link).host !== new URL(ctx.origen).host || RUTA_NOTICIA.test(item.link)) continue;
       if (!item.link || esOtroIdioma(item.link)) continue;
       const tituloItem = decodificarEntidades(item.title?.rendered ?? "");
       const clase = clasificar({ url: item.link, titulo: tituloItem, tipoWp: t.slug === "page" ? null : t.slug });

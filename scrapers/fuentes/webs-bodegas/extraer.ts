@@ -63,7 +63,7 @@ const FUNDACION_DEBIL = new RegExp(`\\b(?:bodega|familia|elaborando|elaboramos|c
 const MAYUS = "[A-ZÁÉÍÓÚÑÜ]";
 const PALABRA = `${MAYUS}[a-záéíóúñü]+`;
 const NOMBRE = `${PALABRA}(?:\\s+(?:de\\s+(?:la\\s+)?|del\\s+)?${PALABRA}){0,3}`;
-const NO_NOMBRES = new Set(["bodega", "bodegas", "grupo", "su", "sus", "un", "una", "el", "la", "los", "las", "nuestro", "nuestra", "familia", "don", "doña", "vinos", "viñedos", "ribera", "duero", "españa"]);
+const NO_NOMBRES = new Set(["gente", "unida", "numerosa", "real", "entera", "propietaria", "fundadora", "bodega", "bodegas", "grupo", "su", "sus", "un", "una", "el", "la", "los", "las", "nuestro", "nuestra", "familia", "don", "doña", "vinos", "viñedos", "ribera", "duero", "españa"]);
 
 function nombresPropios(s: string): string[] {
   return s
@@ -102,7 +102,7 @@ export function extraerBodega(
   if (fund && !/^(?:la|su)\s+familia/i.test(fund[1]!)) h.fundadores = nombresPropios(fund[1]!).slice(0, 4);
 
   const familias = new Map<string, number>();
-  for (const m of texto.matchAll(new RegExp(`\\b[Ff]amilia\\s+(${PALABRA}(?:[\\s-]+${PALABRA}){0,2})`, "g"))) {
+  for (const m of texto.matchAll(new RegExp(`\\b[Ff]amilia[ \\t]+(${PALABRA}(?:[ \\t-]+${PALABRA}){0,2})`, "g"))) {
     const f = m[1]!;
     if (NO_NOMBRES.has(f.split(/[\s-]/)[0]!.toLowerCase())) continue;
     familias.set(f, (familias.get(f) ?? 0) + 1);
@@ -214,7 +214,7 @@ export interface VinoWeb {
 }
 
 /** Productos de tienda que no son un vino. */
-const NO_VINO = /\b(estuches?|cajas?|lotes?|packs?|regalos?|tarjetas?|bonos?|cheques?|copas?|sacacorchos|camisetas?|libros?|aceites?|vermut|vermouth|gin|ginebra|orujo|aguardiente|licor(es)?|mosto|vinagre|miel|gorras?|delantal|bolsas?|abridor|decantador|suscripci[oó]n|club|entradas?|visitas?|catas?|experiencias?|cursos?|eventos?|box|bottles|botellas|selecci[oó]n de|surtido|degustaci[oó]n|tour|reserva tu|pedido)\b|\d\s*\+\s*\d|\bx\s?\d+\b/i;
+const NO_VINO = /\b(estuches?|cajas?|lotes?|packs?|regalos?|tarjetas?|bonos?|cheques?|copas?|sacacorchos|camisetas?|libros?|aceites?|vermut|vermouth|gin|ginebra|orujo|aguardiente|licor(es)?|mosto|vinagre|miel|gorras?|delantal|bolsas?|abridor|decantador|suscripci[oó]n|club|entradas?|visitas?|catas?|experiencias?|cursos?|eventos?|box|bottles|botellas|selecci[oó]n de|surtido|degustaci[oó]n|tour|reserva tu|pedido|quesos?|garbanzos|legumbres|cofres?|jam[oó]n|conservas|chocolates?|embutidos?|visit|tasting|shop|online|wines|tours?)\b|\d\s*\+\s*\d|\bx\s?\d+\b/i;
 /** Productos que son experiencias de enoturismo (van a servicios). */
 export const ES_SERVICIO = /\b(visitas?|catas?|experiencias?|entradas?|tour|enoturismo|cursos?|talleres?|eventos?)\b/i;
 
@@ -237,6 +237,7 @@ export function nombreVino(titulo: string): string {
     .replace(/^[\s\-–|·,.:()]+/g, "")
     .replace(/\(\s*\)/g, "");
   s = limpiarEspacios(s);
+  if (!/\p{Lu}/u.test(s)) s = s.replace(/(^|\s)(\p{Ll})/gu, (_m, a: string, c: string) => a + c.toUpperCase());
   if (!/\p{Ll}/u.test(s)) {
     s = s.toLowerCase().replace(/(^|[\s-])(\p{Ll})/gu, (_m, a: string, c: string) => a + c.toUpperCase());
   }
@@ -318,7 +319,12 @@ export function extraerVariedades(texto: string): VariedadWeb[] {
   }
   if (conPct.size > 0) {
     const total = [...conPct.values()].reduce((a, b) => a + b, 0);
-    if (total <= 100.5) return [...conPct].map(([nombre, porcentaje]) => ({ nombre, porcentaje })).sort((a, b) => b.porcentaje - a.porcentaje);
+    if (total <= 100.5) {
+      const out: VariedadWeb[] = [...conPct].map(([nombre, porcentaje]) => ({ nombre, porcentaje })).sort((a, b) => b.porcentaje! - a.porcentaje!);
+      // «98 % Verdejo, Sauvignon Blanc 2 %» ya está; si faltan uvas mencionadas y no se llega al 100 %, van sin porcentaje.
+      if (total < 99.5) for (const m of menciones) if (!conPct.has(m.nombre)) out.push({ nombre: m.nombre, porcentaje: null });
+      return out.slice(0, 6);
+    }
   }
   return menciones.sort((a, b) => a.pos - b.pos).slice(0, 5).map((m) => ({ nombre: m.nombre, porcentaje: null }));
 }
@@ -489,7 +495,7 @@ export function tipoServicio(titulo: string, texto = ""): TipoServicio {
   return probar(titulo) ?? probar(texto.slice(0, 400)) ?? "visita";
 }
 
-const TITULO_GENERICO = /^(enoturismo|visitas?|experiencias?|wine tourism|visit(s)?|tours?|reservas?|actividades|enoturismo y visitas|visita la bodega|visitanos|visítanos|ven a vernos|nuestras experiencias)$/i;
+const TITULO_GENERICO = /^(enoturismo|visitas?|experiencias?|wine tourism|visit(s)?|tours?|reservas?|actividades|eventos?|enoturismo y visitas|visita la bodega|visitanos|visítanos|ven a vernos|nuestras experiencias)$/i;
 const TITULO_POR_TIPO: Record<TipoServicio, string> = {
   visita: "Visita a la bodega", cata: "Cata de vinos", actividad: "Actividad en el viñedo", evento: "Eventos en la bodega",
   restaurante: "Restaurante", alojamiento: "Alojamiento",
@@ -497,7 +503,10 @@ const TITULO_POR_TIPO: Record<TipoServicio, string> = {
 
 export function tituloServicio(titulo: string, tipo: TipoServicio): string {
   const t = limpiarEspacios(titulo).replace(/[.:]+$/, "");
-  if (!t || TITULO_GENERICO.test(t) || t.length > 80) return TITULO_POR_TIPO[tipo];
+  // Frases de reclamo («¿Eres un apasionado del vino?», «Vive una experiencia única…») no son un nombre.
+  if (!t || TITULO_GENERICO.test(t) || t.length > 70 || /[?¿!¡]/.test(t) || /^(vive|descubre|ven|disfruta|conoce|te invitamos)\b/i.test(t)) {
+    return TITULO_POR_TIPO[tipo];
+  }
   return t;
 }
 
