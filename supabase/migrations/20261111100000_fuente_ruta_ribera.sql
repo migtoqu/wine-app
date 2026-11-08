@@ -10,9 +10,9 @@ insert into public.fuentes (nombre, slug, tipo, url_base, frecuencia, activa, no
     'semanal',
     false,
     'PENDIENTE DE AUTORIZACIÓN ESCRITA (aviso legal: reproducción y almacenamiento requieren permiso previo; '
-    'contacto info@riberate.com). robots.txt (2026-11-08): solo bloquea wc-logs, wp-admin, wp-includes, '
-    'plugins y temas. Se usa la Store API pública de WooCommerce y la REST de WordPress (directories) '
-    'más el HTML de las fichas de bodega; solo hechos (nombre, precio, enlace de reserva, contacto), '
-    'nunca textos ni imágenes.'
+    'contacto info@riberate.com). robots.txt (2026-11-08): bloquea /wp-json/ y /?rest_route=, wc-logs, '
+    'wp-admin, wp-includes, plugins y temas: no se usa ninguna API. Solo sitemaps (product-sitemap.xml, '
+    'directories-sitemap.xml) y HTML público de /producto/<slug>/ y /directories/<slug>/; solo hechos '
+    '(nombre, precio, enlace de reserva, contacto, horario de visitas), nunca textos ni imágenes.'
   )
 on conflict (slug) do nothing;
