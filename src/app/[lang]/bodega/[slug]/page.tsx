@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Attribution } from "@/components/catalog/attribution";
 import { BodegaWines } from "@/components/catalog/bodega-wines";
 import { CatalogImage } from "@/components/catalog/catalog-image";
+import { FieldSources, SummarySources } from "@/components/catalog/field-sources";
 import { ExternalIcon } from "@/components/catalog/icons";
 import { BodegaActions } from "@/components/catalog/personal-actions";
 import { wineCardLabels } from "@/components/catalog/wine-card";
@@ -10,7 +11,15 @@ import { Container } from "@/components/layout/container";
 import { Badge, EmptyState } from "@/components/ui";
 import { formatNumber } from "@/i18n/format";
 import { getDictionary, getLocale } from "@/i18n/server";
-import { displayHost, formatAddress, socialLinks, truncate } from "@/lib/catalog/format";
+import {
+  displayHost,
+  formatAddress,
+  formatDuration,
+  formatLanguages,
+  socialLinks,
+  truncate,
+} from "@/lib/catalog/format";
+import { pickResumen } from "@/lib/catalog/provenance";
 import { getBodega } from "@/lib/catalog/queries";
 
 // Ficha de bodega (§5.5). Igual que la de vino: lectura cacheada, ISR por
@@ -35,7 +44,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const place = [bodega.municipio, bodega.provincia].filter(Boolean).join(", ");
   return {
     title: place ? `${bodega.nombre} · ${place}` : bodega.nombre,
-    description: bodega.descripcion ? truncate(bodega.descripcion) : undefined,
+    description: (bodega.historia ?? bodega.descripcion)
+      ? truncate((bodega.historia ?? bodega.descripcion)!)
+      : undefined,
   };
 }
 
@@ -64,6 +75,22 @@ export default async function WineryPage({ params }: Props) {
     },
   ].filter((f): f is { label: string; value: string } => Boolean(f));
   const hasContact = bodega.web || bodega.telefono || bodega.email || social.length > 0;
+  // Texto curado por el admin si lo hay; si no, el resumen propio generado a partir de hechos.
+  const aboutText = bodega.historia ?? bodega.descripcion;
+  const aboutSummary = aboutText ? null : pickResumen(bodega.resumenes, ["historia", "descripcion"], lang);
+  const hasTourism =
+    bodega.enoturismo_web || bodega.enoturismo_email || bodega.enoturismo_telefono || bodega.servicios.length > 0;
+  const sources = (campos: string[]) => (
+    <FieldSources
+      lang={lang}
+      labels={catalog.attribution}
+      procedencia={bodega.procedencia}
+      campos={campos}
+      conValor={(c) => (bodega as Record<string, unknown>)[c] != null}
+    />
+  );
+  const price = (n: number) =>
+    formatNumber(lang, n, { style: "currency", currency: "EUR", maximumFractionDigits: Number.isInteger(n) ? 0 : 2 });
   const externalLink = "inline-flex items-center gap-1 font-medium text-primary underline decoration-1 underline-offset-4 hover:decoration-2";
 
   return (
@@ -106,16 +133,94 @@ export default async function WineryPage({ params }: Props) {
 
         <div className="grid gap-8 lg:grid-cols-[1fr_20rem] lg:gap-12">
           <div className="flex flex-col gap-8">
-            {bodega.descripcion && (
-              <section aria-labelledby="about-heading" className="flex flex-col gap-3">
-                <h2 id="about-heading" className="text-2xl font-semibold">
-                  {winery.about}
-                </h2>
-                <p className="max-w-prose whitespace-pre-line text-lg text-muted">
-                  {bodega.descripcion}
-                </p>
-              </section>
-            )}
+            <section aria-labelledby="about-heading" className="flex flex-col gap-3">
+              <h2 id="about-heading" className="text-2xl font-semibold">
+                {winery.about}
+              </h2>
+              {aboutText ? (
+                <>
+                  <p className="max-w-prose whitespace-pre-line text-lg text-muted">{aboutText}</p>
+                  {sources(["historia", "descripcion"])}
+                </>
+              ) : aboutSummary ? (
+                <>
+                  <p className="max-w-prose text-lg text-muted">{aboutSummary.texto}</p>
+                  <SummarySources labels={catalog.attribution} resumen={aboutSummary} />
+                </>
+              ) : (
+                <p className="text-muted">{winery.noAbout}</p>
+              )}
+            </section>
+
+            <section aria-labelledby="tourism-heading" className="flex flex-col gap-4">
+              <h2 id="tourism-heading" className="text-2xl font-semibold">
+                {winery.tourism}
+              </h2>
+              {!hasTourism && <p className="text-muted">{winery.tourismEmpty}</p>}
+              {(bodega.enoturismo_web || bodega.enoturismo_email || bodega.enoturismo_telefono) && (
+                <div className="flex flex-col gap-1">
+                  <ul className="flex flex-wrap gap-x-5 gap-y-2">
+                    {bodega.enoturismo_web && (
+                      <li>
+                        <a href={bodega.enoturismo_web} target="_blank" rel="noopener noreferrer" className={externalLink}>
+                          {winery.tourismWeb}
+                          <ExternalIcon className="size-4" />
+                        </a>
+                      </li>
+                    )}
+                    {bodega.enoturismo_telefono && (
+                      <li>
+                        <span className="sr-only">{winery.phone}: </span>
+                        <a href={`tel:${bodega.enoturismo_telefono.replace(/[^\d+]/g, "")}`} className={externalLink}>
+                          {bodega.enoturismo_telefono}
+                        </a>
+                      </li>
+                    )}
+                    {bodega.enoturismo_email && (
+                      <li>
+                        <span className="sr-only">{winery.email}: </span>
+                        <a href={`mailto:${bodega.enoturismo_email}`} className={`${externalLink} break-all`}>
+                          {bodega.enoturismo_email}
+                        </a>
+                      </li>
+                    )}
+                  </ul>
+                  {sources(["enoturismo_web", "enoturismo_telefono", "enoturismo_email"])}
+                </div>
+              )}
+              {bodega.servicios.length > 0 && (
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {bodega.servicios.map((sv) => {
+                    const meta = [
+                      sv.precio_desde !== null ? winery.priceFrom(price(sv.precio_desde)) : null,
+                      formatDuration(sv.duracion_minutos),
+                      formatLanguages(lang, sv.idiomas),
+                    ].filter(Boolean);
+                    return (
+                      <li key={sv.id} className="flex flex-col gap-2 rounded-card border border-border bg-surface p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge tone="accent">{winery.serviceTypes[sv.tipo]}</Badge>
+                          <h3 className="font-sans text-base font-semibold">{sv.titulo}</h3>
+                        </div>
+                        {sv.descripcion && <p className="text-sm text-muted">{sv.descripcion}</p>}
+                        {meta.length > 0 && <p className="text-sm">{meta.join(" · ")}</p>}
+                        {sv.horario && (
+                          <p className="text-sm text-muted">
+                            {winery.schedule}: {sv.horario}
+                          </p>
+                        )}
+                        {sv.url_reserva && (
+                          <a href={sv.url_reserva} target="_blank" rel="noopener noreferrer" className={externalLink}>
+                            {winery.book}
+                            <ExternalIcon className="size-4" />
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
 
             {gallery.length > 0 && (
               <section aria-labelledby="gallery-heading" className="flex flex-col gap-3">
@@ -154,11 +259,13 @@ export default async function WineryPage({ params }: Props) {
                 ))}
               </dl>
             )}
+            {facts.length > 0 && sources(["anio_fundacion", "hectareas"])}
 
             {address && (
               <div className="flex flex-col gap-1">
                 <h2 className="font-sans text-sm font-semibold">{winery.address}</h2>
                 <address className="not-italic">{address}</address>
+                {sources(["direccion", "codigo_postal", "municipio", "provincia", "ubicacion"])}
               </div>
             )}
 
@@ -203,6 +310,7 @@ export default async function WineryPage({ params }: Props) {
                     ))}
                   </ul>
                 )}
+                {sources(["web", "telefono", "email", "redes"])}
               </div>
             )}
           </aside>

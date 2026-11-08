@@ -52,6 +52,10 @@ export type Database = {
       }
       anadas: {
         Row: {
+          elaboracion: string | null
+          cata_vista: string | null
+          cata_nariz: string | null
+          cata_boca: string | null
           anio: number | null
           created_at: string
           grado: number | null
@@ -66,6 +70,10 @@ export type Database = {
           vino_id: string
         }
         Insert: {
+          elaboracion?: string | null
+          cata_vista?: string | null
+          cata_nariz?: string | null
+          cata_boca?: string | null
           anio?: number | null
           created_at?: string
           grado?: number | null
@@ -80,6 +88,10 @@ export type Database = {
           vino_id: string
         }
         Update: {
+          elaboracion?: string | null
+          cata_vista?: string | null
+          cata_nariz?: string | null
+          cata_boca?: string | null
           anio?: number | null
           created_at?: string
           grado?: number | null
@@ -141,6 +153,13 @@ export type Database = {
       }
       bodegas: {
         Row: {
+          historia: string | null
+          enoturismo_web: string | null
+          enoturismo_email: string | null
+          enoturismo_telefono: string | null
+          nif: string | null
+          registro_embotellador: string | null
+          dominio: string | null
           anio_fundacion: number | null
           codigo_postal: string | null
           comunidad: string | null
@@ -163,6 +182,12 @@ export type Database = {
           web: string | null
         }
         Insert: {
+          historia?: string | null
+          enoturismo_web?: string | null
+          enoturismo_email?: string | null
+          enoturismo_telefono?: string | null
+          nif?: string | null
+          registro_embotellador?: string | null
           anio_fundacion?: number | null
           codigo_postal?: string | null
           comunidad?: string | null
@@ -185,6 +210,12 @@ export type Database = {
           web?: string | null
         }
         Update: {
+          historia?: string | null
+          enoturismo_web?: string | null
+          enoturismo_email?: string | null
+          enoturismo_telefono?: string | null
+          nif?: string | null
+          registro_embotellador?: string | null
           anio_fundacion?: number | null
           codigo_postal?: string | null
           comunidad?: string | null
@@ -547,6 +578,7 @@ export type Database = {
       }
       notas: {
         Row: {
+          fusionada: boolean
           anada_id: string | null
           bodega_id: string | null
           created_at: string
@@ -557,6 +589,7 @@ export type Database = {
           vino_id: string | null
         }
         Insert: {
+          fusionada?: boolean
           anada_id?: string | null
           bodega_id?: string | null
           created_at?: string
@@ -567,6 +600,7 @@ export type Database = {
           vino_id?: string | null
         }
         Update: {
+          fusionada?: boolean
           anada_id?: string | null
           bodega_id?: string | null
           created_at?: string
@@ -674,6 +708,13 @@ export type Database = {
       }
       registros_fuente: {
         Row: {
+          hechos: Json
+          supresion_id: string | null
+          decision: string | null
+          decision_tipo: Database["public"]["Enums"]["entidad_catalogo"] | null
+          decision_id: string | null
+          decidido_por: string | null
+          decidido_en: string | null
           confianza_emparejamiento: number | null
           created_at: string
           datos: Json
@@ -688,6 +729,13 @@ export type Database = {
           visto_por_ultima_vez: string
         }
         Insert: {
+          hechos?: Json
+          supresion_id?: string | null
+          decision?: string | null
+          decision_tipo?: Database["public"]["Enums"]["entidad_catalogo"] | null
+          decision_id?: string | null
+          decidido_por?: string | null
+          decidido_en?: string | null
           confianza_emparejamiento?: number | null
           created_at?: string
           datos: Json
@@ -702,6 +750,13 @@ export type Database = {
           visto_por_ultima_vez?: string
         }
         Update: {
+          hechos?: Json
+          supresion_id?: string | null
+          decision?: string | null
+          decision_tipo?: Database["public"]["Enums"]["entidad_catalogo"] | null
+          decision_id?: string | null
+          decidido_por?: string | null
+          decidido_en?: string | null
           confianza_emparejamiento?: number | null
           created_at?: string
           datos?: Json
@@ -727,6 +782,8 @@ export type Database = {
       }
       servicios_bodega: {
         Row: {
+          fuente_id: string | null
+          clave: string | null
           activo: boolean
           bodega_id: string
           created_at: string
@@ -742,6 +799,7 @@ export type Database = {
           url_reserva: string | null
         }
         Insert: {
+          fuente_id?: string | null
           activo?: boolean
           bodega_id: string
           created_at?: string
@@ -757,6 +815,7 @@ export type Database = {
           url_reserva?: string | null
         }
         Update: {
+          fuente_id?: string | null
           activo?: boolean
           bodega_id?: string
           created_at?: string
@@ -813,6 +872,7 @@ export type Database = {
       }
       vinos: {
         Row: {
+          elaboracion: string | null
           bodega_id: string
           created_at: string
           crianza: Database["public"]["Enums"]["crianza_vino"] | null
@@ -826,6 +886,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          elaboracion?: string | null
           bodega_id: string
           created_at?: string
           crianza?: Database["public"]["Enums"]["crianza_vino"] | null
@@ -839,6 +900,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          elaboracion?: string | null
           bodega_id?: string
           created_at?: string
           crianza?: Database["public"]["Enums"]["crianza_vino"] | null
@@ -875,11 +937,242 @@ export type Database = {
           },
         ]
       }
+      codigos_ean: {
+        Row: {
+          anada_id: string | null
+          created_at: string
+          ean: string
+          formato_ml: number | null
+          fuente_id: string | null
+          vino_id: string
+        }
+        Insert: {
+          anada_id?: string | null
+          created_at?: string
+          ean: string
+          formato_ml?: number | null
+          fuente_id?: string | null
+          vino_id: string
+        }
+        Update: {
+          anada_id?: string | null
+          created_at?: string
+          ean?: string
+          formato_ml?: number | null
+          fuente_id?: string | null
+          vino_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "codigos_ean_vino_id_fkey"
+            columns: ["vino_id"]
+            isOneToOne: false
+            referencedRelation: "vinos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "codigos_ean_anada_id_fkey"
+            columns: ["anada_id"]
+            isOneToOne: false
+            referencedRelation: "anadas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "codigos_ean_fuente_id_fkey"
+            columns: ["fuente_id"]
+            isOneToOne: false
+            referencedRelation: "fuentes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      procedencia_campos: {
+        Row: {
+          campo: string
+          entidad_id: string
+          entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
+          fuente_id: string | null
+          observado_en: string
+          origen: Database["public"]["Enums"]["origen_dato"]
+          registro_id: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          campo: string
+          entidad_id: string
+          entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
+          fuente_id?: string | null
+          observado_en?: string
+          origen: Database["public"]["Enums"]["origen_dato"]
+          registro_id?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          campo?: string
+          entidad_id?: string
+          entidad_tipo?: Database["public"]["Enums"]["entidad_catalogo"]
+          fuente_id?: string | null
+          observado_en?: string
+          origen?: Database["public"]["Enums"]["origen_dato"]
+          registro_id?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procedencia_campos_fuente_id_fkey"
+            columns: ["fuente_id"]
+            isOneToOne: false
+            referencedRelation: "fuentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procedencia_campos_registro_id_fkey"
+            columns: ["registro_id"]
+            isOneToOne: false
+            referencedRelation: "registros_fuente"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resumenes: {
+        Row: {
+          campo: string
+          created_at: string
+          entidad_id: string
+          entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
+          fuentes: string[]
+          generador: string
+          hash_hechos: string
+          idioma: Database["public"]["Enums"]["idioma"]
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          campo: string
+          created_at?: string
+          entidad_id: string
+          entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
+          fuentes?: string[]
+          generador: string
+          hash_hechos: string
+          idioma: Database["public"]["Enums"]["idioma"]
+          texto: string
+          updated_at?: string
+        }
+        Update: {
+          campo?: string
+          created_at?: string
+          entidad_id?: string
+          entidad_tipo?: Database["public"]["Enums"]["entidad_catalogo"]
+          fuentes?: string[]
+          generador?: string
+          hash_hechos?: string
+          idioma?: Database["public"]["Enums"]["idioma"]
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      supresiones: {
+        Row: {
+          claves: Json
+          created_at: string
+          creada_por: string | null
+          entidad_id: string
+          entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
+          fusionada_en: string | null
+          id: string
+          motivo: string
+        }
+        Insert: {
+          claves?: Json
+          created_at?: string
+          creada_por?: string | null
+          entidad_id: string
+          entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
+          fusionada_en?: string | null
+          id?: string
+          motivo: string
+        }
+        Update: {
+          claves?: Json
+          created_at?: string
+          creada_por?: string | null
+          entidad_id?: string
+          entidad_tipo?: Database["public"]["Enums"]["entidad_catalogo"]
+          fusionada_en?: string | null
+          id?: string
+          motivo?: string
+        }
+        Relationships: []
+      }
+      valores_fuente: {
+        Row: {
+          campo: string
+          entidad_id: string
+          entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
+          fuente_id: string
+          observado_en: string
+          origen: Database["public"]["Enums"]["origen_dato"]
+          registro_id: string
+          url: string | null
+          valor: Json
+          valor_desde: string
+        }
+        Insert: {
+          campo: string
+          entidad_id: string
+          entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
+          fuente_id: string
+          observado_en?: string
+          origen: Database["public"]["Enums"]["origen_dato"]
+          registro_id: string
+          url?: string | null
+          valor: Json
+          valor_desde?: string
+        }
+        Update: {
+          campo?: string
+          entidad_id?: string
+          entidad_tipo?: Database["public"]["Enums"]["entidad_catalogo"]
+          fuente_id?: string
+          observado_en?: string
+          origen?: Database["public"]["Enums"]["origen_dato"]
+          registro_id?: string
+          url?: string | null
+          valor?: Json
+          valor_desde?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "valores_fuente_registro_id_fkey"
+            columns: ["registro_id"]
+            isOneToOne: false
+            referencedRelation: "registros_fuente"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "valores_fuente_fuente_id_fkey"
+            columns: ["fuente_id"]
+            isOneToOne: false
+            referencedRelation: "fuentes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      admin_fusionar: {
+        Args: { p_destino: string; p_origen: string; p_tipo: string }
+        Returns: undefined
+      }
+      dominio_web: { Args: { url: string }; Returns: string }
       admin_guardar_denominaciones_bodega: {
         Args: {
           p_bodega_id: string
@@ -1032,6 +1325,13 @@ export type Database = {
         | "descartado"
       estado_enlace: "sin_comprobar" | "ok" | "fallando" | "oculto"
       idioma: "es" | "en"
+      origen_dato:
+        | "admin"
+        | "bodega"
+        | "consejo_regulador"
+        | "guia"
+        | "tienda"
+        | "otra"
       rol_usuario: "user" | "admin"
       tema: "claro" | "oscuro" | "sistema"
       tipo_denominacion: "doca" | "do" | "do_pago" | "vc" | "igp"
@@ -1045,6 +1345,7 @@ export type Database = {
         | "evento"
         | "tienda"
         | "otra"
+        | "actividad"
       tipo_vino:
         | "tinto"
         | "blanco"
@@ -1208,6 +1509,14 @@ export const Constants = {
       ],
       estado_enlace: ["sin_comprobar", "ok", "fallando", "oculto"],
       idioma: ["es", "en"],
+      origen_dato: [
+        "admin",
+        "bodega",
+        "consejo_regulador",
+        "guia",
+        "tienda",
+        "otra",
+      ],
       rol_usuario: ["user", "admin"],
       tema: ["claro", "oscuro", "sistema"],
       tipo_denominacion: ["doca", "do", "do_pago", "vc", "igp"],
@@ -1221,6 +1530,7 @@ export const Constants = {
         "evento",
         "tienda",
         "otra",
+        "actividad",
       ],
       tipo_vino: [
         "tinto",

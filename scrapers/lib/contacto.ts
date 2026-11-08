@@ -55,3 +55,35 @@ export function normalizarCodigoPostal(s: string | null | undefined): string | n
   const m = s?.match(/\b\d{5}\b/);
   return m ? m[0] : null;
 }
+
+// Subdominios habituales que no distinguen una web de otra (mismo criterio que
+// public.dominio_web en la migración 20261110090000_consolidacion).
+const SUBDOMINIO_HABITUAL = /^(?:www\d*|m|es|en|esp|eng|web)\.(?=[^.]+\.[^.]+)/;
+
+/** Dominio de una web para emparejar: «https://WWW.Aalto.es/x» → «aalto.es». */
+export function dominioWeb(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = url.trim().match(/^[a-z][a-z0-9+.-]*:\/\/(?:[^/?#@]*@)?([^/?#:]+)/i);
+  if (!m) return null;
+  const host = m[1]!.toLowerCase().replace(/\.$/, "").replace(SUBDOMINIO_HABITUAL, "");
+  return host === "" ? null : host;
+}
+
+// Dominios que no identifican a una bodega: redes, constructores de webs,
+// agregadores y tiendas (y el propio consejo regulador).
+const DOMINIOS_GENERICOS = [
+  "facebook.com", "fb.com", "instagram.com", "twitter.com", "x.com", "tiktok.com",
+  "youtube.com", "youtu.be", "linkedin.com", "pinterest.com", "linktr.ee", "linkin.bio",
+  "wixsite.com", "wix.com", "wordpress.com", "blogspot.com", "blogspot.es", "blogger.com",
+  "sites.google.com", "google.com", "goo.gl", "business.site", "jimdo.com", "jimdofree.com",
+  "webnode.es", "webnode.com", "squarespace.com", "godaddysites.com", "myshopify.com",
+  "weebly.com", "strikingly.com", "carrd.co", "tripadvisor.es", "tripadvisor.com",
+  "vinoseleccion.com", "bodeboca.com", "decantalo.com", "lavinia.es", "lavinia.com",
+  "elcorteingles.es", "vivino.com", "uvinum.es", "amazon.es", "amazon.com", "drinksco.es",
+  "vinissimus.com", "riberadelduero.es", "riojawine.com", "gmail.com", "hotmail.com",
+];
+
+/** ¿Es un dominio (o subdominio de uno) que no sirve como clave de bodega? */
+export function esDominioGenerico(dominio: string): boolean {
+  return DOMINIOS_GENERICOS.some((g) => dominio === g || dominio.endsWith(`.${g}`));
+}

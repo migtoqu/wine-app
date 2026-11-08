@@ -1,5 +1,5 @@
 // Scraper del Consejo Regulador D.O. Ribera del Duero: listado paginado → fichas → bodegas.
-// extraer (http + parsear) → normalizar → emparejar (re-vincular por registro o nombre) → guardar.
+// extraer (http + parsear) → normalizar → emparejar (registro, decisión del admin o EmparejadorBodegas) → consolidar.
 import { registrosConocidos } from "../../lib/db.ts";
 import type { Contexto } from "../../lib/ejecucion.ts";
 import { ParadaFuente } from "../../lib/http.ts";
@@ -62,6 +62,8 @@ export async function scraperRibera(ctx: Contexto): Promise<void> {
         const r = await guardado.guardar(normalizada);
         if (r === "nuevo") ctx.contadores.nuevos++;
         else if (r === "actualizado") ctx.contadores.actualizados++;
+        else if (r === "revision") ctx.contadores.revision++;
+        else if (r === "descartado") ctx.contadores.descartados++;
         else ctx.contadores.sinCambios++;
         ctx.log.debug(`${r}: ${normalizada.campos.nombre}`);
       } else {

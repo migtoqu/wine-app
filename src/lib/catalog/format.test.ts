@@ -107,9 +107,15 @@ describe("añadas", () => {
     temp_servicio_min: null,
     temp_servicio_max: null,
     produccion_botellas: null,
+    elaboracion: null,
+    cata_vista: null,
+    cata_nariz: null,
+    cata_boca: null,
     updated_at: "2026-01-01T00:00:00Z",
     variedades: [],
     imagenes: [],
+    procedencia: {},
+    resumenes: [],
   });
   const anadas = sortAnadas([anada(2018), anada(null), anada(2020), anada(2019)]);
 
@@ -142,8 +148,14 @@ describe("imageForAnada", () => {
     temp_servicio_min: null,
     temp_servicio_max: null,
     produccion_botellas: null,
+    elaboracion: null,
+    cata_vista: null,
+    cata_nariz: null,
+    cata_boca: null,
     updated_at: "",
     variedades: [],
+    procedencia: {},
+    resumenes: [],
   };
   const a2020: Anada = { ...base, anio: 2020, imagenes: [img("2020")] };
   const a2019: Anada = { ...base, anio: 2019, imagenes: [] };

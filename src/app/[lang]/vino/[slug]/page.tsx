@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Attribution } from "@/components/catalog/attribution";
 import { CatalogImage } from "@/components/catalog/catalog-image";
+import { FieldSources, SummarySources } from "@/components/catalog/field-sources";
 import { AnadaNote, VinoActions } from "@/components/catalog/personal-actions";
 import { WineCard, wineCardLabels } from "@/components/catalog/wine-card";
 import { Container } from "@/components/layout/container";
@@ -21,6 +22,7 @@ import {
   pickAnada,
   truncate,
 } from "@/lib/catalog/format";
+import { pickResumen } from "@/lib/catalog/provenance";
 import { getOtrosVinos, getVino } from "@/lib/catalog/queries";
 import type { Anada, VinoFicha } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
@@ -90,7 +92,15 @@ export default async function WinePage({ params, searchParams }: Props) {
             </header>
 
             {vino.descripcion && (
-              <p className="max-w-prose whitespace-pre-line text-lg text-muted">{vino.descripcion}</p>
+              <div className="flex flex-col gap-1">
+                <p className="max-w-prose whitespace-pre-line text-lg text-muted">{vino.descripcion}</p>
+                <FieldSources
+                  lang={lang}
+                  labels={catalog.attribution}
+                  procedencia={vino.procedencia}
+                  campos={["descripcion"]}
+                />
+              </div>
             )}
 
             <VinoActions
@@ -220,8 +230,18 @@ function VintageDetails({
           : null,
     },
   ].filter((f): f is { label: string; value: string } => f.value !== null);
+  // Textos: el curado por el admin (añada, después vino) o el resumen propio generado a partir de hechos.
+  const elaboracion = anada.elaboracion ?? vino.elaboracion;
+  const resumenElaboracion = elaboracion ? null : pickResumen(anada.resumenes, ["elaboracion"], lang);
+  const cata = [
+    { label: wine.sight, value: anada.cata_vista },
+    { label: wine.nose, value: anada.cata_nariz },
+    { label: wine.palate, value: anada.cata_boca },
+  ].filter((c): c is { label: string; value: string } => c.value !== null);
+  const resumenCata = cata.length > 0 || anada.notas_cata ? null : pickResumen(anada.resumenes, ["cata"], lang);
   const hasDetails =
-    facts.length > 0 || anada.variedades.length > 0 || anada.maridaje || anada.notas_cata;
+    facts.length > 0 || anada.variedades.length > 0 || anada.maridaje || anada.notas_cata ||
+    elaboracion || resumenElaboracion || cata.length > 0 || resumenCata;
   const title = anada.anio === null ? wine.noVintageData : wine.vintageData(String(anada.anio));
 
   return (
@@ -287,10 +307,36 @@ function VintageDetails({
           </div>
         )}
 
-        {anada.notas_cata && (
+        {(elaboracion || resumenElaboracion) && (
+          <div className="flex flex-col gap-2">
+            <h4 className="text-sm font-semibold">{wine.elaboration}</h4>
+            <p className="max-w-prose whitespace-pre-line">{elaboracion ?? resumenElaboracion!.texto}</p>
+            {resumenElaboracion && (
+              <SummarySources labels={dict.catalog.attribution} resumen={resumenElaboracion} />
+            )}
+          </div>
+        )}
+
+        {(cata.length > 0 || anada.notas_cata || resumenCata) && (
           <div className="flex flex-col gap-2">
             <h4 className="text-sm font-semibold">{wine.tastingNotes}</h4>
-            <p className="max-w-prose whitespace-pre-line">{anada.notas_cata}</p>
+            {cata.length > 0 && (
+              <dl className="grid gap-3 sm:grid-cols-3">
+                {cata.map((c) => (
+                  <div key={c.label} className="flex flex-col gap-1">
+                    <dt className="text-sm text-muted">{c.label}</dt>
+                    <dd className="whitespace-pre-line">{c.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {anada.notas_cata && <p className="max-w-prose whitespace-pre-line">{anada.notas_cata}</p>}
+            {resumenCata && (
+              <>
+                <p className="max-w-prose">{resumenCata.texto}</p>
+                <SummarySources labels={dict.catalog.attribution} resumen={resumenCata} />
+              </>
+            )}
           </div>
         )}
 
@@ -300,6 +346,18 @@ function VintageDetails({
             <p className="max-w-prose whitespace-pre-line">{anada.maridaje}</p>
           </div>
         )}
+
+        <FieldSources
+          lang={lang}
+          labels={dict.catalog.attribution}
+          procedencia={anada.procedencia}
+          campos={[
+            "grado", "meses_crianza", "temp_servicio_min", "temp_servicio_max", "produccion_botellas",
+            "elaboracion", "cata_vista", "cata_nariz", "cata_boca", "notas_cata", "maridaje",
+          ]}
+          conValor={(c) => (anada as Record<string, unknown>)[c] != null}
+          className="border-t border-border pt-3"
+        />
       </div>
     </div>
   );

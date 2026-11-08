@@ -9,7 +9,10 @@ import type {
   CatalogImage,
   DenominacionRef,
   FilterOption,
+  Procedencias,
+  Resumen,
   SearchSuggestion,
+  ServicioBodega,
   VinoFicha,
   VinoListItem,
 } from "./types";
@@ -47,6 +50,59 @@ function visibleImages(images: RawImage[] | null, preferTipo: string): CatalogIm
     .map(({ url, alt, atribucion }) => ({ url, alt, atribucion }));
 }
 
+type EntidadFicha = "bodega" | "vino" | "anada";
+
+// Procedencia por campo y resúmenes propios de un conjunto de entidades
+// (tablas polimórficas: sin FK a la entidad, así que van en consultas aparte).
+async function procedenciaYResumenes(
+  tipo: EntidadFicha,
+  ids: string[],
+): Promise<{ procedencia: Map<string, Procedencias>; resumenes: Map<string, Resumen[]> }> {
+  const procedencia = new Map<string, Procedencias>();
+  const resumenes = new Map<string, Resumen[]>();
+  if (ids.length === 0) return { procedencia, resumenes };
+  const client = createPublicClient();
+  const [proc, res] = await Promise.all([
+    client
+      .from("procedencia_campos")
+      .select("entidad_id, campo, origen, url, observado_en, fuente:fuentes(nombre, url_base)")
+      .eq("entidad_tipo", tipo)
+      .in("entidad_id", ids),
+    client
+      .from("resumenes")
+      .select("entidad_id, campo, idioma, texto, fuentes")
+      .eq("entidad_tipo", tipo)
+      .in("entidad_id", ids),
+  ]);
+  if (proc.error) throw new Error(`procedencia(${tipo}): ${proc.error.message}`);
+  if (res.error) throw new Error(`resumenes(${tipo}): ${res.error.message}`);
+
+  for (const p of proc.data) {
+    const m = procedencia.get(p.entidad_id) ?? {};
+    m[p.campo] = { origen: p.origen, fuente: p.fuente, url: p.url, observado_en: p.observado_en };
+    procedencia.set(p.entidad_id, m);
+  }
+
+  const fuenteIds = [...new Set(res.data.flatMap((r) => r.fuentes))];
+  const fuentes = new Map<string, { nombre: string; url_base: string }>();
+  if (fuenteIds.length > 0) {
+    const f = await client.from("fuentes").select("id, nombre, url_base").in("id", fuenteIds);
+    if (f.error) throw new Error(`fuentes: ${f.error.message}`);
+    for (const x of f.data) fuentes.set(x.id, { nombre: x.nombre, url_base: x.url_base });
+  }
+  for (const r of res.data) {
+    const lista = resumenes.get(r.entidad_id) ?? [];
+    lista.push({
+      campo: r.campo,
+      idioma: r.idioma,
+      texto: r.texto,
+      fuentes: r.fuentes.flatMap((id) => (fuentes.has(id) ? [fuentes.get(id)!] : [])),
+    });
+    resumenes.set(r.entidad_id, lista);
+  }
+  return { procedencia, resumenes };
+}
+
 export async function getVino(slug: string): Promise<VinoFicha | null> {
   "use cache";
   cacheLife("catalogo");
@@ -56,13 +112,14 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
   const { data, error } = await createPublicClient()
     .from("vinos")
     .select(
-      `id, slug, nombre, tipo, crianza, descripcion, updated_at,
+      `id, slug, nombre, tipo, crianza, descripcion, elaboracion, updated_at,
        bodega:bodegas!inner(slug, nombre, municipio, provincia),
        denominacion:denominaciones(slug, nombre, tipo),
        fuente:fuentes(nombre, url_base),
        imagenes(${IMAGE_FIELDS}),
        anadas(id, anio, grado, meses_crianza, notas_cata, maridaje, temp_servicio_min,
-              temp_servicio_max, produccion_botellas, updated_at,
+              temp_servicio_max, produccion_botellas, elaboracion, cata_vista, cata_nariz,
+              cata_boca, updated_at,
               anada_variedades(porcentaje, variedad:variedades_uva(slug, nombre, color)),
               imagenes(${IMAGE_FIELDS}))`,
     )
@@ -70,6 +127,10 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
     .maybeSingle();
   if (error) throw new Error(`getVino(${slug}): ${error.message}`);
   if (!data) return null;
+  const [delVino, deAnadas] = await Promise.all([
+    procedenciaYResumenes("vino", [data.id]),
+    procedenciaYResumenes("anada", data.anadas.map((a) => a.id)),
+  ]);
 
   return {
     id: data.id,
@@ -78,7 +139,9 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
     tipo: data.tipo,
     crianza: data.crianza,
     descripcion: data.descripcion,
+    elaboracion: data.elaboracion,
     updated_at: data.updated_at,
+    procedencia: delVino.procedencia.get(data.id) ?? {},
     bodega: data.bodega,
     denominacion: data.denominacion,
     fuente: data.fuente,
@@ -94,7 +157,13 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
         temp_servicio_min: a.temp_servicio_min,
         temp_servicio_max: a.temp_servicio_max,
         produccion_botellas: a.produccion_botellas,
+        elaboracion: a.elaboracion,
+        cata_vista: a.cata_vista,
+        cata_nariz: a.cata_nariz,
+        cata_boca: a.cata_boca,
         updated_at: a.updated_at,
+        procedencia: deAnadas.procedencia.get(a.id) ?? {},
+        resumenes: deAnadas.resumenes.get(a.id) ?? [],
         variedades: a.anada_variedades
           .flatMap((av) => (av.variedad ? [{ ...av.variedad, porcentaje: av.porcentaje }] : []))
           .sort(
@@ -153,7 +222,10 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
     .from("bodegas")
     .select(
       `id, slug, nombre, descripcion, direccion, codigo_postal, municipio, provincia, comunidad,
-       web, telefono, email, redes, anio_fundacion, hectareas, estado, updated_at,
+       web, telefono, email, redes, anio_fundacion, hectareas, estado, historia,
+       enoturismo_web, enoturismo_email, enoturismo_telefono, updated_at,
+       servicios_bodega(id, tipo, titulo, descripcion, precio_desde, duracion_minutos, idiomas,
+                        horario, url_reserva, activo),
        fuente:fuentes(nombre, url_base),
        bodega_denominaciones(principal, denominacion:denominaciones(slug, nombre, tipo)),
        imagenes(${IMAGE_FIELDS})`,
@@ -162,6 +234,21 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
     .maybeSingle();
   if (error) throw new Error(`getBodega(${slug}): ${error.message}`);
   if (!data) return null;
+  const extra = await procedenciaYResumenes("bodega", [data.id]);
+  const servicios: ServicioBodega[] = data.servicios_bodega
+    .filter((s) => s.activo)
+    .sort((a, b) => a.tipo.localeCompare(b.tipo) || a.titulo.localeCompare(b.titulo))
+    .map((s) => ({
+      id: s.id,
+      tipo: s.tipo,
+      titulo: s.titulo,
+      descripcion: s.descripcion,
+      precio_desde: s.precio_desde,
+      duracion_minutos: s.duracion_minutos,
+      idiomas: s.idiomas,
+      horario: s.horario,
+      url_reserva: s.url_reserva,
+    }));
 
   const denominaciones: DenominacionRef[] = [...data.bodega_denominaciones]
     .sort(
@@ -188,6 +275,13 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
     anio_fundacion: data.anio_fundacion,
     hectareas: data.hectareas,
     estado: data.estado,
+    historia: data.historia,
+    enoturismo_web: data.enoturismo_web,
+    enoturismo_email: data.enoturismo_email,
+    enoturismo_telefono: data.enoturismo_telefono,
+    servicios,
+    procedencia: extra.procedencia.get(data.id) ?? {},
+    resumenes: extra.resumenes.get(data.id) ?? [],
     updated_at: data.updated_at,
     fuente: data.fuente,
     denominaciones,
