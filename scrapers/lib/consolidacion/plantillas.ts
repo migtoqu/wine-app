@@ -80,6 +80,72 @@ function descripcionBodega(h: Hechos, idioma: Idioma): string | null {
   return frases.join(" ");
 }
 
+const ORDINAL: Record<Idioma, string[]> = {
+  es: ["", "primera", "segunda", "tercera", "cuarta", "quinta", "sexta", "séptima", "octava", "novena", "décima"],
+  en: ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"],
+};
+
+function historiaBodega(h: Hechos, idioma: Idioma): string | null {
+  const nombre = h.texto("bodega.nombre");
+  const fundacion = h.numero("bodega.fundacion_anio");
+  const fundadores = h.textos("bodega.fundadores");
+  const familia = h.texto("bodega.familia");
+  const gen = h.numero("bodega.generacion");
+  const generacion = gen && Number.isInteger(gen) && gen >= 1 && gen <= 10 ? gen : null;
+  const primera = h.numero("bodega.primera_anada");
+  const inauguracion = h.conSujeto("bodega.hito").find((x) => x.sujeto === "inauguracion")?.valor ?? null;
+  const ha = h.numero("bodega.hectareas");
+  const altitud = h.numero("bodega.altitud");
+  const municipios = h.textos("bodega.vinedo_municipio");
+  const botellas = h.numero("bodega.produccion_botellas");
+  if (!nombre || (!fundacion && fundadores.length === 0 && !familia && !generacion && !primera && !inauguracion)) {
+    return null;
+  }
+
+  const n = NUM[idioma];
+  const frases: string[] = [];
+  if (idioma === "es") {
+    if (fundacion) frases.push(`${nombre} se fundó en ${fundacion}${fundadores.length ? ` por iniciativa de ${lista(fundadores, "es")}` : ""}.`);
+    else if (fundadores.length) frases.push(`${nombre} fue fundada por ${lista(fundadores, "es")}.`);
+    if (familia) {
+      frases.push(`Es propiedad de la familia ${familia}${generacion ? `, que la dirige ya en su ${ORDINAL.es[generacion]} generación` : ""}.`);
+    } else if (generacion) {
+      frases.push(`Hoy la dirige la ${ORDINAL.es[generacion]} generación de la familia.`);
+    }
+    if (primera) frases.push(`Su primera añada fue la de ${primera}.`);
+    if (inauguracion) frases.push(`La bodega actual se inauguró en ${inauguracion}.`);
+    if (ha || municipios.length) {
+      let f = ha ? `Cultiva ${n.format(ha)} ha de viñedo` : "Tiene viñedo propio";
+      if (municipios.length) f += ` en ${lista(municipios, "es")}`;
+      if (altitud) f += `, a unos ${n.format(altitud)} m de altitud`;
+      frases.push(f + ".");
+    } else if (altitud) {
+      frases.push(`Sus viñedos están a unos ${n.format(altitud)} m de altitud.`);
+    }
+    if (botellas) frases.push(`Produce unas ${n.format(botellas)} botellas al año.`);
+  } else {
+    if (fundacion) frases.push(`${nombre} was founded in ${fundacion}${fundadores.length ? ` by ${lista(fundadores, "en")}` : ""}.`);
+    else if (fundadores.length) frases.push(`${nombre} was founded by ${lista(fundadores, "en")}.`);
+    if (familia) {
+      frases.push(`It is owned by the ${familia} family${generacion ? `, now in its ${ORDINAL.en[generacion]} generation` : ""}.`);
+    } else if (generacion) {
+      frases.push(`It is run today by the ${ORDINAL.en[generacion]} generation of the family.`);
+    }
+    if (primera) frases.push(`Its first vintage was ${primera}.`);
+    if (inauguracion) frases.push(`The current winery opened in ${inauguracion}.`);
+    if (ha || municipios.length) {
+      let f = ha ? `It farms ${n.format(ha)} ha of vineyards` : "It farms its own vineyards";
+      if (municipios.length) f += ` in ${lista(municipios, "en")}`;
+      if (altitud) f += `, at around ${n.format(altitud)} m above sea level`;
+      frases.push(f + ".");
+    } else if (altitud) {
+      frases.push(`Its vineyards lie at around ${n.format(altitud)} m above sea level.`);
+    }
+    if (botellas) frases.push(`It produces around ${n.format(botellas)} bottles a year.`);
+  }
+  return frases.join(" ");
+}
+
 function elaboracionAnada(h: Hechos, idioma: Idioma): string | null {
   const uvas = h.conSujeto("anada.variedad");
   const barrica = h.numero("anada.barrica_meses");
@@ -133,6 +199,7 @@ export class PlantillasEsEn implements GeneradorResumen {
   async generar(e: EntradaResumen): Promise<string | null> {
     const h = new Hechos(e.hechos);
     if (e.entidad === "bodega" && e.campo === "descripcion") return descripcionBodega(h, e.idioma);
+    if (e.entidad === "bodega" && e.campo === "historia") return historiaBodega(h, e.idioma);
     if (e.entidad === "anada" && e.campo === "elaboracion") return elaboracionAnada(h, e.idioma);
     if (e.entidad === "anada" && e.campo === "cata") return cataAnada(h, e.idioma);
     return null;
