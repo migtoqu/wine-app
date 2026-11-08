@@ -7,7 +7,8 @@ import type { Contexto } from "../../lib/ejecucion.ts";
 import { ParadaFuente } from "../../lib/http.ts";
 import { RobotsDenegado } from "../../lib/robots.ts";
 import { claveNombreBodega } from "../../lib/texto.ts";
-import { GuardadoVinoseleccion } from "./guardar.ts";
+import { decisionAdmin } from "../../lib/consolidacion/supresiones.ts";
+import { GuardadoVinoseleccion, PREFIJO_SUPRIMIDA } from "./guardar.ts";
 import { normalizarVino } from "./normalizar.ts";
 import { parsearFicha, parsearListado, rutaProducto, urlListado, type TarjetaVs } from "./parsear.ts";
 
@@ -88,20 +89,42 @@ export async function scraperVinoseleccion(ctx: Contexto): Promise<void> {
         continue;
       }
 
-      // Ficha ya vinculada (por una ejecución anterior o por el admin): se reutiliza.
       const previo = guardado ? await guardado.registroPrevio(n.idExterno) : null;
+      const decision = decisionAdmin(previo);
+
+      // El admin borró la entidad o descartó la ficha: no se vuelve a crear.
+      if (guardado && (decision?.tipo === "suprimido" || decision?.tipo === "descartar")) {
+        ctx.contadores.descartados++;
+        await guardado.guardarRegistro(n, "descartado", null, { motivo: "decisión del admin" });
+        continue;
+      }
+
+      // Ficha ya vinculada (por una ejecución anterior o por el admin): se reutiliza.
       if (guardado && previo?.entidad_tipo === "anada" && previo.entidad_id) {
         const anada = await guardado.anadaVinculada(previo.entidad_id);
         if (anada) {
           const r = await guardado.guardarVino(n, "", { vinoId: anada.vino_id, anadaId: anada.id, datos: previo.datos });
-          await guardado.guardarRegistro(n, "emparejado", r.anadaId, null);
-          if (r.resultado === "actualizado") ctx.contadores.actualizados++;
+          if (r.tipo === "guardado" && r.resultado === "actualizado") ctx.contadores.actualizados++;
           else ctx.contadores.sinCambios++;
           continue;
         }
       }
 
-      const emp = emparejador.emparejar(n.senales);
+      // Decisión del admin en la cola de revisión: bodega (o vino) elegida a mano.
+      let bodegaForzada: string | null = null;
+      let vinoForzado: string | undefined;
+      if (guardado && (decision?.tipo === "asociar" || decision?.tipo === "crear") && decision.id) {
+        if (decision.entidad === "vino") {
+          vinoForzado = decision.id;
+          bodegaForzada = guardado.bodegaDelVino(decision.id);
+        } else if (decision.entidad === "bodega") {
+          bodegaForzada = decision.id;
+        }
+      }
+
+      const emp = bodegaForzada
+        ? { estado: "emparejado" as const, bodegaId: bodegaForzada, confianza: 1, candidatos: [] }
+        : emparejador.emparejar(n.senales);
       const sinTipo = emp.estado === "emparejado" && !n.vino.tipo;
       if (emp.estado === "revision" || sinTipo) {
         ctx.contadores.revision++;
@@ -116,14 +139,33 @@ export async function scraperVinoseleccion(ctx: Contexto): Promise<void> {
       }
 
       if (guardado) {
-        const r = await guardado.guardarVino(n, emp.bodegaId!, null);
-        await guardado.guardarRegistro(n, "emparejado", r.anadaId, emp);
-        if (r.resultado === "nuevo") ctx.contadores.nuevos++;
+        // La bodega candidata la borró el admin: no se cuelga el vino de otra.
+        if (emp.bodegaId!.startsWith(PREFIJO_SUPRIMIDA)) {
+          ctx.contadores.descartados++;
+          await guardado.guardarRegistro(n, "descartado", null, emp, emp.bodegaId!.slice(PREFIJO_SUPRIMIDA.length));
+          continue;
+        }
+        const r = await guardado.guardarVino(n, emp.bodegaId!, null, bodegaForzada ? null : emp, {
+          vinoId: vinoForzado,
+          crear: decision?.tipo === "crear",
+        });
+        if (r.tipo === "suprimido") {
+          ctx.contadores.descartados++;
+          await guardado.guardarRegistro(n, "descartado", null, { motivo: "suprimido por el admin" }, r.supresionId);
+        } else if (r.tipo === "revision") {
+          ctx.contadores.revision++;
+          await guardado.guardarRegistro(n, "revision", null, {
+            ...emp,
+            estado: "revision" as const,
+            motivo: r.vino.motivo === "parecido" ? "vino parecido en la bodega" : "EAN de otra bodega",
+            vinos: r.vino.candidatos,
+          });
+        } else if (r.resultado === "nuevo") ctx.contadores.nuevos++;
         else if (r.resultado === "actualizado") ctx.contadores.actualizados++;
         else ctx.contadores.sinCambios++;
       } else {
         ctx.salida.push({ estado: "emparejado", emparejamiento: emp, ...n });
-        ctx.log.info(`emparejado (${emp.confianza}, ${emp.candidatos[0]!.motivo}): ${n.datos.nombre} → ${emp.candidatos[0]!.nombre}`);
+        ctx.log.info(`emparejado (${emp.confianza}, ${emp.candidatos[0]?.motivo}): ${n.datos.nombre} → ${emp.candidatos[0]?.nombre}`);
       }
     } catch (e) {
       // Las URLs de entrada ya se comprobaron al empezar: una ficha suelta que

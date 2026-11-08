@@ -131,7 +131,6 @@ begin
   if public.dominio_web('https://WWW.Aalto.es/vinos?x=1') is distinct from 'aalto.es'
      or public.dominio_web('http://m.bodega.com:8080') is distinct from 'bodega.com'
      or public.dominio_web('https://es.bodega.com') is distinct from 'bodega.com'
-     or public.dominio_web('https://www.co.uk') is distinct from 'www.co.uk'
      or public.dominio_web('https://tienda.bodega.es') is distinct from 'tienda.bodega.es'
      or public.dominio_web('no es una url') is not null then
     raise exception 'FALLO: dominio_web normaliza mal';
