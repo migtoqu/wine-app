@@ -14,6 +14,21 @@ export type ClaveHecho =
   | "bodega.hectareas"       // number, unidad «ha»
   | "bodega.enoturismo"      // boolean: ofrece visitas
   | "bodega.horario_visitas" // string: «Lunes a Viernes: 10:00 h - 17:00 h; …»
+  | "bodega.fundadores"      // string, sujeto = clave del nombre: un fundador por hecho
+  | "bodega.familia"         // string: apellido(s) de la familia propietaria («Fernández Rivera»)
+  | "bodega.generacion"      // number: generación que dirige hoy la bodega (4 = cuarta)
+  | "bodega.altitud"         // number, unidad «m»: altitud del viñedo o la bodega
+  | "bodega.vinedo_municipio" // string, sujeto = clave del municipio: municipios con viñedo propio
+  | "bodega.primera_anada"   // number: año de la primera añada o cosecha
+  | "bodega.hito"            // number (año), sujeto = tipo de hito («inauguracion»)
+  | "bodega.produccion_botellas" // number: botellas al año
+  | "servicio.tipo"          // enum tipo_servicio
+  | "servicio.titulo"        // string: nombre corto de la experiencia
+  | "servicio.precio_desde"  // number, unidad «€»
+  | "servicio.duracion_minutos" // number, unidad «min»
+  | "servicio.idioma"        // string (ISO 639-1), sujeto = el mismo código
+  | "servicio.url_reserva"   // string: URL de reserva
+  | "vino.ean"               // string: EAN/GTIN de la botella
   | "vino.nombre"            // string
   | "vino.tipo"              // enum tipo_vino
   | "vino.crianza"           // enum crianza_vino
@@ -24,10 +39,10 @@ export type ClaveHecho =
   | "anada.grado"            // number, unidad «%»
   | "anada.temperatura_min"  // number, unidad «ºC»
   | "anada.temperatura_max"  // number, unidad «ºC»
-  | "anada.cata.vista"       // string: descriptor breve («rojo picota»)
-  | "anada.cata.nariz"       // string: descriptor breve («frutos negros»)
-  | "anada.cata.boca"        // string: descriptor breve («taninos pulidos»)
-  | "vino.maridaje";         // string: plato o categoría («carnes rojas»)
+  | "anada.cata.vista"       // string: descriptor breve («rojo picota»); varios → sujeto = descriptor
+  | "anada.cata.nariz"       // string: descriptor breve («frutos negros»); ídem
+  | "anada.cata.boca"        // string: descriptor breve («taninos pulidos»); ídem
+  | "vino.maridaje"          // string: plato o categoría («carnes rojas»); ídem
 
 export interface FuenteHecho {
   fuente_id: string;

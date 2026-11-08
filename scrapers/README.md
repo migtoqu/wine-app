@@ -7,6 +7,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | `ribera` | `cr-ribera-del-duero` | `bodegas`, `bodega_denominaciones`, `registros_fuente` | `scrape-ribera.yml` (lunes 03:17 UTC) |
 | `vinoseleccion` | `vinoseleccion` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `registros_fuente` | `scrape-vinoseleccion.yml` (miércoles 03:47 UTC) |
 | `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
+| `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves 02:37 UTC, 3 lotes) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
 
@@ -29,7 +30,7 @@ node scrapers/cli.ts vinoseleccion --dry-run --limit 10 --bodegas scrapers/out/r
 SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scrapers/cli.ts ribera
 ```
 
-Opciones: `--dry-run`, `--limit N` (máximo de fichas), `--out ruta.json` (salida del dry-run), `--bodegas ruta.json` (solo `vinoseleccion` en dry-run: bodegas candidatas desde el JSON de un dry-run de Ribera; sin él, todo va a revisión), `--verbose` (logs de cada petición). También vale `npm run scrape -- ribera --dry-run`.
+Opciones: `--dry-run`, `--limit N` (máximo de fichas; en `webs-bodegas`, de sitios), `--out ruta.json` (salida del dry-run), `--bodegas ruta.json` (solo `vinoseleccion` en dry-run: bodegas candidatas desde el JSON de un dry-run de Ribera; sin él, todo va a revisión), `--verbose` (logs de cada petición). También vale `npm run scrape -- ribera --dry-run`.
 
 El modo `--dry-run` **nunca crea el cliente de BD** (no hacen falta las variables). La ejecución real necesita la migración de semillas aplicada (fila en `fuentes` y la D.O. `ribera-del-duero`).
 
@@ -106,6 +107,49 @@ scrapers/
 - **Fichas**: se emparejan con `EmparejadorBodegas` (dominio web, nombre + municipio). **Nunca crea bodegas**: dudoso → `revision`; sin candidata (restaurantes, hoteles, bodegas fuera de la D.O.) → `descartado` y se reevalúa cada semana. Con origen `guia` (por debajo de la web de la bodega y del Consejo Regulador) aporta teléfono, email, web, dirección, código postal y año de fundación (solo si la prosa dice «fundada en AAAA» una sola vez); hechos `bodega.enoturismo`, `bodega.fundacion_anio` y `bodega.horario_visitas`.
 - **Eventos fechados** (`tribe_events`, 679): fuera del MVP. Caducan, se duplican en ES/EN y no son catálogo estable; exigirían agenda y caducidad.
 - Cargar **después de Ribera** (lunes) para tener las bodegas. Dry-run: `node scrapers/cli.ts ruta-ribera --dry-run --bodegas scrapers/out/ribera.json`.
+## Webs de bodegas (`fuentes/webs-bodegas/`)
+
+Crawler genérico de las webs oficiales (`bodegas.web`). Fase A: WordPress (API REST y Store API de WooCommerce) y HTML genérico (sitemap y enlaces). Shopify y Wix tienen su punto de extensión (`EXTRACTORES` en `sitio.ts`), que hoy cae en sitemap + HTML y lo dice en el log. Ver SOURCES §3.
+
+```bash
+# Dry-run con las webs de un dry-run de Ribera (o un .txt con una URL por línea, o URLs separadas por comas)
+node scrapers/cli.ts ribera --dry-run --limit 40 --out scrapers/out/ribera.json
+node scrapers/cli.ts webs-bodegas --dry-run --webs scrapers/out/ribera.json
+node scrapers/cli.ts webs-bodegas --dry-run --webs https://aalto.es,https://www.bodegadobler.com
+# Ejecución real: lee las bodegas con web de la BD (service role)
+node scrapers/cli.ts webs-bodegas --lote 1/3 --presupuesto-min 45
+node scrapers/cli.ts webs-bodegas --dominio aalto.es
+```
+
+**Entrada.** Bodegas con `web`, agrupadas por dominio (`dominioWeb`; se descartan redes, constructores y tiendas). Un dominio compartido por varias bodegas se rastrea una vez y su registro va a `revision`. Lotes: `--lote I/N` reparte por `sha1(dominio) mod N`, así los lotes no se pisan. Orden: primero los sitios nunca vistos y después los vistos hace más tiempo. Con `--presupuesto-min` (45 por defecto) no se empiezan sitios nuevos al agotarse: la ejecución queda `parcial` y la siguiente sigue por ahí. 6 dominios en paralelo, 3–5 s entre peticiones al mismo host y como mucho 40 peticiones de contenido por sitio, más la portada, robots y el aviso legal.
+
+**Puerta legal por sitio** (`puerta.ts`; la primera que falla salta el sitio, sin insistir):
+1. `exclusiones.json` (lista manual; `permitidos` para falsos positivos ya revisados) y `fuentes.activa = false` del sitio. El scraper nunca reactiva una fuente.
+2. Portada: 401/403/429 → `bloqueo_http`; desafío anti-bot (Cloudflare, SiteGround captcha, Incapsula, Sucuri, DataDome…) → `anti_bot`; red, TLS o 5xx → `inaccesible`. Solo la portada puede redirigir a otro dominio, y el host final vuelve a pasar la puerta entera (exclusiones, robots.txt, señales y aviso legal).
+3. `robots.txt` antes de cada URL. `Content-Signal: search=no` → `content_signal`. `ai-train=no`, `ai-input=no` y `noai`/`noimageai` (cabecera o meta) no bloquean: se guardan en `puerta.senales_ia` porque, si los resúmenes pasaran a un LLM, esos sitios tendrían que seguir con plantillas.
+4. Aviso legal (enlace de la portada o `/aviso-legal/`). Términos fuertes: scraping, crawlers, spiders, arañas, minería de (textos y) datos, extracción automatizada, reserva TDM del art. 4 de la Directiva 2019/790. Términos débiles: robots, bots, programas automáticos, «extraer contenidos»; solo cuentan con una prohibición a ≤ 200 caracteres y sin hablar de buscadores. Si coincide → `clausula_legal`, con un fragmento ≤ 200 caracteres para auditar.
+5. Página a página: `noindex` → no se extrae; `nofollow` → no se siguen sus enlaces; páginas con contraseña o tras login → no se leen.
+
+Cada sitio tiene su fila en `fuentes` (slug `web-<dominio>`, tipo `bodega`, `url_base` = la web). Se reutiliza por bodega aunque cambie el dominio. `notas_robots` deja el veredicto legible, por ejemplo «2026-11-08: excluida — el aviso legal prohíbe el rastreo… · «fragmento»». El detalle va en `registros_fuente.datos.puerta` del registro `sitio`. La ficha atribuye así campos y resúmenes a la web de cada bodega. Las ejecuciones se registran en la fuente madre `webs-bodegas`, una por lote.
+
+**Descubrimiento** (`sitio.ts`). WordPress:
+- WooCommerce Store API (`/wp-json/wc/store/v1/products`): vinos y experiencias con atributos y precio.
+- `/wp-json/wp/v2/types`: `page` y tipos personalizados (`vino`, `anada`, `visita`…). Primero se piden listados ligeros (`_fields=id,link,title`) y después el contenido de las páginas elegidas con `?include=` (una petición por tipo, sin los shortcodes de Divi/WPBakery).
+- Sin API, o con poco contenido: sitemap (`Sitemap:` de robots → `/sitemap_index.xml` → `/wp-sitemap.xml` → `/sitemap.xml`) y enlaces de la portada, con profundidad 2 desde los listados de vinos.
+
+Fuera quedan otros idiomas (`/en/`, `/pt-pt/`, `?lang=en`), noticias y blog, y carrito o cuenta. Clases (`clasificar.ts`, por tipo de WP, JSON-LD, ruta, título y migas): vino, historia (con la portada como respaldo), enoturismo, contacto y legal. Topes: 25 vinos, 4 de historia, 5 de enoturismo y 1 de contacto.
+
+**Hechos** (`extraer.ts` + `diccionarios.ts`; nunca se guarda una frase de la web):
+- Bodega: año de fundación (verbos de fundación; «desde AAAA» solo en la página de historia), fundadores, familia, generación, hectáreas de viñedo (en la misma frase que «viñedo/cultivo»), altitud, municipios con viñedo (lista cerrada = municipios de las bodegas de la BD), primera añada (no la de una persona en otra bodega), inauguración de la bodega y botellas al año. Columnas consolidadas: `anio_fundacion`, `hectareas`, `enoturismo_web/email/telefono` y `redes`. Nombre, municipio, teléfono y email principales siguen siendo del Consejo Regulador.
+- Vino: nombre sin añada, formato ni D.O.; tipo (palabras del nombre, etiqueta, recuento o color de las uvas); crianza (solo por palabras del nombre o la etiqueta «Tipo:»); uvas y % (diccionario con sinónimos; «tempranillo blanco» no es tempranillo; los % deben sumar ≤ 100; los % del roble no son uvas); meses de barrica (un número único); grado, añada, temperatura y EAN/GTIN (JSON-LD o texto, con dígito de control). Vista, nariz, boca y maridaje son descriptores de un diccionario cerrado dentro de la sección etiquetada, como «frutos negros» o «taninos pulidos». Hace falta evidencia de ficha técnica (≥ 2 marcadores; con Store API basta 1 o la categoría «vinos»). Packs, estuches, lotes, «2+2+2», copas y visitas no son vinos. Una página de listado con varias fichas se divide por encabezados.
+- Enoturismo: tipo (visita, cata, actividad, evento, restaurante, alojamiento), título (los genéricos como «Enoturismo» pasan a «Visita a la bodega»), precio desde (con contexto «persona/pax/precio», sin gastos de envío), duración (con contexto «duración/dura», nunca un horario), idiomas (ISO 639-1) y URL de reserva (plataformas como Turitop, Bookitit o FareHarbor, o un enlace «Reservar»).
+
+**Escritura** (`guardar.ts`, origen `bodega`):
+- Registro `sitio` → bodega (hechos de historia; `descartado` si la puerta no pasa). Resúmenes `historia` (plantilla nueva) y `descripcion`.
+- `vino:<ruta>[#<nombre>]` → añada: `EmparejadorVinos` dentro de la bodega (EAN, nombre; parecido o tipo desconocido → `revision`). Alta con la D.O. principal de la bodega, añada, uvas (solo si cambiaron; sin % no pisa un % existente), `codigos_ean` y `Consolidador` para tipo, crianza, grado, barrica y temperaturas. El nombre solo se fija al crear. Resúmenes `elaboracion` y `cata`.
+- `servicio:<tipo>:<título>` → `servicios_bodega` (por bodega + tipo + título normalizado) y `Consolidador` para precio, duración, idiomas y URL de reserva.
+- Supresiones y decisiones del admin respetadas en los tres.
+
 
 ## Emparejamiento vino → bodega (`emparejamiento/bodegas.ts`)
 

@@ -1,0 +1,22 @@
+{
+ "post": {
+  "slug": "post",
+  "rest_base": "posts",
+  "rest_namespace": "wp/v2"
+ },
+ "page": {
+  "slug": "page",
+  "rest_base": "pages",
+  "rest_namespace": "wp/v2"
+ },
+ "attachment": {
+  "slug": "attachment",
+  "rest_base": "media",
+  "rest_namespace": "wp/v2"
+ },
+ "project": {
+  "slug": "project",
+  "rest_base": "project",
+  "rest_namespace": "wp/v2"
+ }
+}

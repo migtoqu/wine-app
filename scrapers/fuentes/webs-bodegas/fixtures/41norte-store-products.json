@@ -1,0 +1,162 @@
+[
+ {
+  "id": 50,
+  "name": "41N Rosado",
+  "slug": "41n-rosado",
+  "permalink": "https://41norte.es/producto/41n-rosado/",
+  "short_description": "<p>4 meses en barrica criado sobre lías, Ribera del Duero. Valladolid</p>",
+  "description": "<p>[et_pb_section fb_built=»1&#8243; _builder_version=»4.16&#8243; custom_padding=»0px||||false|false» global_colors_info=»{}»][et_pb_row _builder_version=»4.16&#8243; background_size=»initial» background_position=»top_left» background_repeat=»repeat» width=»100%» custom_padding=»0px||0px||false|false» global_colors_info=»{}»][et_pb_column type=»4_4&#8243; _builder_version=»4.16&#8243; custom_padding=»|||» global_colors_info=»{}» custom_padding__hover=»|||»][et_pb_wc_breadcrumb _builder_version=»4.16&#8243; global_colors_info=»{}»][/et_pb_wc_breadcrumb][et_pb_wc_cart_notice _builder_version=»4.16&#8243; global_colors_info=»{}»][/et_pb_wc_cart_notice][/et_pb_column][/et_pb_row][et_pb_row column_structure=»1_2,1_2&#8243; _builder_version=»4.16&#8243; background_size=»initial» background_position=»top_left» background_repeat=»repeat» width=»100%» custom_padding=»0px||||false|false» global_colors_info=»{}»][et_pb_column type=»1_2&#8243; _builder_version=»4.16&#8243; custom_padding=»|||» global_colors_info=»{}» custom_padding__hover=»|||»][et_pb_wc_images _builder_version=»4.16&#8243; global_colors_info=»{}»][/et_pb_wc_images][/et_pb_column][et_pb_column type=»1_2&#8243; _builder_version=»4.16&#8243; custom_padding=»|||» global_colors_info=»{}» custom_padding__hover=»|||»][et_pb_wc_title _builder_version=»4.16&#8243; global_colors_info=»{}»][/et_pb_wc_title][et_pb_text _builder_version=»4.23&#8243; _module_preset=»default» global_colors_info=»{}»]</p>\n<p><span style=\"font-weight: 400\"><strong>Variedad</strong>: 100% Tempranillo<br /></span><span style=\"font-weight: 400\">Crianza en barrica: 4 meses en barrica nueva de roble francés.</span></p>\n<p><strong>Producción</strong><b>: </b><span style=\"font-weight: 400\">4.000 botellas </span></p>\n<p><strong>Notas de cata: </strong>Rosáceo intenso, marcadamente goloso y medicinal en nariz, regaliz rojo, confitura de fresa, especias dulces, fondo balsámico, agridulce en boca, con frescura especiada y balsámica. Notable estructura y equilibrio.</p>\n<p><strong>Visual</strong><b>: </b><span style=\"font-weight: 400\">limpio, brillante, color ligero. Piel de cebolla con reflejos salmón y ribetes  anaranjados indicando su paso por barrica. </span></p>\n<p><strong>Olfativa</strong><b>: </b><span style=\"font-weight: 400\">en nariz destaca la fruta roja, cassis con toques amielados y un ligero  recuerdo a bollería. </span></p>\n<p><strong>Gustativa</strong><b>: </b><span style=\"font-weight: 400\">en boca con entrada sedosa, bien equilibrado en el centro y final  mineral, de postgusto agradable con una fruta más madura.  </span></p>\n<p>[/et_pb_text][et_pb_wc_price _builder_version=»4.23&#8243; body_text_color=»#000000&#8243; global_colors_info=»{}»][/et_pb_wc_price][et_pb_wc_add_to_cart _builder_version=»4.23&#8243; _module_preset=»default» custom_button=»on» button_text_color=»#000000&#8243; button_bg_color=»#FFFFFF» button_border_color=»#000000&#8243; button_border_radius=»15px» button_font=»Cabin||||||||» button_icon=»&#x24;||divi||400&#8243; global_colors_info=»{}» button_bg_color__hover_enabled=»on|hover» button_bg_color__hover=»#000000&#8243; button_bg_enable_color__hover=»on»][/et_pb_wc_add_to_cart][/et_pb_column][/et_pb_row][et_pb_row _builder_version=»4.16&#8243; background_size=»initial» background_position=»top_left» background_repeat=»repeat» width=»100%» global_colors_info=»{}»][et_pb_column type=»4_4&#8243; _builder_version=»4.16&#8243; custom_padding=»|||» global_colors_info=»{}» custom_padding__hover=»|||»][et_pb_wc_tabs _builder_version=»4.16&#8243; global_colors_info=»{}»]\t\t\t\t\t[/et_pb_wc_tabs][et_pb_wc_upsells _builder_version=»4.16&#8243; global_colors_info=»{}»][/et_pb_wc_upsells][et_pb_wc_related_products _builder_version=»4.16&#8243; global_colors_info=»{}»][/et_pb_wc_related_products][/et_pb_column][/et_pb_row][/et_pb_section]</p>",
+  "categories": [
+   {
+    "name": "Vinos",
+    "slug": "vinos"
+   }
+  ],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Formato",
+    "taxonomy": "pa_formato",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 28,
+      "name": "Botella",
+      "slug": "botella"
+     },
+     {
+      "id": 29,
+      "name": "Caja de 3 botellas",
+      "slug": "caja-3-uds"
+     },
+     {
+      "id": 30,
+      "name": "Caja de 6 botellas",
+      "slug": "caja-6-uds"
+     }
+    ]
+   }
+  ],
+  "prices": {
+   "price": "700",
+   "currency_code": "EUR",
+   "currency_minor_unit": 2
+  },
+  "type": "variable"
+ },
+ {
+  "id": 34,
+  "name": "41N Vendimia Seleccionada",
+  "slug": "41n-vendimia-seleccionada",
+  "permalink": "https://41norte.es/producto/41n-vendimia-seleccionada/",
+  "short_description": "<p>41N Vendimia Seleccionada.</p>",
+  "description": "<p>92 puntos en la Guía de vinos y Aceites.</p>\n<p><strong>Crianza en barrica:</strong>  Envejecimiento en barrica nueva de roble francés</p>\n<p><strong>Producción:</strong> 9.000 botellas</p>\n<p><strong>Notas de cata: </strong>Fruta silvestre madura, roble cremoso, especias, ceras, confitura y licor de guindas, notas lácticas, regaliz, floral y telúrico. Taninos suculentos y firmes, especias (nuez moscada, pimienta rosa y negra), grafito y hierbas balsámicas al final.</p>\n<p><strong>Visual</strong>: Capa alta, limpio y brillante. Color cereza oscuro con ribete granate.</p>\n<p><strong>Aroma</strong>: Buena intensidad de frutos rojos maduros, monte seco y jara, ceras ligeras, apuntes licorosos especias secas (clavo, pimienta), frutos secos y balsámicos, limpio y complejo. Incluye notas de chocolate y regaliz</p>\n<p><strong>Taste</strong>: Acidez frutal roja con equilibrio . Especiado elegante y balsámico con taninos dulces.</p>\n<p>Tiene una entrada agradable y carnosa. Un centro agradable y bien equilibrado. Las notas afrutadas reaparecen en retrogusto.</p>\n<p><strong>Guarda:</strong> Más de 10 años Se recomienda abrir ½ hora antes de consumo. Vino no filtrado, puede decantar.</p>\n<p>Contiene Sulfitos</p>\n",
+  "categories": [
+   {
+    "name": "Caja 6 botellas",
+    "slug": "caja-6-botellas"
+   },
+   {
+    "name": "Vinos",
+    "slug": "vinos"
+   }
+  ],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Formato",
+    "taxonomy": "pa_formato",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 28,
+      "name": "Botella",
+      "slug": "botella"
+     },
+     {
+      "id": 29,
+      "name": "Caja de 3 botellas",
+      "slug": "caja-3-uds"
+     },
+     {
+      "id": 30,
+      "name": "Caja de 6 botellas",
+      "slug": "caja-6-uds"
+     }
+    ]
+   }
+  ],
+  "prices": {
+   "price": "1200",
+   "currency_code": "EUR",
+   "currency_minor_unit": 2
+  },
+  "type": "variable"
+ },
+ {
+  "id": 36,
+  "name": "Marcoli, 30 meses",
+  "slug": "marcoli-30-meses",
+  "permalink": "https://41norte.es/producto/marcoli-30-meses/",
+  "short_description": "<p>30 meses en barrica, elaborado uva a uva manualmente. Ribera del Duero.</p>",
+  "description": "<p><span style=\"font-weight: 400\"><strong>Variedad</strong>: 100% Tempranillo </span></p>\n<p><span style=\"font-weight: 400\"><strong>Crianza en barrica</strong>: 30 meses en barrica nueva de roble francés Crianza en botella: mínimo 24 meses </span></p>\n<p><b>Producción</b><span style=\"font-weight: 400\">: 1,160 botellas.  </span></p>\n<p><span style=\"font-weight: 400\">Uvas procedentes de viñas de 70 años, las uvas fueron separadas una a una manualmente, media fermentación carbónica, seguida de alcohólica y malo láctica en barricas francesas. Es un vino muy exclusivo del que se han producido únicamente 1160 botellas.  </span></p>\n<p><strong>Premios y Puntuaciones:</strong> Medalla de plata en Decanter y Broce en Japan Wine Challenge, 93 puntos en la Guia de vinos y Aceites 2019.</p>\n<p><b>Notas de cata: </b>Confitura de frutos negros, roble especiado y cremoso, ahumado, licoroso, jara y regaliz, telúrico, taninos firmes, excelente acidez cítrica, apuntes de after eight.</p>\n<p><b>Visual: </b><span style=\"font-weight: 400\">Limpio, capa de color muy alta y brillante de color picota con ribetes  cardenalicios. </span></p>\n<p><b>Olfativa: </b><span style=\"font-weight: 400\">Limpio con aromas muy complejos, destaca la fruta negra madura, grosella  y ciruela con toques de piel de naranja, grafito y hojas secas, balsámicos y clavo. </span></p>\n<p><b>Gustativa: </b><span style=\"font-weight: 400\">Elegante, goloso y complejo, con entrada amable, muy largo y con taninos  aterciopelados. Retrogusto recuero a frutas negras maduras. </span></p>\n<p><b>Guarda: </b><span style=\"font-weight: 400\">20 a 25 años</span></p>\n",
+  "categories": [
+   {
+    "name": "Vinos",
+    "slug": "vinos"
+   }
+  ],
+  "attributes": [
+   {
+    "id": 1,
+    "name": "Formato",
+    "taxonomy": "pa_formato",
+    "has_variations": true,
+    "terms": [
+     {
+      "id": 28,
+      "name": "Botella",
+      "slug": "botella"
+     },
+     {
+      "id": 29,
+      "name": "Caja de 3 botellas",
+      "slug": "caja-3-uds"
+     },
+     {
+      "id": 30,
+      "name": "Caja de 6 botellas",
+      "slug": "caja-6-uds"
+     }
+    ]
+   }
+  ],
+  "prices": {
+   "price": "6000",
+   "currency_code": "EUR",
+   "currency_minor_unit": 2
+  },
+  "type": "variable"
+ },
+ {
+  "id": 30,
+  "name": "41N Premium (2+2+2)",
+  "slug": "41n-premium-222",
+  "permalink": "https://41norte.es/producto/41n-premium-222/",
+  "short_description": "",
+  "description": "<p>Pack Premium 41N, compuesto por 2 botellas de 41N Vendimia Seleccionada, 2 botellas de 41N Boutique (Autor) y 2 botellas de Marcoli (Top)</p>\n<p>Contiene Sulfitos</p>",
+  "categories": [
+   {
+    "name": "Caja 6 botellas",
+    "slug": "caja-6-botellas"
+   }
+  ],
+  "attributes": [],
+  "prices": {
+   "price": "17800",
+   "currency_code": "EUR",
+   "currency_minor_unit": 2
+  },
+  "type": "simple"
+ }
+]
