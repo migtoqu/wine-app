@@ -1,8 +1,76 @@
 # Fuentes de datos del MVP: auditoría de `robots.txt` y términos
 
-> Auditoría realizada el 2026-11-07 con peticiones mínimas (≈ 25 en total, 3 s entre ellas, UA identificable). Responde a la tarea de la Fase 0 del roadmap y a la decisión §12.1 de [SCOPE.md](./SCOPE.md). No es asesoramiento jurídico.
+> Auditoría de la Fase 0 realizada el 2026-11-07 (§1 y §2, ≈ 25 peticiones) y **ampliación «ola 4» del 2026-11-08** (§3 en adelante, ≈ 350 peticiones repartidas en ~60 sitios, 2–3 s entre peticiones al mismo sitio, UA identificable, sin escribir en la BD). Responde a la decisión §12.1 de [SCOPE.md](./SCOPE.md). No es asesoramiento jurídico.
 
-## Resumen
+## Resumen de la ola 4 (ampliación de fuentes)
+
+Decisiones de partida (del usuario): **textos** = resumen propio redactado a partir de hechos extraídos, con enlace y atribución a la fuente, **nunca copia del texto**; **cobertura** = Ribera del Duero a fondo (incluido un crawler de las webs de las bodegas, columna `bodegas.web`) + Rioja + 1–2 D.O. grandes. Reglas de scraping: [SCOPE §7.3](./SCOPE.md).
+
+### Veredictos de un vistazo
+
+| # | Fuente | Qué aporta | Veredicto |
+| --- | --- | --- | --- |
+| 1 | C.R. D.O. Ribera del Duero | Bodegas (contacto, coordenadas, marcas) | Apta con condiciones (Fase 0, §1) |
+| 2 | Vinoselección | Vinos, añada, precio, cata | Apta con condiciones (Fase 0, §2) |
+| 3 | **Webs oficiales de las bodegas de Ribera** | Vinos, uvas, elaboración, historia, enoturismo | **Apta con condiciones**, sitio a sitio (§3) |
+| 4.1 | **Vinopremier** | Vinos, **EAN**, precio, D.O./uva/crianza en el texto | **Apta con condiciones** (§4.1) |
+| 4.2 | **Vinissimus** | ~5.000 vinos y ~1.500 bodegas; precio, graduación, uva | **Apta con condiciones** (§4.2) |
+| 4.3 | Bodeboca, Lavinia, Decántalo, El Corte Inglés | — | **No apta**: bloquean con desafío anti-bot / 403 (§4.3) |
+| 4.4 | Uvinum / Drinks&Co | — | **No verificada** (error 520 a nuestro UA); baja prioridad (§4.4) |
+| 5.1 | **C.R. DOCa Rioja** (`riojawine.com`) | ~213 bodegas, ~700 vinos, ~370 experiencias con reserva | **Apta con condiciones** (§5.1) |
+| 5.2 | **D.O. Rueda** (2.ª D.O. recomendada) y **D.O. Navarra** | Bodegas con web; Navarra: bodegas, vinos y experiencias estructurados | **Apta con condiciones** (§5.2) |
+| 6.1 | **Ruta del Vino Ribera del Duero** | Actividades, catas, visitas, precios, eventos | **Apta con condiciones** (§6.1) |
+| 6.2 | Rutas del Vino de España (ACEVIN), Rioja Alavesa, Turismo CyL | Enoturismo de otras rutas | Con condiciones, sin auditar a fondo (§6.2) |
+| 7.1 | **Wikidata** (CC0) | Fundación/fundadores/coordenadas de bodegas notables, variedades | **Apta** (§7.1) |
+| 7.2 | Wikipedia (CC BY-SA) | Contexto histórico | Con condiciones (solo hechos, no texto) (§7.2) |
+| 7.3 | Registros oficiales (AESAN RGSEAA, datasets autonómicos) | NIF / nº de registro para emparejar | Por verificar formato y licencia (§7.3) |
+
+### Prioridades y orden recomendado de implementación
+
+Valor y coste de 1 (bajo) a 5 (alto). Se ordena por valor/coste, ajustado por dependencias (las bodegas de una D.O. deben existir antes de colgarles vinos).
+
+| Orden | Fuente | Valor | Coste | Por qué en ese puesto |
+| --- | --- | --- | --- | --- |
+| **1** | C.R. DOCa Rioja (§5.1) | 5 | 2 | Abre Rioja entera (bodegas + vinos + experiencias con enlace de reserva). HTML en servidor, sitemap, plantillas regulares, sin bloqueos. Crea las bodegas de Rioja y sus webs (alimentan el crawler). |
+| **2** | Vinopremier (§4.1) | 4 | 2 | Único con **EAN** visible y JSON-LD `Product`. Es casi un clon del parser de Vinoselección (Magento). ~370 vinos de Ribera medidos; ~6.900 productos en total. |
+| **3** | Ruta del Vino Ribera del Duero (§6.1) | 4 | 1 | Enoturismo con precios y enlaces de reserva por API pública de WordPress/WooCommerce (JSON, sin HTML). |
+| **4** | Crawler de webs de bodegas, fase A: WordPress (§3) | 5 | 4 | Es lo más rico (historia, elaboración, uvas, visitas), pero necesita extracción de hechos desde texto libre. ~85 % de las webs vivas son WordPress con `wp-json` y sitemap. |
+| **5** | Vinissimus (§4.2) | 3 | 2 | Mucho volumen (≈ 5.000 vinos, 1.538 páginas de bodega) y robots permisivo, pero JSON-LD pobre y sin EAN; valor sobre todo en precio/disponibilidad y cobertura de vinos. |
+| **6** | D.O. Navarra y D.O. Rueda (§5.2) | 3 | 1–2 | Navarra es casi gratis (sitemaps por tipo, WP REST). Rueda aporta ~74 bodegas con web y encaja con el crawler. |
+| **7** | Wikidata (§7.1) | 2 | 1 | SPARQL gratis, CC0, pero solo ~243 bodegas españolas (55 con fecha de fundación): úsese para las notables y para variedades. |
+| **8** | Crawler fase B: otras plataformas y Rioja/Rueda/Navarra (§3) | 4 | 3 | Reutiliza la fase A para las webs de las bodegas nuevas; añade extractores Shopify/Wix/HTML genérico. |
+| **9** | Registros oficiales RGSEAA / autonómicos (§7.3) | 2 | 3 | Solo aportan NIF/nº de registro para deduplicar; formato y licencia sin confirmar. |
+| **10** | ACEVIN / otras rutas (§6.2) | 2 | 3 | Útil en cuanto se amplíe a más D.O.; estructura no auditada. |
+| — | Uvinum (§4.4) | 2 | ? | Primero comprobar acceso. |
+| — | Bodeboca, Lavinia, Decántalo, El Corte Inglés | — | — | Descartadas mientras bloqueen (no se elude ningún bloqueo). |
+
+**Cobertura esperable tras 1–6:** Ribera ≈ 300 bodegas (ya) + ~700–900 vinos (Vinoselección ≈ 350, Vinopremier ≈ 370 con solapamiento, más webs de bodega); Rioja ≈ 210 bodegas del Consejo (el DOCa tiene más inscritas: la web solo muestra las adheridas) y ≈ 700 vinos. El objetivo de ~2.000 vinos en Ribera **no se alcanza solo con tiendas** (Vinoselección ≈ 350 y Vinopremier ≈ 370, con alto solapamiento); se llega sumando los vinos de las webs de las propias bodegas (≈ 5–8 vinos por bodega × ~150 bodegas con web con vinos ≈ 750–1.200) y la cobertura de Rioja.
+
+### Claves de emparejamiento disponibles por fuente
+
+Para consolidar duplicados (columnas previstas en el plan de consolidación: `dominio`, `nif`, `registro_embotellador`, EAN, nombre normalizado + municipio). ✔ = disponible de forma fiable; ~ = parcial; ✘ = no.
+
+| Fuente | Dominio web | EAN | NIF / nº registro | Nombre + municipio | Otras claves |
+| --- | --- | --- | --- | --- | --- |
+| C.R. Ribera | ✔ (`Web`) | ✘ | ✘ (no hay NIF en la ficha; el nombre es la razón social «…, S.L.») | ✔ (razón social + municipio + provincia) | ID de nodo Drupal (`nodo:NNNN`), slug, email, teléfono, coordenadas, lista de **marcas** de la bodega |
+| Vinoselección | ✘ | ~ (campo `ean` vacío en las muestras) | ✘ | ~ (`item_brand` puede ser el grupo) | SKU (`AGR-DL0027`), URL de ficha, faceta `vinos/bodegas/<x>` |
+| Webs de bodegas | ✔ (es la propia clave) | ~ (solo tiendas WooCommerce con GTIN) | ~ (a veces en el aviso legal: «CIF/NIF» del titular) | ✔ (JSON-LD `Organization`/`PostalAddress` en algunas) | email/teléfono de contacto, redes sociales |
+| Vinopremier | ✘ | ✔ (**EAN** visible en ficha: «EAN: 84370…») | ✘ | ✔ (marca/bodega en el JSON-LD y en el texto) | SKU (`VT-AALTO`), slug |
+| Vinissimus | ✘ | ✘ | ✘ | ✔ (`brand` JSON-LD; página `/es/bodega/<x>/`) | SKU (`braya23`), región en breadcrumb |
+| C.R. Rioja | ✔ (`Ver tienda`/web en la ficha) | ✘ | ✘ | ✔ (nombre comercial + municipio + zona) | email, teléfono, slug propio |
+| Ruta del Vino Ribera | ✔ (en cada ficha `directories`) | ✘ | ✘ | ✔ | ID de WordPress, coordenadas |
+| Wikidata | ✔ (`P856`) | ✘ | ✘ | ✔ (`rdfs:label`, municipio `P131`) | **QID** estable, coordenadas `P625`, fundación `P571` |
+| RGSEAA (AESAN) | ✘ | ✘ | ✔ (**nº RGSEAA**, razón social) — por verificar | ✔ | Domicilio |
+
+Orden de fiabilidad recomendado para fusionar bodegas: **dominio web** (igual en Consejo, Rioja, Ruta, Wikidata y web propia) > NIF/nº registro (cuando exista) > nombre normalizado + municipio. Para vinos: **EAN** > bodega + nombre normalizado + añada + formato. Ojo: un grupo puede compartir dominio entre varias bodegas y varias bodegas pueden apuntar a la web de una marca: el dominio es clave fuerte, no única.
+
+### Política de textos (decidida)
+
+Descripciones, historia, notas de cata y elaboración **no se copian**. Se extraen **hechos** (año de fundación, fundador, hectáreas, uvas y %, meses y tipo de barrica, graduación, producción, precios y duración de visitas, idiomas) y con ellos se redacta un **resumen propio**, guardando `url` de la ficha original, nombre de la fuente y fecha de captura (`registros_fuente`, `resumenes.fuentes`). Esto encaja con todos los avisos legales revisados, ninguno de los cuales protege los hechos, pero sí el texto y las imágenes. Las imágenes se enlazan (`og:image`/JSON-LD), nunca se copian. Cuando un sitio prohíbe expresamente robots/crawlers en su aviso legal o *Content Signals*, **no se rastrea** aunque `robots.txt` lo permita.
+
+---
+
+## Condiciones comunes de la Fase 0 (Ribera y Vinoselección)
 
 | Fuente | Qué aporta | Veredicto |
 | --- | --- | --- |
@@ -173,11 +241,202 @@ Condiciones: las comunes + usar solo URLs limpias y `?p=N`, sin ningún otro par
 
 ### Alternativa equivalente investigada (por si se rechaza)
 
-No se ha verificado en profundidad ninguna; candidatas de SCOPE §7.1 a auditar con este mismo método (robots + términos) antes de elegir: **Bodeboca**, **Decántalo**, **Lavinia**. Alternativa de datos de producto no comercial: **Open Food Facts** (licencia abierta, ODbL) para EAN/imágenes de vinos, con cobertura limitada de vino español.
+Auditadas en la ola 4 (§4): **Vinopremier** y **Vinissimus** son accesibles y se pueden usar como sustituto o complemento; **Bodeboca, Lavinia, Decántalo y El Corte Inglés** bloquean con desafío anti-bot. Alternativa de datos de producto no comercial: **Open Food Facts** (licencia abierta, ODbL) para EAN/imágenes de vinos, con cobertura limitada de vino español.
 
 ---
 
-## 3. Recomendaciones técnicas para los scrapers
+## 3. Webs oficiales de las bodegas de Ribera
+
+Muestra: las **40 primeras fichas** de un `node scrapers/cli.ts ribera --dry-run --limit 40` (45 peticiones, 181 s) → 34 URLs con `web` (85 %) → **24 dominios distintos** (varias fichas repiten dominio con/sin `/`). Por dominio: `GET /`, `GET /robots.txt`, `GET /wp-json/wp/v2/types`, el sitemap y, en 8 sitios, la página de aviso legal. UA identificable, 2 s entre peticiones, `robots.txt` evaluado antes de cada ruta. Los datos crudos están en la carpeta de notas de la sesión (`sources-wave4-webs-ribera-scan.json`).
+
+### Resultados
+
+| Pregunta | Resultado (de 24 dominios) |
+| --- | --- |
+| Web viva con nuestro UA | **21 (88 %)**. 2 devuelven **403** a nuestro UA desde la portada (`bodegasarbas.com`, `bodegaconvento.com`: WAF; no se insiste ni se elude); 1 falla en red/TLS (`bodegamatarromera.es`, a reintentar) |
+| CMS | **WordPress ≈ 19/21 (90 %)**; Divi, Elementor y WPBakery como constructores; ≥ 9 con WooCommerce o tipo `product`; 1 sitio ASP clásico (`bodegasangabriel.com`) y 1 HTML estático. **Ninguna** en Shopify, Wix, PrestaShop, Squarespace ni Joomla |
+| `robots.txt` | 21/21 responden 200; **8,2 KB en total (≈ 390 B de media)**; ninguno excluye `/` ni el sitemap; WordPress por defecto (`Disallow: /wp-admin/`). Ningún `Crawl-delay` |
+| Sitemap | 21/21 con sitemap XML (Yoast `post/page/product-sitemap.xml` o `wp-sitemap-*.xml` del núcleo); suelen traer 3–10 sub-sitemaps; un sitio ASP trae 144 URLs |
+| API WordPress `/wp-json/wp/v2/types` | **18/21 públicos (86 %)**; 1 con 401 (bloqueado), 1 con 404. Tipos útiles detectados: `product` (WooCommerce), `bodegas` (Fernández Rivera), `vino` (Dobler), `anada` (Tomás Postigo), `productos`/`proyectos` (Bardos), `project`/`portfolio` |
+| JSON-LD | En 14/21 de portadas, pero casi todo es el grafo genérico de Yoast (`WebSite`, `WebPage`, `Organization`, `BreadcrumbList`). **Ninguna** expone `Product`, `Winery` ni `Offer` en la portada. Solo `Organization` (9) y, en una, `PostalAddress` |
+| Navegación localizable por texto del enlace | «vinos/tienda/productos» en **14/21 (67 %)**, «historia/nosotros/la bodega» en **12/21 (57 %)**, «enoturismo/visitas/catas/experiencias» en **9/21 (43 %)** (cota inferior: solo mira los enlaces de portada; el sitemap añade más) |
+| Aviso legal (muestra de 8) | 8,4–21,4 mil caracteres, plantilla de gestoría. Todos reservan propiedad intelectual y 6 mencionan la reproducción; **ninguno menciona scraping**; **1 (`abadiadeacon.com`) prohíbe expresamente «robots», «spiders», «crawlers»** y reclama indemnización → excluir ese sitio |
+
+### Estrategia del crawler genérico
+
+El crawler **no escribe en el catálogo**: deja *hechos* en `registros_fuente.hechos` y el generador de resúmenes redacta el texto (ver «Política de textos»). Un sitio = un trabajo; una conexión por dominio y 3–5 s entre peticiones (reglas de §8); concurrencia global ≤ 8 dominios a la vez.
+
+1. **Entrada y filtros.** Dominios de `bodegas.web` normalizados (https, sin `/` final, mismo host tras redirecciones; se rechazan redirecciones a otro dominio, como `lib/http.ts`). Un dominio compartido por varias bodegas se rastrea una vez.
+2. **Puerta de cumplimiento.** (a) `robots.txt` (ya implementado). (b) Localizar el aviso legal (enlace «aviso legal» o `/aviso-legal`) y buscar con una lista fija `robots|spiders|crawlers|scraping|minería de datos|extracción automática|content-signal`; si coincide, `rastreable=false` y revisión del admin. (c) Respetar `Content-Signal`/cabeceras `X-Robots-Tag: noai` si aparecen. (d) 401/403/429/desafío anti-bot = parar ese sitio y marcarlo, sin cambiar UA ni IP.
+3. **Huella de plataforma.** `<meta name="generator">`, `/wp-json/` en `<link rel="https://api.w.org/">`, `wp-content`, `cdn.shopify.com`, `wixstatic`. Decide el extractor.
+4. **Descubrimiento.** Primero sitemap (`Sitemap:` de robots → `/sitemap_index.xml` → `/wp-sitemap.xml` → `/sitemap.xml`), expandiendo índices con tope. Si no hay: enlaces de portada y menú a profundidad ≤ 2, mismo host, máx. ~40 páginas por sitio. Filtrar por idioma (`/es/`, o la única lengua; las páginas `/en/` solo si no hay `/es/`).
+5. **Clasificación de páginas** (por slug + título + `<h1>` + tipos JSON-LD, ES/EN):
+   - vino/producto: `vino|vinos|nuestros-vinos|productos|tienda|shop|wines|gama|marcas`, o `Product`;
+   - historia: `historia|la-bodega|bodega|nosotros|quienes-somos|filosofia|about|our-story`;
+   - enoturismo: `enoturismo|visitas?|visita-la-bodega|catas?|experiencias|reservas?|wine-tourism|tours?|eventos`;
+   - contacto/legal para redes y teléfono.
+6. **Extractores por plataforma** (de menor a mayor coste):
+   - **WordPress** (≈ 90 %): `GET /wp-json/wp/v2/types` para descubrir CPT (`product`, `vino`, `bodegas`, `anada`…), luego `GET /wp-json/wp/v2/<rest_base>?per_page=100&_fields=id,slug,link,title,content,modified` y `/pages?slug=`. Evita HTML y respeta paginación `X-WP-TotalPages`. **WooCommerce**: `/wp-json/wc/store/v1/products` si es público (precio, categorías, atributos; solo URL e imagen enlazada). Cuando `wp-json` está cerrado (401/404), cae al HTML del sitemap.
+   - **JSON-LD / microdatos / OpenGraph** en cualquier plataforma: `Product`/`Offer` (nombre, precio, GTIN/EAN, marca), `Organization`/`PostalAddress`/`sameAs` (redes), `Event` (catas con fecha), `Winery`/`LocalBusiness`.
+   - **Shopify** (`/products.json`, `/collections/*.json`) y **Wix**: previstos pero sin casos en la muestra; implementar solo cuando aparezcan en `bodegas.web`.
+   - **HTML genérico**: contenido principal (readability) → texto plano para extraer hechos; sin ejecutar JavaScript (no Playwright).
+7. **Extracción de hechos** del texto (regex + diccionario `variedades_uva` con sinónimos; opcionalmente un LLM *solo para extraer campos estructurados*, no para copiar texto): año de fundación («fundada en 1987»), fundadores, hectáreas, altitud, uvas y %, «N meses en barrica de roble francés/americano», graduación («14,5 % vol»), producción en botellas, añada, precio de visita («25 € por persona»), duración, idiomas, horario, URL/mail/teléfono de reserva. Cada hecho guarda la URL de la página y un fragmento mínimo (≤ 200 caracteres) para auditoría, no para mostrar.
+8. **Cadencia.** Mensual (no semanal), o semanal solo para sitios cuyo sitemap cambie (`lastmod`/`ETag`). Presupuesto: ≈ 12 peticiones por sitio de arranque + ≈ 10–25 páginas de contenido ⇒ **~25–40 peticiones por sitio, ≈ 6.000–9.000 por pasada de ~225 sitios**. A 4 s por dominio y 8 dominios en paralelo, ≈ 50–75 min: dividir en 2–3 *jobs* de matriz o por lotes de dominios (el *job* de Actions tiene `timeout-minutes: 60`).
+
+### Cobertura esperada (sobre 302 bodegas de Ribera)
+
+| Etapa | Estimación |
+| --- | --- |
+| Con `web` | ≈ 255 (85 %) |
+| Web viva y rastreable (sin WAF, sin cláusula anti-robots) | ≈ 215–225 (84–88 % de las anteriores) |
+| Con extractor «barato» (WordPress REST o sitemap + JSON-LD) | ≈ 190 |
+| Con página de vinos identificada | ≈ 145 (67 %) → ≈ 5–8 vinos por bodega ⇒ **~750–1.100 vinos** |
+| Con historia | ≈ 125 (57 %) |
+| Con enoturismo identificado | ≈ 95–100 (43 %); con precio/reserva estructurados, ≈ 40–50 (la mayoría solo dice «visitas con reserva previa») |
+| Con uvas/crianza/cata *estructuradas* (no solo prosa) | ≈ 30–40 % de las que tienen página de vinos |
+
+Riesgos: texto en imágenes o PDF (fichas técnicas en PDF: solo URL, no leer PDF en la v1); sitios con *age gate* en JavaScript (el HTML suele traer el contenido tras el aviso; si no, se descarta); bodegas que apuntan a una tienda de un tercero (Shopify/Vivino): se ignora; nombres de producto con añada incrustada («Aalto 2021»).
+
+**Veredicto: apta con condiciones**, sitio a sitio: `robots.txt` + escaneo de cláusula anti-robots + sin WAF + enlace/atribución + solo hechos. Contacto de retirada en el UA.
+
+---
+
+## 4. Tiendas con mucho catálogo (Ribera y Rioja)
+
+Resumen: con nuestro UA solo **Vinopremier** y **Vinissimus** responden con normalidad. **Bodeboca, Lavinia, Decántalo y El Corte Inglés** muestran un desafío anti-bot o `Access Denied` incluso en rutas permitidas; al no poder (ni deber) saltarlo quedan descartadas hasta que cambie, y se puede pedir permiso por escrito a la tienda.
+
+| Tienda | Plataforma | `robots.txt` | Sitemap | Volumen | EAN | Estado con nuestro UA |
+| --- | --- | --- | --- | --- | --- | --- |
+| Vinopremier | Magento 2 | Permisivo (bloquea carrito, buscador, filtros por query, `/feed/`) | Sí, por idioma; productos 6.927 URLs | Ribera ≈ **369**; total ~6.900 | **Sí** | 200 |
+| Vinissimus | Propia (rutas `external_to_zope`) | Muy permisivo | Sí, 8.549 URLs | ~5.070 vinos, 1.538 bodegas, 481 regiones, 376 uvas | No | 200 |
+| Bodeboca | — | **403 también en `robots.txt`** (desafío «Just a moment» de Cloudflare) | — | — | — | Bloqueada |
+| Lavinia | Cloudflare delante | `Allow: /` para `*`, pero con *Content Signals* (`ai-train=no`) y «reservas de derechos bajo el artículo 4» | Desafío Cloudflare | — | — | Bloqueada |
+| Decántalo | PrestaShop + Cloudflare | `crawl-delay: 1`, lista larga de bots vetados; `*` bloquea buscador y parámetros | **403** («Attention Required») | — | — | Bloqueada |
+| El Corte Inglés | Akamai | **`Access Denied` en `robots.txt`** | — | — | — | Bloqueada |
+| Uvinum / Drinks&Co | WordPress | `Disallow: /visit/`, `/login/`, `/search/`… | `sitemap_index.xml` → **520** | — | — | Sin verificar |
+| Vinoteca.es | Shopify | Permisivo | Sí | — | — | **Descartada**: vende *vinotecas* (armarios de vino), no vino |
+
+### 4.1 Vinopremier (`vinopremier.com`) — apta con condiciones
+
+- **robots.txt** (para `*`): bloquea `/app/`, `/checkout/`, `/customer/`, `/catalogsearch/`, `/catalog/product/view/`, `/catalog/category/view/`, `/review/`, `/ajax/`, `/feed/`, `/amfeed/`, `/private-feed/` y las queries `price=`, `dir=`, `product_list_*=`, `vp_bodega=`, `vp_do=`, `vp_pais=`, `mg_related_*=`. **No bloquea** `?p=` ni las URLs limpias de producto y categoría. Sin `Crawl-delay`. Declara siete sitemaps.
+- **Términos:** no se han podido leer: `/aviso-legal` devolvió 403 a nuestra herramienta de lectura y las condiciones de venta están en `/condiciones-de-venta`. **Pendiente de revisar a mano antes de programar** (si aparece una cláusula anti-scraping, descartar).
+- **Rutas útiles:** índice `https://vinopremier.com/media/sitemap/sitemap_es_index.xml` → `…_products.xml` (6.927 URLs) y `…_products_outstock.xml`; categoría `https://vinopremier.com/vinos/denominaciones/d-o-ribera-del-duero` (30 productos/página, 369 en total → 13 páginas con `?p=N`); ficha `https://vinopremier.com/vino-tinto-aalto.html`.
+- **Estructura:** ficha de 345 KB. JSON-LD `Product` con `name`, `sku` (`VT-AALTO`), `description` (HTML truncado, reservado), `image`, `offers[0].price`/`availability`, `brand` y `manufacturer` (la bodega); `BreadcrumbList` con la D.O. (`/vinos/denominaciones/…`). **EAN** visible («EAN: 8437003104763») y en atributo `ean`. Texto libre con «Zona: D.O. Ribera del Duero. Bodega: Aalto. Uva: 100 % Tinto Fino. Crianza: 20 meses en barricas de roble americano y francés». Las variedades y la crianza salen de ahí con regex.
+- **Campos frente al esquema:** nombre ✔; bodega ✔ (`manufacturer`); D.O. ✔; uvas y % ~ (texto libre); crianza ~ (texto libre); añada ~ (a veces en el nombre); precio/disponibilidad ✔; formato ~ (productos de 9 L aparecen como producto aparte, `…-9-litros.html`); **EAN ✔**; imagen ✔ (enlazar); cata ✘ (casi nunca).
+- **Riesgos:** comercio con ánimo de lucro (misma mitigación que Vinoselección: contacto y atribución); formato no siempre explícito; páginas pesadas. **Veredicto: apta con condiciones** (comunes de la Fase 0 + leer los términos).
+
+### 4.2 Vinissimus (`www.vinissimus.com`) — apta con condiciones
+
+- **robots.txt:** una sola regla para `*`: bloquea `cart`, `checkout`, `checkout-fail`, `account`, `order*`, `newsletter-preferences`, `unsubscribed` en `es/en/fr/it/de`; veta además bots de entrenamiento (CCBot, Bytespider, meta-externalagent…). Sitemap declarado. Sin `Crawl-delay`.
+- **Términos:** no localizados (`/es/aviso-legal.html` 404; el pie solo enlaza `/es/privacidad.html`). **Pendiente.**
+- **Rutas:** `https://www.vinissimus.com/external_to_zope/web_downloads/sitemap.xml` → `…sitemap_vinissimus_com_es.xml` (1,2 MB, 8.549 URLs: 5.070 `/es/vino/<slug>/`, 1.538 `/es/bodega/<slug>/`, 481 `/es/region/<país>/<región>/`, 376 `/es/uva/<uva>/`, 278 cava, 99 champán…). Regiones relevantes: `/es/region/espana/ribera-del-duero/`, `/rioja/`, `/rueda/`, `/navarra/` (volumen por región no medido: hay que paginar su listado).
+- **Estructura de la ficha:** JSON-LD `Product` mínimo: `name` («Bimbache La Raya 2023», **añada en el nombre**), `sku`, `image`, `category` (color: «Blanco»), `brand.name`, `offers.price`/`url`/`availability`. En el HTML: productor, tipo de uva («Uvas blancas»; no la variedad), **graduación** («13,5 %»), región con *breadcrumb* (`España › Islas Canarias › El Hierro`), alérgenos, formatos y precio por 1/2/3 botellas, opiniones.
+- **Campos:** nombre ✔, añada ✔ (del nombre), bodega ✔, región/D.O. ✔, tipo/color ✔, graduación ✔, precio/disponibilidad ✔, formato ✔ («0,75 L»), imagen ✔ (CDN propia; enlazar), EAN ✘, variedades % ✘ (solo enlaces de facetas), cata ~ (en algunas).
+- **Riesgos:** términos sin leer; plataforma propia (cambios sin aviso); ánimo comercial. **Veredicto: apta con condiciones**; usarla para precio/ofertas y para descubrir vinos que faltan, no como fuente de descripciones.
+
+### 4.3 Bodeboca, Lavinia, Decántalo, El Corte Inglés — no aptas
+
+Evidencia (2026-11-08, UA `wine-app-bot/0.1`):
+
+- **Bodeboca:** `GET /robots.txt` → **403** con página «Just a moment…» (desafío de Cloudflare).
+- **Lavinia:** `robots.txt` 200 con `Allow: /` y la advertencia de que cualquier restricción de las *Content Signals* es «express reservations of rights under Article 4» de la Directiva 2019/790 (excepción de minería de textos y datos); además veta a ClaudeBot, GPTBot, etc. `GET /sitemap.xml` → desafío Cloudflare. Aunque nuestro UA no figura en los vetados, el sitio manifiesta reserva de TDM y desafía a los bots: no rastrear.
+- **Decántalo:** `robots.txt` 200 (`crawl-delay: 1`); `GET /sitemap.xml` → **403** «Attention Required! | Cloudflare».
+- **El Corte Inglés:** `GET /robots.txt` → **`Access Denied`** (Akamai).
+
+Saltarse estos desafíos va contra las reglas del proyecto. Opciones: (1) escribir a cada tienda ofreciendo atribución y tráfico y pedir acceso a un feed/afiliados (preguntar si ofrecen afiliación o *feeds* de producto: sería la vía legítima para obtener EAN y precio; no se ha comprobado que existan); (2) esperar a que levanten el bloqueo. **Veredicto: no apta** por ahora.
+
+### 4.4 Uvinum / Drinks&Co (`www.uvinum.es`) — no verificada
+
+`robots.txt` 200 y corto (WordPress virtual: `Disallow: /visit/`, `/login/`, `/search/`, `/wp-admin/`, `*?s=0`), pero `sitemap_index.xml` devolvió **520** (error del origen o filtro) a nuestro UA. Es un *marketplace* (precios de varios vendedores, enlaces `/visit/` redirigen al vendedor). No se insistió. Volver a probar en otro momento antes de auditar términos; prioridad baja.
+
+### 4.5 Otras
+
+- **Supermercados** (Mercadona, Carrefour, DIA): sus `robots.txt` existen (Mercadona permite todo; DIA bloquea `/products/`; Carrefour bloquea `/buscador/`), pero su catálogo de vino de D.O. es pequeño, volátil y orientado a marca blanca; no aportan bodegas ni historia. No se auditaron términos. Baja prioridad.
+- **Vivino y Wine-Searcher:** `robots.txt` bloquea precios, reseñas y acciones (`/prices/`, `/reviews/`, `/ajax/`…); son agregadores con API propia y términos que se esperan restrictivos; sus reseñas son contenido de usuarios. **No recomendadas**; no se leyeron los términos.
+
+---
+
+## 5. Consejos reguladores
+
+### 5.1 C.R. DOCa Rioja (`riojawine.com`) — apta con condiciones
+
+- WordPress + Yoast (HTML renderizado en servidor; contenido accesible aunque haya *age gate* en JavaScript). Idiomas `/es/`, `/en-gb/`, `/de-de/`.
+- **robots.txt:** `*` solo bloquea `/wp-includes/`, `/cgi-bin/`, `/wp-content/plugins/`, `/wp-content/themes/`, `/wp-admin/`; veta herramientas de copia (HTTrack, WebCopier, Offline Explorer…). Sitemaps declarados: `sitemap-es-es.xml`, `sitemap-en-gb.xml`, `sitemap-de-de.xml`. Sin `Crawl-delay`.
+- **Aviso legal** (`/es/aviso-legal/`): copias solo «para su uso exclusivo»; prohíbe copiar, distribuir, modificar o comunicar públicamente sin autorización, **prohíbe el uso comercial o la comercialización de la información** y declara que «no concede licencia o autorización alguna» sobre los elementos protegidos; prohíbe eludir dispositivos técnicos de protección. **No menciona scraping ni minería de datos.** Aplicación al proyecto: datos factuales (nombre, municipio, zona, web, teléfono) con enlace y atribución; sin copiar textos ni imágenes; recomendable **avisar al Consejo** (ya es nuestro modelo con la D.O. Ribera) porque el proyecto es privado y sin ánimo de lucro por ahora, pero cambiaría en la fase pública.
+- **Rutas:** sitemap ES (`https://riojawine.com/sitemap-es-es.xml`, 283 KB, generado con Screaming Frog 20.3: puede estar desfasado respecto al sitio, igual que el de Ribera): **~213** `/bodegas-rioja/<slug>/`, **~700** `/vinos-rioja/<slug>/`, **~371** `/experiencia/<slug>`, 60 `/visita-rioja/municipios/<m>`, 15 variedades de uva (`/doca-rioja/variedades-de-uva/…`), tipos de vino y las tres zonas (Rioja Alta, Alavesa, Oriental).
+- **Estructura observada (3 fichas leídas):**
+  - **Bodega** (`/bodegas-rioja/bodegas-muga/`): nombre, zona y municipio («Rioja Alta · Haro»), «Ver tienda», **web, teléfono, email, dirección**; texto de historia/elaboración (reservado; ejemplo: fundación 1932 y fundador están en la prosa → hecho extraíble), etiquetas («Familiares», «Centenarias», «Con calados históricos»), vinos y experiencias relacionados.
+  - **Vino** (`/vinos-rioja/ysios-los-prados/`): nombre, bodega y zona, **precio** («€60,00»), tipo (tinto/blanco/rosado/espumoso) por categoría, descripción con la uva («uvas Tempranillo…»).
+  - **Experiencia** (`/experiencia/a-pie-de-vina/`): título, zona/municipio, botón **«Reservar experiencia»** (enlace externo), «Ver tienda», web, teléfono y email de reservas; categorías por perfil (en familia, en pareja…).
+  - Sin JSON-LD de producto/negocio (solo navegación). Hay que usar selectores del tema.
+- **Campos frente al esquema:** `bodegas` (nombre, municipio, zona, web, teléfono, email, dirección) ✔; vinos (nombre, tipo, precio) ✔, uvas y notas ~ (prosa); `servicios_bodega` (título, tipo, url_reserva, contacto) ✔, precio/duración ~ (prosa); EAN ✘; NIF ✘.
+- **Cobertura:** el DOCa Rioja tiene más bodegas inscritas que las ~213 que publica esta web (solo las adheridas); el resto se alcanzaría con el crawler de webs. Riesgo de que el Consejo restrinja el rastreo en la fase pública. **Veredicto: apta con condiciones** (comunes + aviso al Consejo + sin uso comercial hasta tener autorización).
+
+### 5.2 Segunda D.O.: recomendación
+
+Candidatas comprobadas con `robots.txt` y sitemap (1–3 peticiones cada una):
+
+| D.O. | Acceso | Lo que ofrece |
+| --- | --- | --- |
+| **Rueda** (`dorueda.com`) | `robots.txt` vacío (permite todo) | Tabla única de **74 bodegas** (localidad, nombre, web/blog/red social, «visitable» / Ruta del Vino de Rueda, tienda online); fichas `…/bodegas/?pdb=NNN`; sin dirección ni teléfono de la bodega; sin listado de vinos |
+| **Navarra** (`navarrawine.com`) | Permisivo (solo `/wp-admin/`) | WordPress con tipos propios y **sitemaps por tipo**: `bodegas` (~29), `vinos` (~253), `experiencias` (~27); `wp-json/wp/v2` público |
+| Penedès (`dopenedes.cat`) | Permisivo | WordPress; sitemaps de entradas y `tipus_activitat` (actividades); sin sitemap de bodegas/vinos localizado |
+| Toro (`dotoro.es`) | Permisivo | Pequeña (WordPress); sin auditar |
+| Rías Baixas (`doriasbaixas.com`) | **403** a `robots.txt` (WAF) | No accesible |
+| Cava, Jumilla, Bierzo, La Mancha | Sin respuesta desde la red de pruebas | No evaluadas |
+
+**Recomendación: Rueda como segunda D.O. de la ola**, con **Navarra** como extra casi gratuito:
+
+1. Rueda es grande por producción y reconocimiento, vecina de Ribera (Castilla y León), con robots abierto, y su listado (nombre + localidad + web) es exactamente la entrada que necesita el crawler de la §3, que aporta los vinos y la historia. Cobertura inmediata en tiendas (Vinopremier y Vinissimus tienen página de región).
+2. Navarra ofrece **datos estructurados oficiales** de bodegas, vinos y experiencias a bajo coste (sitemaps y REST), útil como segundo piloto del extractor WordPress. Su tamaño es modesto (≈ 29 bodegas publicadas).
+3. Rías Baixas, la otra gran D.O., hoy no es accesible (WAF); se cubriría por tiendas y webs de bodega.
+
+Los términos de Rueda y Navarra **no se han leído** todavía: auditarlos al empezar. **Veredicto: apta con condiciones** (provisional).
+
+---
+
+## 6. Rutas del vino y enoturismo
+
+### 6.1 Ruta del Vino Ribera del Duero (`rutadelvinoriberadelduero.es`) — apta con condiciones
+
+- WordPress (Elementor, JetEngine, The Events Calendar, WooCommerce, Directory Pro), bilingüe ES/EN. Promovida por el Consorcio Ruta del Vino Ribera del Duero (marca «Ribérate»); un folleto de 2025 cita **70 bodegas adheridas**.
+- **robots.txt:** solo bloquea logs/uploads de WooCommerce, `wp-admin`, `wp-includes`, plugins y temas. Sitemap Yoast: `sitemap_index.xml`.
+- **Aviso legal:** todos los derechos reservados; la transmisión, reproducción, comunicación pública, transformación o almacenamiento, total o parcial, requiere permiso previo por escrito; fuera de eso, solo uso estrictamente privado. **No menciona** bases de datos, scraping ni minería. Contacto: `info@riberate.com`. Aplicación: hechos (nombre de actividad, precio, duración, enlace de reserva, bodega) con enlace; escribir al Consorcio para pedir conformidad antes de producción (tiene interés: les enviamos tráfico).
+- **Rutas útiles:** `product-sitemap.xml` (171 URLs ≈ 85 productos ES+EN: **paquetes y experiencias**), `directories-sitemap.xml` (857 URLs ≈ 430 fichas ES: bodegas, restaurantes, alojamientos, patrimonio, municipios), `tribe_events-sitemap.xml` (679 eventos), `rutas-tematicas-sitemap.xml`. API: `/wp-json/wp/v2/types` (tipos `product`, `directories`, `tribe_events`, `rutas-tematicas`) y **WooCommerce Store API pública** `/wp-json/wc/store/v1/products?per_page=…` (devuelve `name`, `permalink`, `prices`, `categories`; los productos son de tipo `external` → URL de reserva en la web del vendedor/bodega).
+- **Campos frente al esquema (`servicios_bodega`):** tipo (visita, cata, maridaje, spa…) ~ (categoría/atributos), título ✔, descripción (reservada: solo extracto/enlace), `precio_desde` ✔ cuando no es 0 (muchos productos salen a 0 € porque el precio está en el enlace externo), duración/idiomas/horario ~ (texto), `url_reserva` ✔ (permalink o URL externa). Vínculo con la bodega: por la **web/dominio** de la ficha de `directories`.
+- **Riesgos:** precios 0 € o caducados (promociones como «Noviembre Mes del Enoturismo»); duplicados ES/EN; los eventos tienen fecha y caducan. **Veredicto: apta con condiciones.**
+
+### 6.2 Rutas del Vino de España (ACEVIN), Rioja Alavesa y similares — con condiciones, sin auditar a fondo
+
+- **Rutas del Vino de España** (`wineroutesofspain.com`): `robots.txt` 200 vacío (todo permitido). Portal con **38 rutas** y un subdominio de experiencias (`experienciasrve.wineroutesofspain.com`) con reservas; las fichas por ruta y los términos no se han leído. Útil en cuanto se amplíe a más D.O. (cada ruta suele remitir a su propia web, ver §6.1 como modelo).
+- **Rioja Alavesa** (`riojaalavesa.com`): WordPress con `robots.txt` por defecto. Las experiencias de Rioja ya vienen del Consejo (§5.1: 371 fichas con reserva), así que no es prioritaria.
+- **Turismo Castilla y León** (`turismocastillayleon.com`): `robots.txt` bloquea el buscador interno y rutas de gestión; folletos PDF de las rutas del vino (no extraer: solo enlazar).
+
+---
+
+## 7. Fuentes abiertas
+
+### 7.1 Wikidata (CC0) — apta
+
+- Sin restricciones de licencia (**CC0**); API SPARQL (`query.wikidata.org/sparql`) y `Special:EntityData/<QID>.json`, con UA identificable y consultas ligeras.
+- **Cobertura medida (2026-11-08):** 243 bodegas con `País = España` (clase *bodega*, `Q156362` y subclases): **55 con fecha de fundación (P571), 62 con web (P856), 168 con coordenadas (P625)**. Es decir, cubre sobre todo las bodegas famosas; en Ribera y Rioja será una fracción pequeña de las ~500 bodegas.
+- **Uso recomendado:** (a) hechos de historia de bodegas notables (fundación, fundadores `P112`, propietario `P127`, sede `P159`, municipio `P131`) para el resumen propio; (b) **QID** y `P856` como clave de emparejamiento y como enlace «Wikipedia/Wikidata» desde la ficha; (c) sinónimos y color de **variedades de uva** y relaciones de las D.O. (para `variedades_uva`, `denominaciones`); no medido el volumen.
+- **Riesgo:** datos escasos y desiguales; la calidad se verifica con la web de la bodega. **Veredicto: apta**, coste muy bajo.
+
+### 7.2 Wikipedia (CC BY-SA 4.0) — con condiciones
+
+Los textos son CC BY-SA: copiarlos obliga a atribuir y a compartir igual. Dado que el proyecto redacta resúmenes propios, usar Wikipedia solo como fuente de hechos (y enlazarla desde el resumen), vía la API de MediaWiki con UA propio; **no pegar fragmentos**.
+
+### 7.3 Registros oficiales (MAPA, AESAN, comunidades) — por verificar
+
+- **MAPA:** publica informes anuales de DOP/IGP de vinos (Word/PDF, agregados por D.O.: nº de bodegas, producción, comercialización). Útil como **contraste de volumen**, no como lista de bodegas. No hay un dataset de bodegas embotelladoras del MAPA localizado.
+- **AESAN – RGSEAA:** su sección «Datos abiertos» enlaza `/registro-sanitario` y `/registro-sanitario/empresas-alimentarias` («empresas alimentarias establecidas en España»). **No se ha podido confirmar** formato, campos (razón social, nº RGSEAA, domicilio, actividad), actualización ni licencia. Si trae razón social + nº RGSEAA + municipio sería la mejor clave de emparejamiento oficial (los embotelladores llevan registro propio, p. ej. el nº de embotellador que figura en la etiqueta). Revisarlo antes de decidir.
+- **Comunidades autónomas** (datos.gob.es): hay conjuntos con descarga (CSV/JSON/XLSX): *Bodegas* de la Región de Murcia (CSV), *Bodegas de vino y txakoli de Euskadi*, *Registro de industrias agroalimentarias de Castilla-La Mancha*. **No se localizó** uno de Castilla y León ni de La Rioja (queda revisar los portales de datos abiertos de la Junta de Castilla y León y del Gobierno de La Rioja). Licencias habituales: CC BY / reutilización de la Ley 37/2007; confirmar por conjunto.
+- **Veredicto: con condiciones / por investigar**; prioridad baja (solo aportan claves de emparejamiento y verificación).
+
+---
+
+## 8. Recomendaciones técnicas para los scrapers
 
 ### User-Agent y cabeceras
 
@@ -210,3 +469,12 @@ Más `Accept-Language: es-ES,es;q=0.9`. Usar un email de contacto dedicado del p
 ### Seguridad del repo público
 
 - Los scrapers no necesitan secretos de las fuentes (todo es público). Solo `SUPABASE_SERVICE_ROLE_KEY`/DB URL como GitHub Secrets; workflows con secretos no deben ejecutarse en PRs de forks (SCOPE §12.6).
+
+### Añadidos de la ola 4
+
+- **Puerta de cumplimiento por sitio** para el crawler de webs de bodegas (§3): `robots.txt` + búsqueda de cláusulas anti-robot en el aviso legal + no continuar ante 401/403/429/desafío. Registrar el motivo en `fuentes.notas_robots` / `registros_fuente`.
+- **Concurrencia:** una conexión y 3–5 s por dominio, pero varios dominios distintos en paralelo (≤ 8) para que el crawler de ~225 sitios quepa en jobs de < 60 min; partir en matriz de lotes.
+- **Preferencia de datos:** API pública de WordPress/WooCommerce y sitemaps antes que HTML; JSON-LD antes que selectores; PDF y JavaScript fuera de la v1.
+- **TDM:** respetar las reservas expresas de minería de textos y datos (p. ej. Lavinia, art. 4 de la Directiva 2019/790) como si fueran `Disallow`.
+- **Auditar los términos cuando se implemente** cada fuente de §4–§6 marcada «pendiente»; este documento no sustituye esa lectura.
+- **Fuentes de la ola 4 con aviso previo recomendado:** C.R. DOCa Rioja y Consorcio Ruta del Vino Ribera (reservan derechos y piden permiso para reproducir; ofrecemos atribución y enlace).
