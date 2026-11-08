@@ -6,6 +6,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | --- | --- | --- | --- |
 | `ribera` | `cr-ribera-del-duero` | `bodegas`, `bodega_denominaciones`, `registros_fuente` | `scrape-ribera.yml` (lunes 03:17 UTC) |
 | `vinoseleccion` | `vinoseleccion` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `registros_fuente` | `scrape-vinoseleccion.yml` (miércoles 03:47 UTC) |
+| `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
 
@@ -96,6 +97,15 @@ scrapers/
   - El vino se busca dentro de su bodega con `EmparejadorVinos` (EAN, nombre normalizado); uno muy parecido va a revisión. Si la ficha trae EAN, se guarda en `codigos_ean`.
   - Lo que el admin borra (bodega, vino, añada, imagen) o fusiona no se recrea: ver supresiones.
   - Hechos: tipo, uvas, barrica, grado y temperatura → resumen propio `elaboracion` de la añada (es/en).
+
+## Rioja (C.R. DOCa Rioja, `riojawine.com`)
+
+- Parte de `sitemap-es-es.xml` (≈213 bodegas, ≈700 vinos, ≈371 experiencias) y pide directamente `/es/<ruta>/` (las URLs del sitemap redirigen). ≈1.290 peticiones, ≈90 min; `--limit N` se aplica **por tipo**. Orden: bodegas → vinos → experiencias; el progreso se registra por tipo.
+- `id_externo`: `bodega:<slug>`, `vino:<slug>`, `exp:<slug>`. Idempotente: una ejecución cortada se repite entera sin duplicar.
+- **Bodegas**: contacto, web, municipio, dirección, coordenadas, año de fundación (solo «desde/fundada en AAAA» en la línea destacada) y D.O. Rioja. Provincia/comunidad: por código postal (01 Álava, 09 Burgos, 26 La Rioja, 31 Navarra), tabla de municipios o zona «Rioja Alavesa»; nunca La Rioja por defecto (si no hay pista, queda vacía).
+- **Vinos**: la ficha solo da el nombre de la bodega (sin enlace). Bodega por: enlace explícito desde la ficha de bodega (si lo hubiera) → clave de nombre → vinos hermanos («Más vinos de la bodega»). Ambiguo o sin candidata → `revision`. Tipo, crianza (palabras del nombre/«Envejecimiento»; «Genérico» no dice nada), añada y uvas (sin porcentajes). Registro sobre la añada → resumen propio `elaboracion`. El precio queda en `datos`.
+- **Experiencias** → `servicios_bodega` (`tipo`, `precio_desde` mínimo, duración, idiomas, horario, `url_reserva`). Bodega por el enlace «Sobre la bodega»; sin él → `revision`.
+- No se copian descripciones ni imágenes ni redes sociales. Aviso legal del Consejo: prohíbe el uso comercial (la app es privada).
 
 ## Emparejamiento vino → bodega (`emparejamiento/bodegas.ts`)
 
