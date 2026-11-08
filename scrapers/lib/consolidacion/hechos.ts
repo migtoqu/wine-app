@@ -13,6 +13,7 @@ export type ClaveHecho =
   | "bodega.fundacion_anio"  // number
   | "bodega.hectareas"       // number, unidad «ha»
   | "bodega.enoturismo"      // boolean: ofrece visitas
+  | "bodega.horario_visitas" // string: «Lunes a Viernes: 10:00 h - 17:00 h; …»
   | "vino.nombre"            // string
   | "vino.tipo"              // enum tipo_vino
   | "vino.crianza"           // enum crianza_vino
