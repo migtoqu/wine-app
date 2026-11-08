@@ -68,7 +68,7 @@ scrapers/
 - `bodegas.nombre` es la razón social sin forma societaria (S.L., S.A., S.L.U., Soc. Coop.…) y sin mayúsculas forzadas. El slug es propio y estable: se fija al crear (`nombre` → `nombre-municipio` → `nombre-2`…) y no se regenera.
 - Vinculación: registro existente → su bodega; si no, bodega con la misma clave de nombre (p. ej. creada a mano; solo se rellenan sus huecos); si no, bodega nueva.
 - En ejecuciones posteriores solo se reescriben los campos cuyo valor normalizado cambió respecto a lo que esta fuente escribió la vez anterior (`datos.campos`). Así no se pisan correcciones del admin, y sí llegan los cambios de la fuente y las mejoras de normalización. Los registros de la primera carga no tienen `campos` y se reescriben enteros una vez.
-- Ribera del Duero se añade como D.O. de la bodega (principal si no tiene otra).
+- Ribera del Duero se añade como D.O. de la bodega (principal si no tiene otra) solo al vincularla por primera vez: si después el admin se la quita, no se vuelve a poner.
 - Si el listado trae menos del 50 % de las bodegas conocidas, la ejecución queda `parcial`.
 
 ## Vinoselección
@@ -91,7 +91,8 @@ scrapers/
   - El precio del JSON-LD puede ser el de la variante por defecto (a veces una caja). Por eso `datos.tarjeta` guarda también el precio, el nº de botellas y el precio por botella de la tarjeta.
 - **Idempotencia**:
   - `id_externo` es la ruta del producto. Una ficha ya vinculada a una añada, por una ejecución anterior o porque el admin resolvió una revisión, reutiliza esa añada sin volver a emparejar.
-  - Al volver a ejecutar, solo se reescriben los campos de la añada que cambiaron en la fuente.
+  - Al volver a ejecutar, solo se reescriben los campos de la añada que cambiaron en la fuente. Con la composición de uvas igual: se compara con lo escrito la vez anterior (`datos.variedades`); en registros anteriores a ese campo solo se rellena una añada sin uvas.
+  - Lo que el admin borra (bodega, vino, añada) puede volver a crearse en la siguiente ejecución: no hay lista de descartes.
 
 ## Emparejamiento vino → bodega (`emparejamiento/bodegas.ts`)
 

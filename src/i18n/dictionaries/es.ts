@@ -1,6 +1,9 @@
+import admin from "./admin/es";
+
 // Diccionario de referencia: define la forma de todos los demás (ver en.ts).
 // Para textos con variables usa funciones: greeting: (name: string) => `Hola, ${name}`.
 const es = {
+  admin,
   meta: {
     title: "wine-app",
     description:

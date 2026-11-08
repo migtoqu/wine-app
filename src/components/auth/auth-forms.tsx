@@ -1,7 +1,7 @@
 "use client";
 
 import NextLink from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Button, Input } from "@/components/ui";
 import { localePath, type Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/es";
@@ -95,6 +95,14 @@ export function LoginForm({
 export function RegisterForm({ lang, labels }: { lang: Locale; labels: Labels }) {
   const [state, action, pending] = useActionState(signUp, initialFormState);
   const { field, message } = useErrors(labels, state);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  // El enlace que copia el admin lleva ?email=: se rellena en el cliente para
+  // no hacer dinámica la página (se lee después de hidratar).
+  useEffect(() => {
+    const email = new URLSearchParams(window.location.search).get("email");
+    if (email && emailRef.current && !emailRef.current.value) emailRef.current.value = email;
+  }, []);
 
   if (state.status === "success") {
     return <SuccessPanel title={labels.checkEmailTitle} text={labels.registerDone} lang={lang} back={labels.backHome} />;
@@ -110,6 +118,7 @@ export function RegisterForm({ lang, labels }: { lang: Locale; labels: Labels })
         type="email"
         autoComplete="email"
         required
+        ref={emailRef}
         defaultValue={state.values?.email}
         error={field("email")}
       />

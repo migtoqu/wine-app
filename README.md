@@ -121,4 +121,12 @@ npm run typecheck
 - Tablas en plural; tablas puente `<a>_<b>` (`bodega_denominaciones`). PK `id uuid`, FKs `<entidad>_id`.
 - `created_at` / `updated_at` en cada tabla; `updated_at` lo mantiene el trigger `public.set_updated_at()`.
 - RLS activada en **todas** las tablas. El catálogo es de lectura pública y solo lo escriben los admin (`public.is_admin()`); scrapers y comprobador de enlaces usan la *service role key*.
-- `supabase/tests/rls_check.sql`, `supabase/tests/auth_check.sql` y `supabase/tests/espacio_personal_check.sql` (favoritos y notas, aislamiento entre usuarios) comprueban las políticas como anon, usuario y admin (y el registro por invitación) dentro de una transacción que se deshace (`begin … rollback`).
+- `supabase/tests/*.sql` (`rls_check`, `auth_check`, `admin_check`, `espacio_personal_check`…) comprueban las políticas como anon, usuario y admin, el registro por invitación y el panel de admin dentro de una transacción que se deshace (`begin … rollback`). El job `db` del CI los ejecuta todos contra un Supabase local (`supabase start`, Docker) con `ON_ERROR_STOP=1`; nunca contra la base remota.
+
+### Panel de admin
+
+`/[lang]/admin`: invitaciones (con el enlace de registro para enviar a mano, `/registro?email=…`), usuarios y roles, y CRUD de bodegas, vinos, añadas, D.O. y uvas.
+
+- Cada Server Action vuelve a llamar a `requireAdmin()` y usa el cliente de sesión (RLS de admin), nunca la *service role key*. Helpers en `src/lib/admin/server.ts`; validación pura en `src/lib/admin/validation.ts`.
+- En la BD (`20261109100000_admin.sql`): el trigger `proteger_ultimo_admin` impide quedarse sin admins (cambio de rol o borrado del usuario), `admin_listar_usuarios()` añade el email y el último acceso, y `admin_guardar_denominaciones_bodega()` / `admin_guardar_variedades_anada()` guardan esas relaciones en una transacción.
+- Las ediciones del admin no las pisan los scrapers mientras la fuente no cambie ese mismo dato (ver `scrapers/README.md`).
