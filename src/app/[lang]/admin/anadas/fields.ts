@@ -2,7 +2,8 @@ import type { FieldDef, Option } from "@/components/admin/entity-form";
 import type { Dictionary } from "@/i18n/dictionaries/es";
 import type { Database } from "@/lib/supabase/database.types";
 
-type Row = Database["public"]["Tables"]["anadas"]["Row"];
+// Sin campos calculados (enlaces_ocultos): select("*") no los trae.
+type Row = Omit<Database["public"]["Tables"]["anadas"]["Row"], "enlaces_ocultos">;
 
 export function anadaFields(
   { admin }: Dictionary,

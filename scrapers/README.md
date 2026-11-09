@@ -10,6 +10,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
 | `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 | `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves 02:37 UTC, 3 lotes) |
+| `enlaces` | `comprobador-enlaces` (no es una fuente de datos) | `comprobaciones_enlace` (y `imagenes.estado_enlace` vía trigger) | `link-check.yml` (domingo 05:17 UTC) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
 
@@ -63,6 +64,24 @@ scrapers/
                          dry-run), db (cliente service role), texto/contacto/geo (normalización), json
   fuentes/<fuente>/      parsear.ts (HTML → datos crudos) · normalizar.ts · guardar.ts · index.ts
                          fixtures/ (HTML mínimo, solo la parte factual) · *.test.ts
+  comprobador-enlaces/   comprobar.ts (HEAD → GET, robots.txt, ritmo por host) · index.ts
+```
+
+## Comprobador de enlaces
+
+Revisa cada semana las URLs del catálogo: `imagenes.url`, `bodegas.web` y `enoturismo_web`, `servicios_bodega.url_reserva` (activos) y las URLs de `procedencia_campos` (bodega, vino, añada).
+
+- Empieza con `sincronizar_comprobaciones_enlace()`: alta de URLs nuevas en `comprobaciones_enlace`, `campos` al día y baja de las que ya no usa ninguna ficha. Después comprueba las filas que no están ignoradas, de la comprobación más antigua a la más reciente.
+- Por enlace: `robots.txt` del origen (una vez por ejecución; 4xx = sin restricciones, 5xx = no se pide nada, sin respuesta = el propio enlace dirá si falla), `HEAD` y, si responde ≥ 400 o hay error de red, `GET` (se cancela el cuerpo). Timeout 20 s.
+- Fallo = 404/410/5xx, DNS, conexión o timeout. **Inconcluso** (no cuenta) = 401/403/429 o robots.txt que lo excluye. Un 429 deja el resto de URLs de ese host para la próxima ejecución.
+- `registrar_comprobacion_enlace()` guarda cada resultado. La BD oculta el enlace tras **2 fallos seguidos** (`oculto`, calculado por trigger) y lo reactiva con el siguiente OK; las imágenes lo reflejan en `estado_enlace`. Las fichas públicas quitan los demás enlaces ocultos con el campo calculado `enlaces_ocultos`.
+- Ritmo: 2–4 s entre peticiones al mismo host y hasta 6 hosts a la vez; los hosts con más enlaces empiezan antes. `--presupuesto-min` (150 por defecto) deja de comprobar enlaces nuevos al agotarse el tiempo; lo pendiente es lo primero la semana siguiente.
+- Contadores en `ejecuciones_scraper`: `nuevos` = enlaces que pasan a ocultos, `actualizados` = reactivados, `errores` = fallos al escribir en la BD (un enlace roto no es un error de la ejecución).
+- El admin lo gestiona en `/admin/enlaces`: reintentar (una comprobación inmediata desde el servidor, sin robots.txt por ser una sola petición pedida a mano), ocultar o mostrar, editar la URL (`admin_editar_url_enlace`, que la cambia en la ficha y reinicia la comprobación) e ignorar (falso positivo: ni se comprueba ni se oculta).
+
+```bash
+# Dry-run sin BD con URLs sueltas (o un fichero con una por línea)
+node scrapers/cli.ts enlaces --dry-run --urls https://example.com/,https://example.com/no-existe
 ```
 
 ## Ribera del Duero

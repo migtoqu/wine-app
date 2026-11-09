@@ -4,7 +4,8 @@ import type { Dictionary } from "@/i18n/dictionaries/es";
 import { ESTADOS_BODEGA } from "@/lib/admin/validation";
 import type { Database } from "@/lib/supabase/database.types";
 
-type Row = Database["public"]["Tables"]["bodegas"]["Row"];
+// Sin campos calculados (enlaces_ocultos): select("*") no los trae.
+type Row = Omit<Database["public"]["Tables"]["bodegas"]["Row"], "enlaces_ocultos">;
 
 function red(redes: unknown, key: string): string | null {
   if (!redes || typeof redes !== "object" || Array.isArray(redes)) return null;
