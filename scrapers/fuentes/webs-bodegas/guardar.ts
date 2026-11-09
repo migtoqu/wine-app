@@ -549,7 +549,7 @@ export class GuardadoWebs {
       }
     }
 
-    const registroId = await this.guardarRegistro({ ...base, datos: { vino: v }, entidadTipo: "anada", entidadId: anadaId, estado: "emparejado" });
+    const registroId = await this.guardarRegistro({ ...base, datos: { vino: v, ofertas: v.ofertas }, entidadTipo: "anada", entidadId: anadaId, estado: "emparejado" });
     const aporte: Aporte = { registroId, fuenteId, tipoFuente: "bodega", url: v.url, observadoEn: ahora };
     let cambios = false;
     // La web oficial es la fuente de más rango para tipo y crianza; el nombre solo se fija al crear.

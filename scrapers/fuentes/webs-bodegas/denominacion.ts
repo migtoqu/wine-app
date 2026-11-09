@@ -47,7 +47,7 @@ const ALIAS: Record<string, string> = {
   "valdepenas": "valdepenas",
 };
 
-const NOMBRE_DO = "[A-ZÁÉÍÓÚÑ0-9][\\wÁÉÍÓÚÑáéíóúñü'’·.-]*(?:\\s+(?:de\\s+(?:la\\s+|los\\s+|las\\s+)?|del\\s+|y\\s+|i\\s+|e\\s+|do\\s+|da\\s+)?[A-ZÁÉÍÓÚÑ][\\wÁÉÍÓÚÑáéíóúñü'’·.-]*){0,5}";
+const NOMBRE_DO = "[A-ZÁÉÍÓÚÑ0-9][\\wÁÉÍÓÚÑáéíóúñü'’·.-]*(?:[ \\t]+(?:de[ \\t]+(?:la[ \\t]+|los[ \\t]+|las[ \\t]+)?|del[ \\t]+|y[ \\t]+|i[ \\t]+|e[ \\t]+|do[ \\t]+|da[ \\t]+)?[A-ZÁÉÍÓÚÑ][\\wÁÉÍÓÚÑáéíóúñü'’·.-]*){0,5}";
 // «D.O.», «D.O.Ca.», «DOCa», «D.O.P.», «DO», «Denominación de Origen (Calificada|Protegida)», «Vino de Pago».
 const RE_DOP = new RegExp(
   `(?:^|[^\\p{L}])(?:D\\.?\\s?O\\.?\\s?Ca\\.?|DOCa|D\\.?\\s?O\\.?\\s?C\\.?(?=\\s)|D\\.?\\s?O\\.?\\s?P\\.?|D\\.\\s?O\\.?|DO(?=\\s[A-ZÁÉÍÓÚ])|Denominaci[óo]n\\s+de\\s+Origen(?:\\s+Calificada|\\s+Protegida)?|Vino\\s+de\\s+Pago|D\\.?O\\.?\\s?Pago)\\s*:?\\s*[«"“]?(?:de\\s+)?(${NOMBRE_DO})`,
@@ -80,7 +80,9 @@ export class ResolutorDenominaciones {
 
   /** Nombre exacto, alias o el prefijo más largo del texto («Ribera del Duero Crianza» → Ribera del Duero). */
   resolver(texto: string, clase: "dop" | "igp" | null = null): Denominacion | null {
-    const palabras = claveTexto(texto).split(" ").filter(Boolean);
+    // Prefijos que repiten el tipo («DOCa Rioja», «Vino de la Tierra de Castilla», «IGP Castilla y León»).
+    const limpio = claveTexto(texto).replace(/^(?:(?:d o ca|doca|d o c|d o p|dop|d o|do|igp|i g p|vt|v t)\s+)+/, "").replace(/^vinos? de la tierra (?:de (?:la |los )?|del )?/, "");
+    const palabras = limpio.split(" ").filter(Boolean);
     for (let n = Math.min(palabras.length, 7); n >= 1; n--) {
       const k = palabras.slice(0, n).join(" ");
       const d = this.porClave.get(k) ?? (ALIAS[k] ? this.porSlug.get(ALIAS[k]!) : undefined) ?? this.porClave.get(k.replace(/\b(de|del|la|los|las)\b/g, " ").replace(/\s+/g, " ").trim());
@@ -113,6 +115,11 @@ export function denominacionesDeSemillas(raiz = new URL("../../../supabase/migra
 function enTexto(texto: string, r: ResolutorDenominaciones): DeteccionDo | null {
   const hallazgos: DeteccionDo[] = [];
   for (const m of texto.matchAll(RE_IGP)) {
+    // «I.G.P.: Vino de España» no es una IGP: es vino sin indicación geográfica.
+    if (/^vino de espa/i.test(m[1]!)) {
+      hallazgos.push({ denominacion: null, texto: m[0].trim(), origen: "ficha", clase: "sin_do" });
+      continue;
+    }
     hallazgos.push({ denominacion: r.resolver(m[1]!, "igp"), texto: m[0].trim(), origen: "ficha", clase: "igp" });
   }
   for (const m of texto.matchAll(RE_DOP)) {

@@ -215,7 +215,7 @@ export interface VinoWeb {
 }
 
 /** Productos de tienda que no son un vino. */
-const NO_VINO = /\b(estuches?|cajas?|lotes?|packs?|regalos?|tarjetas?|bonos?|cheques?|copas?|sacacorchos|camisetas?|libros?|aceites?|vermut|vermouth|gin|ginebra|orujo|aguardiente|licor(es)?|mosto|vinagre|miel|gorras?|delantal|bolsas?|abridor|decantador|suscripci[oó]n|club|entradas?|visitas?|catas?|experiencias?|cursos?|eventos?|box|bottles|botellas|selecci[oó]n de|surtido|degustaci[oó]n|tour|reserva tu|pedido|quesos?|garbanzos|legumbres|cofres?|jam[oó]n|conservas|chocolates?|embutidos?|visit|tasting|shop|online|wines|tours?|antigoteo|abrebotellas|enfriador|cubitera|tarjeta regalo|gift)\b|\d\s*\+\s*\d|\bx\s?\d+\b/i;
+const NO_VINO = /\b(estuches?|cajas?|lotes?|packs?|regalos?|tarjetas?|bonos?|cheques?|copas?|sacacorchos|camisetas?|libros?|aceites?|vermut|vermouth|gin|ginebra|orujo|aguardiente|licor(es)?|mosto|vinagre|miel|gorras?|delantal|bolsas?|abridor|decantador|suscripci[oó]n|club|entradas?|visitas?|catas?|experiencias?|cursos?|eventos?|box|bottles|botellas|selecci[oó]n de|surtido|degustaci[oó]n|tour|reserva tu|pedido|quesos?|garbanzos|legumbres|cofres?|jam[oó]n|conservas|chocolates?|embutidos?|visit|tasting|shop|online|wines|tours?|antigoteo|abrebotellas|enfriador|cubitera|tarjeta regalo|gift|jab[oó]n|cosm[eé]tica|cremas?|vinoterapia|aove|mayor de edad|age verification|bienvenid[oa]s?)\b|\d\s*\+\s*\d|\bx\s?\d+\b/i;
 /** Productos que son experiencias de enoturismo (van a servicios). */
 export const ES_SERVICIO = /\b(visitas?|catas?|experiencias?|entradas?|tour|enoturismo|cursos?|talleres?|eventos?)\b/i;
 

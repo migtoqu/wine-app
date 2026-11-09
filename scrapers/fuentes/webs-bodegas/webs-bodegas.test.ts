@@ -356,7 +356,7 @@ describe("hechos y resúmenes", () => {
     expect(h.every((x) => x.fuente.origen === "bodega")).toBe(true);
     expect(cuentaHechosHistoria(b)).toBe(5);
     const v = extraerVino("Doble R Crianza", "Nariz: frutos negros y regaliz. 14% vol.", { hoy: HOY });
-    const hv = hechosVino({ ...v, url: "https://x.es/v", denominacion: null, imagen: null }, "f", "2026-11-08T00:00:00Z", "Ribera del Duero");
+    const hv = hechosVino({ ...v, url: "https://x.es/v", denominacion: null, imagen: null, ofertas: [] }, "f", "2026-11-08T00:00:00Z", "Ribera del Duero");
     expect(hv.filter((x) => x.clave === "anada.cata.nariz").map((x) => x.sujeto)).toEqual(["frutos negros", "regaliz"]);
   });
 });

@@ -10,6 +10,7 @@ import { similitud } from "../../lib/trigram.ts";
 import { claveNombreBodega } from "../../lib/texto.ts";
 import { clasificar, esOtroIdioma, huella, type Clase, type Huella } from "./clasificar.ts";
 import { detectarDenominacion, type DeteccionDo, type ResolutorDenominaciones } from "./denominacion.ts";
+import { ofertaDeJsonLd, ofertaDeWoo, type OfertaWeb } from "./ofertas.ts";
 import { candidatasDePagina, elegirImagenBodega, imagenBotella, type CandidataImagen, type ImagenElegida } from "./imagen.ts";
 import {
   bodegaVacia,
@@ -94,6 +95,8 @@ export interface VinoSitio extends VinoWeb {
   denominacion: DeteccionDo | null;
   /** Imagen de la botella (enlazada). */
   imagen: ImagenElegida | null;
+  /** Precio, formato, disponibilidad y EAN en la tienda de la bodega (uno por formato o ficha). */
+  ofertas: OfertaWeb[];
 }
 
 export interface ServicioSitio extends ServicioWeb {
@@ -169,6 +172,8 @@ interface Contenido {
   /** Imágenes candidatas (historia y portada) e imagen del producto (fichas de vino). */
   imagenes?: CandidataImagen[];
   imagenProducto?: { url: string; alt: string | null } | null;
+  /** Oferta del JSON-LD `Product.offers` de la ficha. */
+  oferta?: OfertaWeb | null;
   modificada?: string | null;
 }
 
@@ -180,8 +185,10 @@ interface ProductoWoo {
   short_description?: string;
   categories?: { name: string; slug: string }[];
   attributes?: { name: string; terms?: { name: string }[] }[];
-  prices?: { price?: string; currency_minor_unit?: number };
+  prices?: { price?: string; regular_price?: string; sale_price?: string; currency_code?: string; currency_minor_unit?: number; price_range?: { min_amount?: string; max_amount?: string } | null };
   images?: { src?: string; alt?: string }[];
+  sku?: string;
+  is_in_stock?: boolean;
 }
 
 const MAX_POR_CLASE: Record<Clase, number> = { vino: 150, historia: 4, enoturismo: 12, contacto: 1, legal: 0, otra: 0 };
@@ -192,7 +199,7 @@ const PRIORIDAD_CLASE: Clase[] = ["vino", "historia", "enoturismo", "contacto"];
 const TIPOS_WP_IGNORADOS = /^(attachment|nav_menu_item|wp_|post$|jp_|elementor|e-landing|oembed|revision|customize|user_request|wpcf7|acf|br_|et_|ct_|fl-|mc4wp|product_variation|shop_)/;
 const SUBSITEMAP_UTIL = /page|product|vino|wine|visita|experienc|enoturismo|portfolio|project|anada|pagina/i;
 const SUBSITEMAP_INUTIL = /category|tag|author|attachment|post-sitemap|user|product_cat|product_tag|format|archive|news|noticia|blog/i;
-const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos?|wines?|tinto|blanco|rosado)$/i;
+const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b|bodegas?\b|grupo\b|castilla[ -]la[ -]mancha$|¿)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos?|wines?|tinto|blanco|rosado)$/i;
 const CATEGORIA_NO_VINO = /gourmet|alimentaci[oó]n|delicatessen|merchandising|regalos?|packs?|lotes?|accesorios|aceites?|conservas|queso/i;
 const RUTA_NOTICIA = /\/(noticias?\d*|news|blog|actualidad|prensa|press|tag|category|categoria|author|[\w-]*en-los-medios|medios|premios-y-[\w-]+)(?:[\/._?-]|$)|\/(19|20)\d\d\/\d\d\/|[?&](add-to-cart|orderby|filter_|share|replytocom|add_to_wishlist)=|\/page\/\d+\/?$/i;
 const RUTA_PRIVADA = /\/(wp-login|wp-admin|login|mi-cuenta|my-account|cuenta|account|carrito|cart|checkout|finalizar-compra)(?:[\/.?]|$)/i;
@@ -502,9 +509,10 @@ export class RastreadorSitio {
 
   private vinos(contenidos: Contenido[], hoy: number, esDelSitio: (h: string) => boolean): VinoSitio[] {
     const r = this.o.denominaciones;
-    const conDo = (v: VinoWeb, c: Contenido, url: string, texto: string, imagen: ImagenElegida | null): VinoSitio => ({
+    const conDo = (v: VinoWeb, c: Contenido, url: string, texto: string, imagen: ImagenElegida | null, ofertas: OfertaWeb[] = []): VinoSitio => ({
       ...v,
       url,
+      ofertas,
       denominacion: r ? detectarDenominacion({ titulo: v.nombre === c.titulo ? c.titulo : `${c.titulo}\n${v.nombre}`, texto, categorias: c.categorias, url }, r) : null,
       imagen,
     });
@@ -513,7 +521,11 @@ export class RastreadorSitio {
       if (!v.nombre || v.nombre.length < 2 || v.nombre.length > 80 || !esNombreDeVino(v.nombre) || TITULO_NO_VINO.test(v.nombre)) return;
       const k = `${claveTexto(v.nombre)}|${v.anio ?? ""}`;
       const previo = out.get(k);
-      if (!previo || v.evidencias > previo.evidencias) out.set(k, v);
+      // Mismo vino en otro formato (mágnum, caja) o en dos fichas: se queda la ficha con más datos y
+      // se juntan sus ofertas.
+      const ofertas = [...(previo?.ofertas ?? []), ...v.ofertas].filter((o, i, a) => a.findIndex((x) => x.url === o.url) === i);
+      if (!previo || v.evidencias > previo.evidencias) out.set(k, { ...v, ofertas, imagen: v.imagen ?? previo?.imagen ?? null });
+      else previo.ofertas = ofertas;
     };
     for (const c of contenidos.filter((x) => x.clase === "vino")) {
       if (c.producto) {
@@ -525,7 +537,8 @@ export class RastreadorSitio {
         const img = p.images?.[0];
         const atribTexto = Object.entries(atributos).map(([k, x]) => `${k}: ${x}`).join("\n");
         if (v.evidencias >= 1 || categoriaVino) {
-          meter(conDo(v, c, p.permalink, `${texto}\n${atribTexto}`, imagenBotella(img?.src, img?.alt || null, p.permalink, esDelSitio)));
+          const oferta = ofertaDeWoo(p, v.ean);
+          meter(conDo(v, c, p.permalink, `${texto}\n${atribTexto}`, imagenBotella(img?.src, img?.alt || null, p.permalink, esDelSitio), oferta ? [oferta] : []));
         }
         continue;
       }
@@ -540,7 +553,8 @@ export class RastreadorSitio {
       }
       const v = extraerVino(c.titulo, texto, { hoy, gtin: c.gtin ?? null });
       if (v.evidencias >= 2 && !TITULO_NO_VINO.test(v.nombre) && !esListado(c.url, c.titulo)) {
-        meter(conDo(v, c, c.url, texto, imagenBotella(c.imagenProducto?.url, c.imagenProducto?.alt ?? null, c.url, esDelSitio)));
+        const oferta = c.oferta ? { ...c.oferta, ean: c.oferta.ean ?? v.ean } : null;
+        meter(conDo(v, c, c.url, texto, imagenBotella(c.imagenProducto?.url, c.imagenProducto?.alt ?? null, c.url, esDelSitio), oferta ? [oferta] : []));
       }
     }
     return [...out.values()];
@@ -877,6 +891,7 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
       categorias: [...categoriaLd, ...migas($, nodos)],
       imagenes: indexable && clase === "historia" ? candidatasDePagina($, res.url) : undefined,
       imagenProducto: clase === "vino" ? (imagenLd ? { url: imagenLd, alt: null } : primeraImagen($, res.url)) : undefined,
+      oferta: producto && clase === "vino" ? ofertaDeJsonLd(producto, res.url, t, gtin == null ? null : String(gtin)) : null,
     };
   } catch (e) {
     if (e instanceof HostBloqueado) return null;
@@ -1109,7 +1124,9 @@ export function verificarNombre($: ReturnType<typeof cargar>, host: string, nomb
     for (const trozo of [t, ...t.split(/\s+[|–—·•»-]\s+/)]) {
       const k = claveNombreBodega(trozo);
       if (!k) continue;
-      const p = k === clave || ` ${k} `.includes(` ${clave} `) ? 1 : similitud(clave, k);
+      // Contenida en un sentido u otro («Pérez Pascuas» ⊂ «Hermanos Pérez Pascuas»), con al menos dos palabras.
+      const contenida = ` ${k} `.includes(` ${clave} `) || (k.split(" ").length >= 2 && ` ${clave} `.includes(` ${k} `));
+      const p = k === clave ? 1 : contenida ? 0.9 : similitud(clave, k);
       if (p > mejor.puntuacion) mejor = { puntuacion: Math.round(p * 1000) / 1000, texto: limpiarEspacios(trozo).slice(0, 120) };
     }
   }
