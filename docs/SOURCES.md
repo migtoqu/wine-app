@@ -20,6 +20,8 @@ Decisiones de partida (del usuario): **textos** = resumen propio redactado a par
 | 4.4 | Uvinum / Drinks&Co | — | **No verificada** (error 520 a nuestro UA); baja prioridad (§4.4) |
 | 5.1 | **C.R. DOCa Rioja** (`riojawine.com`) | ~213 bodegas, ~700 vinos, ~370 experiencias con reserva | **Apta con condiciones** (§5.1) |
 | 5.2 | **D.O. Rueda** (2.ª D.O. recomendada) y **D.O. Navarra** | Bodegas con web; Navarra: bodegas, vinos y experiencias estructurados | **Apta con condiciones** (§5.2) |
+| 5.3 | **C.R. Toro, Cigales, Bierzo, Priorat y Rueda** (ola C) | ≈ 350 bodegas con contacto y municipio; marcas (Toro, Cigales); coordenadas (Bierzo, Priorat); visitable y tienda (Rueda) | **Apta con condiciones**; implementada (§5.3) |
+| — | D.O. Rías Baixas | — | **No apta**: 403 a `robots.txt` (§5.2, §5.3) |
 | 6.1 | **Ruta del Vino Ribera del Duero** | Actividades, catas, visitas, precios, eventos | **Apta con condiciones** (§6.1) |
 | 6.2 | Rutas del Vino de España (ACEVIN), Rioja Alavesa, Turismo CyL | Enoturismo de otras rutas | Con condiciones, sin auditar a fondo (§6.2) |
 | 7.1 | **Wikidata** (CC0) | Fundación/fundadores/coordenadas de bodegas notables, variedades | **Apta** (§7.1) |
@@ -400,6 +402,26 @@ Candidatas comprobadas con `robots.txt` y sitemap (1–3 peticiones cada una):
 3. Rías Baixas, la otra gran D.O., hoy no es accesible (WAF); se cubriría por tiendas y webs de bodega.
 
 Los términos de Rueda y Navarra **no se han leído** todavía: auditarlos al empezar. **Veredicto: apta con condiciones** (provisional).
+
+### 5.3 Ola C: consejos con directorio de bodegas (auditados el 2026-11-08)
+
+Scrapers en `scrapers/fuentes/consejos/`: un **núcleo común** (`comun/`: normalizar → `EmparejadorBodegas` → consolidación, con la D.O. como parámetro) y un parser por consejo, porque las cinco webs usan plataformas distintas. CLI: `node scrapers/cli.ts consejo-<toro|cigales|bierzo|priorat|rueda>`. Fuentes `cr-<consejo>` (migración `20261112120000`), tipo `consejo_regulador`, semanales.
+
+Auditoría: unas 40 peticiones, como mucho 7 por sitio, ≥ 4 s entre peticiones al mismo host y con el UA del proyecto. Todos responden 200, sin desafío anti-bot ni WAF.
+
+| Consejo | `robots.txt` | Aviso legal | Listado → ficha | Datos que se guardan |
+| --- | --- | --- | --- | --- |
+| **Toro** (`www.dotoro.com`) | Solo `/wp-admin/` | Prohíbe reproducir o comunicar contenidos sin autorización; nada sobre extracción | `/bodegas-y-marcas/` (una página) → `/bodegas/<slug>/` | Nombre, dirección, CP, municipio, teléfono, email, web, **marcas**, año de inscripción |
+| **Cigales** (`do-cigales.es`) | Solo `/wp-admin/` | **Uso personal y privado**, prohibido el uso comercial | `/bodegas/` (agrupado por municipio) → `/bodegas/<slug>/` | Nombre, municipio (del listado), contacto, web, **marcas de vino**. La dirección de contacto solo se usa si es del mismo municipio (Protos da la de Peñafiel) |
+| **Bierzo** (`www.crdobierzo.es`) | **404** (= todo permitido) | Sin cláusula de propiedad intelectual | `/es/bodegas-y-vinos/` → `/<slug>/<id>/` | Razón social, dirección, CP, municipio, **coordenadas**, teléfono, email, web |
+| **Priorat** (`www.doqpriorat.org`) | Yoast, `Disallow:` vacío | Prohíbe reproducir o transformar sin consentimiento | `/cellers/` paginado → `/cellers/<slug>/` (en catalán) | Nombre, dirección, CP, municipio (con alias, sin traducir), **coordenadas**, contacto, idiomas de visita; `bodega.enoturismo` solo si las visitas son para público |
+| **Rueda** (`dorueda.com`) | Vacío | Igual que Toro | `/bodegas/`: **tabla única** (las fichas `?pdb=N` devuelven la misma tabla y no se piden) | Nombre, localidad, web, «Visitable», tienda online. Sin CP: provincia por tabla de municipios (Valladolid, Segovia, Ávila) |
+
+Reglas: solo hechos con enlace a la ficha; **nunca** la descripción de la bodega, imágenes ni nombres de personas (contacto, enólogos, responsables). Las marcas no crean vinos: van a `datos` y al emparejador. La provincia sale del código postal; si no hay, de la tabla de municipios de la D.O.; nunca se pone la de la D.O. por defecto. Proyecto privado y sin ánimo de lucro; **avisar a cada consejo antes de la fase pública** (Cigales es el más restrictivo).
+
+Descartados: **Rías Baixas** (`doriasbaixas.com`) devuelve 403 a `robots.txt`; no se insiste ni se cambia de UA. Navarra va en un PR aparte (§5.2: bodegas, vinos y experiencias).
+
+DRY_RUN_CIFRAS
 
 ---
 
