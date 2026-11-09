@@ -9,6 +9,7 @@ import {
   validateAnada,
   validateBodega,
   validateInvitacion,
+  validateTienda,
   validateUva,
   validateVino,
 } from "./validation";
@@ -141,5 +142,24 @@ describe("invitaciones", () => {
 describe("formValues", () => {
   it("agrupa los valores repetidos y omite los campos internos de React", () => {
     expect(formValues(form({ a: "1", b: ["x", "y"], $ACTION_ID_1: "z" }))).toEqual({ a: "1", b: ["x", "y"] });
+  });
+});
+
+describe("validateTienda", () => {
+  const base = { nombre: "Tienda", tipo: "online", web: "https://t.example", activa: "si" };
+  it("datos mínimos y activa como booleano", () => {
+    const r = validateTienda(form({ ...base, activa: "no", envio_gratis_desde: "59,9", bodega_id: B1 }));
+    expect(r).toMatchObject({ ok: true, data: { nombre: "Tienda", activa: false, envio_gratis_desde: 59.9, bodega_id: B1, fuente_id: null } });
+  });
+  it("exige web y tipo válidos", () => {
+    const r = validateTienda(form({ ...base, web: "t.example", tipo: "bar" }));
+    expect(r).toEqual({ ok: false, errors: { web: "invalidUrl", tipo: "invalidOption" } });
+  });
+  it("la plantilla de afiliación es una URL con {url}", () => {
+    expect(validateTienda(form({ ...base, afiliacion_plantilla: "https://af.example/r?u=" }))).toEqual({
+      ok: false,
+      errors: { afiliacion_plantilla: "invalidUrl" },
+    });
+    expect(validateTienda(form({ ...base, afiliacion_plantilla: "https://af.example/r?u={url}" })).ok).toBe(true);
   });
 });

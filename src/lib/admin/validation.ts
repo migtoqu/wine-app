@@ -11,6 +11,8 @@ export const TIPOS_DENOMINACION = Enums.tipo_denominacion;
 export const COLORES_UVA = Enums.color_uva;
 export const ESTADOS_BODEGA = Enums.estado_bodega;
 export const ROLES = Enums.rol_usuario;
+export const TIPOS_TIENDA = Enums.tipo_tienda;
+export const SI_NO = ["si", "no"] as const;
 
 // Redes que se editan en el formulario de bodega; el resto de claves de
 // bodegas.redes se conservan tal cual.
@@ -319,6 +321,36 @@ export function validateUva(form: Form): Result<UvaInput> {
   const base = parseFields(form, UVA_CAMPOS);
   if (!base.ok) return base;
   return { ok: true, data: { ...base.data, sinonimos: splitList(base.data.sinonimos) } };
+}
+
+export const TIENDA_CAMPOS = {
+  nombre: { kind: "text", required: true, max: 200 },
+  slug: { kind: "slug" },
+  tipo: { kind: "enum", values: TIPOS_TIENDA, required: true },
+  web: { kind: "url", required: true },
+  logo_url: { kind: "url" },
+  info_envio: { kind: "text", max: 300 },
+  envio_gratis_desde: { kind: "decimal", min: 0, max: 10000 },
+  bodega_id: { kind: "uuid" },
+  fuente_id: { kind: "uuid" },
+  afiliacion_programa: { kind: "text", max: 120 },
+  afiliacion_plantilla: { kind: "text", max: 500 },
+  activa: { kind: "enum", values: SI_NO, required: true },
+} as const;
+
+export type TiendaInput = Omit<Parsed<typeof TIENDA_CAMPOS>, "activa"> & { activa: boolean };
+
+// La plantilla de afiliación es una URL con el marcador {url} (la de la oferta, codificada).
+export function validateTienda(form: Form): Result<TiendaInput> {
+  const base = parseFields(form, TIENDA_CAMPOS);
+  const errors: FieldErrors = {};
+  const plantilla = base.ok ? base.data.afiliacion_plantilla : null;
+  if (plantilla !== null && (!/^https?:\/\/\S+$/i.test(plantilla) || !plantilla.includes("{url}"))) {
+    errors.afiliacion_plantilla = "invalidUrl";
+  }
+  const r = merge(base, errors, {});
+  if (!r.ok) return r;
+  return { ok: true, data: { ...r.data, activa: r.data.activa === "si" } };
 }
 
 export const INVITACION_CAMPOS = {

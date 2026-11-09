@@ -33,7 +33,7 @@ export function catalogChanged() {
   updateTag(CATALOG_TAG);
 }
 
-type SlugTable = "bodegas" | "vinos" | "denominaciones" | "variedades_uva";
+type SlugTable = "bodegas" | "vinos" | "denominaciones" | "variedades_uva" | "tiendas";
 
 /**
  * Slug a guardar: el que puso el admin (si está libre) o uno generado a partir
