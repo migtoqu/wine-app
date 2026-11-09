@@ -78,9 +78,9 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 
 ## Fase 2 — Precios, premios y enoturismo (P1)
 
-- [ ] Tablas de tiendas, ofertas e historial de precios (§6.2)
-- [ ] Bloque "Dónde comprar" en la ficha de vino (75 cl por defecto + selector de formato)
-- [ ] Gráfica de historial de precios y mínimo histórico
+- [x] Tablas de tiendas, ofertas e historial de precios (§6.2)
+- [x] Bloque "Dónde comprar" en la ficha de vino (75 cl por defecto + selector de formato)
+- [x] Gráfica de historial de precios y mínimo histórico
 - [ ] Más tiendas (objetivo: 3–5) y emparejamiento por EAN
 - [x] Cola de duplicados/emparejamiento en admin (`/admin/revision`)
 - [ ] Premios y puntuaciones: tablas (§6.3), scraper de al menos una guía y un concurso
@@ -90,7 +90,7 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [ ] Geocodificación de bodegas
 - [ ] Mapa de bodegas (MapLibre + OSM) con clustering
 - [ ] "Cerca de mí" y ubicación de referencia del usuario
-- [ ] Filtros de precio, tienda, puntuación, premios y servicios
+- [ ] Filtros de precio, tienda, puntuación, premios y servicios (precio hecho: filtro y orden en el listado)
 - [ ] Páginas de D.O. y de variedad de uva
 
 **Criterio de salida:** cada vino con oferta muestra precios de varias tiendas e historial; las bodegas tienen ubicación en el mapa y sus servicios.

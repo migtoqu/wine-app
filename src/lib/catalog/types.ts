@@ -22,6 +22,9 @@ export type ListarVinosArgs = {
   orden?: string;
   limite?: number;
   desplazamiento?: number;
+  // Precio «desde» (75 cl) en euros.
+  precio_min?: number;
+  precio_max?: number;
 };
 
 export type VinoListItem = {
@@ -40,6 +43,8 @@ export type VinoListItem = {
   imagen_alt: string | null;
   relevancia: number | null;
   total: number;
+  // Oferta visible y disponible más barata en 75 cl (null = sin ofertas).
+  precio_desde: number | null;
 };
 
 export type ListarBodegasArgs = {
@@ -214,3 +219,29 @@ export type BodegaFicha = {
   imagenes: CatalogImage[];
   vinos: VinoListItem[];
 };
+
+// --- Comparador de precios --------------------------------------------------
+
+export type TramoPrecio = { precio: number; desde: string; hasta: string | null };
+
+export type Oferta = {
+  id: string;
+  url: string;
+  precio: number;
+  formato_ml: number;
+  disponible: boolean;
+  visto_por_ultima_vez: string;
+  anio: number | null; // añada de la oferta (null = sin añada en la tienda)
+  con_anada: boolean; // false = la tienda no indica la añada
+  tienda: {
+    slug: string;
+    nombre: string;
+    web: string;
+    logo_url: string | null;
+    info_envio: string | null;
+    afiliacion_plantilla: string | null;
+  };
+  historial: TramoPrecio[];
+};
+
+export type PuntoPrecio = { fecha: string; precio: number };

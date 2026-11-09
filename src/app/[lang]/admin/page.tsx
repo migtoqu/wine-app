@@ -21,7 +21,8 @@ export default async function AdminPage() {
   const { admin } = await getDictionary();
   const supabase = await createClient();
   const count = { count: "exact", head: true } as const;
-  const [invitaciones, usuarios, bodegas, vinos, denominaciones, uvas, revision, ejecuciones, enlaces] = await Promise.all([
+  const [invitaciones, usuarios, bodegas, vinos, denominaciones, uvas, tiendas, revision, ejecuciones, enlaces] =
+    await Promise.all([
     supabase
       .from("invitaciones")
       .select("id", count)
@@ -32,6 +33,7 @@ export default async function AdminPage() {
     supabase.from("vinos").select("id", count),
     supabase.from("denominaciones").select("id", count),
     supabase.from("variedades_uva").select("id", count),
+    supabase.from("tiendas").select("id", count),
     supabase.from("registros_fuente").select("id", count).eq("estado_emparejamiento", "revision"),
     supabase
       .from("ejecuciones_scraper")
@@ -51,6 +53,7 @@ export default async function AdminPage() {
     { key: "vinos", n: vinos.count },
     { key: "denominaciones", n: denominaciones.count },
     { key: "uvas", n: uvas.count },
+    { key: "tiendas", n: tiendas.count },
     { key: "revision", n: revision.count, suffix: admin.home.pending },
     { key: "ejecuciones", n: ejecuciones.count, suffix: admin.home.failedWeek },
     { key: "enlaces", n: enlaces.count, suffix: admin.home.broken },

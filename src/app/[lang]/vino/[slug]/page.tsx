@@ -6,6 +6,7 @@ import { Attribution } from "@/components/catalog/attribution";
 import { CatalogImage } from "@/components/catalog/catalog-image";
 import { FieldSources, SummarySources } from "@/components/catalog/field-sources";
 import { AnadaNote, VinoActions } from "@/components/catalog/personal-actions";
+import { WhereToBuy } from "@/components/catalog/where-to-buy";
 import { WineCard, wineCardLabels } from "@/components/catalog/wine-card";
 import { Container } from "@/components/layout/container";
 import { Badge, Link } from "@/components/ui";
@@ -22,9 +23,10 @@ import {
   pickAnada,
   truncate,
 } from "@/lib/catalog/format";
+import { formatosDisponibles, pickFormato } from "@/lib/catalog/prices";
 import { pickResumen } from "@/lib/catalog/provenance";
-import { getOtrosVinos, getVino } from "@/lib/catalog/queries";
-import type { Anada, VinoFicha } from "@/lib/catalog/types";
+import { getOfertasVino, getOtrosVinos, getVino } from "@/lib/catalog/queries";
+import type { Anada, Oferta, VinoFicha } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 
 // Ficha de vino (§5.4). La lectura está cacheada (perfil "catalogo") y la
@@ -65,6 +67,7 @@ export default async function WinePage({ params, searchParams }: Props) {
   const dict = await getDictionary();
   const { catalog } = dict;
   const updatedAt = latestDate([vino.updated_at, ...vino.anadas.map((a) => a.updated_at)]);
+  const ofertas = await getOfertasVino(vino.id, vino.slug);
 
   return (
     <Container className="flex flex-col gap-12 py-8 sm:py-12">
@@ -113,6 +116,15 @@ export default async function WinePage({ params, searchParams }: Props) {
           </div>
         </div>
 
+        {/* Formato elegido en ?formato=; el fallback (75 cl) ya trae todas las ofertas. */}
+        <Suspense
+          fallback={
+            <BuyBlock lang={lang} dict={dict} vino={vino} ofertas={ofertas} params={{}} />
+          }
+        >
+          <SelectedBuyBlock lang={lang} dict={dict} vino={vino} ofertas={ofertas} searchParams={searchParams} />
+        </Suspense>
+
         <section aria-labelledby="vintages-heading" className="flex flex-col gap-6">
           <h2 id="vintages-heading" className="text-2xl font-semibold">
             {catalog.wine.vintages}
@@ -138,6 +150,30 @@ export default async function WinePage({ params, searchParams }: Props) {
 }
 
 type SearchParamsProp = { searchParams: Props["searchParams"] };
+
+type BuyBlockProps = { lang: Locale; dict: Dictionary; vino: VinoFicha; ofertas: Oferta[] };
+
+async function SelectedBuyBlock({ searchParams, ...props }: BuyBlockProps & SearchParamsProp) {
+  return <BuyBlock {...props} params={await searchParams} />;
+}
+
+function BuyBlock({
+  lang,
+  dict,
+  vino,
+  ofertas,
+  params,
+}: BuyBlockProps & { params: Record<string, string | string[] | undefined> }) {
+  const formato = pickFormato(params.formato, formatosDisponibles(ofertas));
+  const anada = typeof params.anada === "string" ? params.anada : null;
+  const hrefFormato = (ml: number) => {
+    const q = new URLSearchParams();
+    if (anada) q.set("anada", anada);
+    q.set("formato", String(ml));
+    return `${localePath(lang, `/vino/${vino.slug}`)}?${q}`;
+  };
+  return <WhereToBuy lang={lang} dict={dict} ofertas={ofertas} formato={formato} hrefFormato={hrefFormato} />;
+}
 
 async function SelectedWineImage({
   vino,

@@ -9,6 +9,7 @@ import type {
   CatalogImage,
   DenominacionRef,
   FilterOption,
+  Oferta,
   Procedencias,
   Resumen,
   SearchSuggestion,
@@ -24,6 +25,8 @@ import type {
 // Los errores de Supabase se lanzan para que los recoja el error boundary.
 
 export const CATALOG_TAG = "catalogo";
+// Ofertas y precios (comparador): se puede invalidar sin tocar el resto del catálogo.
+export const OFERTAS_TAG = "ofertas";
 
 type RawImage = {
   url: string;
@@ -190,6 +193,51 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
       })),
     ),
   };
+}
+
+// Ofertas visibles de un vino (comparador de precios) con su historial. Visibles: tienda activa,
+// sin ocultar por el admin ni por el comprobador de enlaces. Misma caché y etiquetas que la
+// ficha: la invalidan los scrapers (revalidateTag) y las acciones del admin.
+export async function getOfertasVino(vinoId: string, slug: string): Promise<Oferta[]> {
+  "use cache";
+  cacheLife("catalogo");
+  cacheTag(CATALOG_TAG, `vino:${slug}`, OFERTAS_TAG);
+
+  const { data, error } = await createPublicClient()
+    .from("ofertas")
+    .select(
+      `id, url, precio, formato_ml, disponible, visto_por_ultima_vez, anada_id,
+       anada:anadas(anio),
+       tienda:tiendas!inner(slug, nombre, web, logo_url, info_envio, afiliacion_plantilla, activa),
+       historial_precios(precio, desde, hasta)`,
+    )
+    .eq("vino_id", vinoId)
+    .eq("oculta_admin", false)
+    .neq("estado_enlace", "oculto")
+    .eq("tienda.activa", true);
+  if (error) throw new Error(`getOfertasVino(${slug}): ${error.message}`);
+
+  return data.map((o) => ({
+    id: o.id,
+    url: o.url,
+    precio: Number(o.precio),
+    formato_ml: o.formato_ml,
+    disponible: o.disponible,
+    visto_por_ultima_vez: o.visto_por_ultima_vez,
+    anio: o.anada?.anio ?? null,
+    con_anada: o.anada_id !== null,
+    tienda: {
+      slug: o.tienda.slug,
+      nombre: o.tienda.nombre,
+      web: o.tienda.web,
+      logo_url: o.tienda.logo_url,
+      info_envio: o.tienda.info_envio,
+      afiliacion_plantilla: o.tienda.afiliacion_plantilla,
+    },
+    historial: o.historial_precios
+      .map((h) => ({ precio: Number(h.precio), desde: h.desde, hasta: h.hasta }))
+      .sort((x, y) => x.desde.localeCompare(y.desde)),
+  }));
 }
 
 // Vinos de una bodega (todas las páginas; una bodega tiene como mucho unas decenas).

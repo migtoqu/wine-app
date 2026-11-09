@@ -25,6 +25,7 @@ export function FilterForm({ action, children, className }: Props) {
       params[key] = prev === undefined ? value : [...(Array.isArray(prev) ? prev : [prev]), value];
     }
     const href = action + serializeSearchFilters(parseSearchFilters(params));
+    if (href === window.location.pathname + window.location.search) return;
     startTransition(() => router.push(href, { scroll: false }));
   };
 
@@ -34,7 +35,13 @@ export function FilterForm({ action, children, className }: Props) {
       method="get"
       aria-busy={pending || undefined}
       className={className}
-      onChange={(event) => navigate(event.currentTarget)}
+      // Los campos numéricos (precio) se aplican al salir del campo o con Enter, no a cada tecla.
+      onChange={(event) => {
+        if ((event.target as unknown as HTMLInputElement).type !== "number") navigate(event.currentTarget);
+      }}
+      onBlur={(event) => {
+        if ((event.target as unknown as HTMLInputElement).type === "number") navigate(event.currentTarget);
+      }}
       onSubmit={(event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         navigate(event.currentTarget);

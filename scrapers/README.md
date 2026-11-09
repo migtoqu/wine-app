@@ -84,6 +84,34 @@ Revisa cada semana las URLs del catálogo: `imagenes.url`, `bodegas.web` y `enot
 node scrapers/cli.ts enlaces --dry-run --urls https://example.com/,https://example.com/no-existe
 ```
 
+## Ofertas y precios (`lib/ofertas.ts`)
+
+Escritura compartida del comparador de precios (migración `20261112110000_comparador_precios`).
+Cualquier scraper que traiga precios (tiendas, webs de bodegas con tienda online) la usa así:
+
+```ts
+const inicio = new Date();
+const ofertas = new RegistroOfertas(ctx.db, ctx.fuenteId, ctx.log);
+if (await ofertas.preparar()) { /* hay tienda activa para esta fuente */ }
+await ofertas.registrarOferta({ idExterno, vinoId, anadaId, url, precio, moneda, formatoMl, disponible, ean, registroId });
+await ofertas.cerrar(inicio, { completa: ctx.limite == null && ctx.contadores.errores === 0 && !ctx.esParcial() });
+```
+
+- La tienda se busca por `tiendas.fuente_id`. Sin tienda, o con la tienda desactivada, no se escribe nada.
+  Una fuente nueva necesita su fila en `tiendas`, que se crea en su migración o desde `/admin/tiendas`.
+- La clave es (tienda, `id_externo`), así que volver a ejecutar no duplica ofertas.
+- `anadaId: null` vale para las tiendas que no indican la añada; la oferta cuelga entonces del vino.
+- El historial (`historial_precios`) lo mantiene un trigger y solo crece cuando cambia el precio.
+- No se tocan `oculta_admin` (lo decide el admin) ni `estado_enlace` (lo lleva el comprobador de enlaces).
+  La única excepción: `estado_enlace` vuelve a `sin_comprobar` si cambia la URL.
+- Supresiones: un vino o una añada que el admin borró no recibe ofertas, y una fusión redirige la oferta al superviviente.
+- Sin precio, con una moneda distinta de EUR o con un formato imposible, la oferta se omite.
+- Si no hay formato, se asume 75 cl.
+- `cerrar()` solo actúa en ejecuciones completas. Las ofertas no vistas suman una ejecución sin ver.
+  Tras `UMBRAL_NO_VISTAS` (3) ejecuciones seguidas pasan a no disponibles; no se borran, para conservar el historial.
+
+Vinoselección y Vinopremier ya registran sus ofertas: lo hace `ofertaVinoseleccion()` / `ofertaVinopremier()` en su `guardar.ts`.
+
 ## Ribera del Duero
 
 - Recorre `/bodegas/resultados?termino=&page=0..N` (N del enlace «Última») y cada `/bodegas/<slug>` (~26 + ~312 peticiones, ~25 min).

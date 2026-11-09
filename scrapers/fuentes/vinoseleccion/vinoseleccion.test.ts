@@ -13,7 +13,8 @@ import {
   tipoDesde,
   variedadesDesde,
 } from "./normalizar.ts";
-import { variedadesAnteriores } from "./guardar.ts";
+import { ofertaVinoseleccion, variedadesAnteriores } from "./guardar.ts";
+import { normalizarOferta } from "../../lib/ofertas.ts";
 import { datosDeOnclick, parsearFicha, parsearListado, rutaProducto, urlListado } from "./parsear.ts";
 
 const fixture = (f: string) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url), "utf8");
@@ -253,5 +254,24 @@ describe("correcciones del admin", () => {
     expect(variedadesAnteriores({ nombre: "x", variedades: [] })).toEqual([]);
     expect(variedadesAnteriores({ nombre: "x" })).toBeUndefined();
     expect(variedadesAnteriores(null)).toBeUndefined();
+  });
+});
+
+describe("oferta (comparador de precios)", () => {
+  it("precio, formato y disponibilidad de la ficha (schema.org manda sobre la tarjeta)", () => {
+    const tarjeta = parsearListado(fixture("listado.html")).tarjetas[0]!;
+    const n = normalizarVino(parsearFicha(fixture("ficha-conde.html"), URL_CONDE), tarjeta, "conde-san-cristobal-2023");
+    const o = ofertaVinoseleccion(n, "vino-1", "anada-1", "reg-1");
+    expect(o).toMatchObject({
+      idExterno: n.idExterno,
+      vinoId: "vino-1",
+      anadaId: "anada-1",
+      url: URL_CONDE,
+      precio: 21.9,
+      formatoMl: 750,
+      disponible: true,
+      registroId: "reg-1",
+    });
+    expect(normalizarOferta(o)).toHaveProperty("fila.precio", 21.9);
   });
 });
