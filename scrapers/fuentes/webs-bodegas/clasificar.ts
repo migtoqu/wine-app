@@ -15,7 +15,7 @@ export interface SenalesPagina {
 }
 
 const RE: Record<Exclude<Clase, "otra">, RegExp> = {
-  legal: /\b(aviso legal|nota legal|politica de (privacidad|cookies)|privacidad|cookies|terminos|condiciones (de uso|generales|de venta)|legal notice|privacy|rgpd|lopd)\b/,
+  legal: /\b(aviso legal|nota legal|politica de (privacidad|cookies)|privacidad|cookies|terminos|condiciones (de uso|generales|de venta)|legal notice|privacy|rgpd|lopd|gastos de envio|formas de pago|como comprar|preguntas frecuentes|faq|devoluciones|envios)\b/,
   enoturismo: /\b(enoturismo|visitas?|visita la bodega|catas?|experiencias?|reservar|reservas|reserva (tu|una|de) visita|wine ?tourism|tours?|eventos?|actividades)\b/,
   vino: /\b(vinos?|nuestros vinos|wines?|productos?|tienda|shop|gama|marcas|coleccion)\b/,
   historia: /\b(historia|la bodega|bodega|nosotros|quienes somos|filosofia|familia|about|our story|about us|el proyecto|origen|origenes|equipo|vinedos?|terroir|la finca)\b/,
@@ -24,6 +24,14 @@ const RE: Record<Exclude<Clase, "otra">, RegExp> = {
 
 const TIPOS_WP_VINO = /^(product|products|producto|productos|vino|vinos|wine|wines|anada|anadas|nuestros-vinos)$/;
 const TIPOS_WP_ENOTURISMO = /^(visita|visitas|experiencia|experiencias|enoturismo|tour|tours|actividad|actividades|evento|eventos)$/;
+
+function rutaSegmentos(url: string): string[] {
+  try {
+    return decodeURIComponent(new URL(url).pathname).toLowerCase().split("/").filter(Boolean);
+  } catch {
+    return [];
+  }
+}
 
 /** Ruta legible para clasificar: «/es/nuestros-vinos/aalto-2021/» → «nuestros vinos aalto 2021». */
 function rutaPlana(url: string): string {
@@ -43,6 +51,11 @@ export function clasificar(s: SenalesPagina): Clase {
   const titulo = plano([s.titulo ?? "", s.h1 ?? ""].join(" "));
   const migas = plano((s.migas ?? []).join(" "));
   if (ruta === "") return "historia"; // portada: respaldo para la historia
+  // Artículos («los-10-mejores-vinos-de-ribera-del-duero-de-2024») fuera de una sección de vinos: no son fichas.
+  const segs = rutaSegmentos(s.url);
+  const ultimo = segs[segs.length - 1] ?? "";
+  const bajoVinos = segs.slice(0, -1).some((x) => /^(vinos?|wines?|productos?|product|shop|tienda|ficha-?vinos?|nuestros-vinos|e-shop.*)$/.test(x));
+  if (!tipoWp && ultimo.split("-").length > 6 && !bajoVinos) return "otra";
   // La ruta manda; después título y migas. El orden resuelve «visita-la-bodega» (enoturismo) frente a «la-bodega».
   // Fichas técnicas y notas de cata son de vinos, aunque digan «cata».
   if (/\b(fichas?(?: tecnicas?)?(?: de)? vinos?|fichas? tecnicas?|notas? de cata|ficha de cata)\b/.test(`${ruta} ${titulo}`)) return "vino";

@@ -14,6 +14,7 @@ import {
   plano,
   PLATAFORMAS_RESERVA,
 } from "./diccionarios.ts";
+import { descripcionServicio, extraerDetalle, type DetalleServicio } from "./enoturismo.ts";
 import type { Bloque, Enlace } from "./html.ts";
 
 const ANIO = "(1[89]\\d{2}|20[0-4]\\d)";
@@ -214,7 +215,7 @@ export interface VinoWeb {
 }
 
 /** Productos de tienda que no son un vino. */
-const NO_VINO = /\b(estuches?|cajas?|lotes?|packs?|regalos?|tarjetas?|bonos?|cheques?|copas?|sacacorchos|camisetas?|libros?|aceites?|vermut|vermouth|gin|ginebra|orujo|aguardiente|licor(es)?|mosto|vinagre|miel|gorras?|delantal|bolsas?|abridor|decantador|suscripci[oó]n|club|entradas?|visitas?|catas?|experiencias?|cursos?|eventos?|box|bottles|botellas|selecci[oó]n de|surtido|degustaci[oó]n|tour|reserva tu|pedido|quesos?|garbanzos|legumbres|cofres?|jam[oó]n|conservas|chocolates?|embutidos?|visit|tasting|shop|online|wines|tours?)\b|\d\s*\+\s*\d|\bx\s?\d+\b/i;
+const NO_VINO = /\b(estuches?|cajas?|lotes?|packs?|regalos?|tarjetas?|bonos?|cheques?|copas?|sacacorchos|camisetas?|libros?|aceites?|vermut|vermouth|gin|ginebra|orujo|aguardiente|licor(es)?|mosto|vinagre|miel|gorras?|delantal|bolsas?|abridor|decantador|suscripci[oó]n|club|entradas?|visitas?|catas?|experiencias?|cursos?|eventos?|box|bottles|botellas|selecci[oó]n de|surtido|degustaci[oó]n|tour|reserva tu|pedido|quesos?|garbanzos|legumbres|cofres?|jam[oó]n|conservas|chocolates?|embutidos?|visit|tasting|shop|online|wines|tours?|antigoteo|abrebotellas|enfriador|cubitera|tarjeta regalo|gift)\b|\d\s*\+\s*\d|\bx\s?\d+\b/i;
 /** Productos que son experiencias de enoturismo (van a servicios). */
 export const ES_SERVICIO = /\b(visitas?|catas?|experiencias?|entradas?|tour|enoturismo|cursos?|talleres?|eventos?)\b/i;
 
@@ -470,7 +471,7 @@ export function extraerVino(
 
 export type TipoServicio = "visita" | "cata" | "actividad" | "evento" | "restaurante" | "alojamiento";
 
-export interface ServicioWeb {
+export interface ServicioWeb extends DetalleServicio {
   tipo: TipoServicio;
   titulo: string;
   precio_desde: number | null;
@@ -479,6 +480,8 @@ export interface ServicioWeb {
   url_reserva: string | null;
   email: string | null;
   telefono: string | null;
+  /** Descripción propia por plantilla (servicios_bodega.descripcion). */
+  descripcion: string | null;
 }
 
 export function tipoServicio(titulo: string, texto = ""): TipoServicio {
@@ -582,7 +585,8 @@ export function extraerContacto(texto: string, dominio: string): { email: string
 export function extraerServicio(titulo: string, texto: string, enlacesPagina: Enlace[], host: string, dominio: string): ServicioWeb {
   const tipo = tipoServicio(titulo, texto);
   const contacto = extraerContacto(texto, dominio);
-  return {
+  const detalle = extraerDetalle(`${titulo}\n${texto}`);
+  const s = {
     tipo,
     titulo: tituloServicio(titulo, tipo),
     precio_desde: extraerPrecio(texto),
@@ -591,7 +595,9 @@ export function extraerServicio(titulo: string, texto: string, enlacesPagina: En
     url_reserva: urlReserva(enlacesPagina, host),
     email: contacto.email,
     telefono: contacto.telefono,
+    ...detalle,
   };
+  return { ...s, descripcion: descripcionServicio(s) };
 }
 
 /** Secciones de una página por encabezados h2–h4 (título + texto). */
