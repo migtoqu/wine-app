@@ -9,6 +9,7 @@ import { scraperVinopremier, SLUG_FUENTE as SLUG_VINOPREMIER } from "./fuentes/v
 import { scraperWebsBodegas, SLUG_FUENTE as SLUG_WEBS_BODEGAS } from "./fuentes/webs-bodegas/index.ts";
 import { scraperComprobadorEnlaces, SLUG_FUENTE as SLUG_ENLACES } from "./comprobador-enlaces/index.ts";
 import { SCRAPERS_CONSEJOS } from "./fuentes/consejos/index.ts";
+import { scraperNavarra, SLUG_FUENTE as SLUG_NAVARRA } from "./fuentes/consejos/navarra/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
 const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
@@ -22,6 +23,8 @@ const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   enlaces: { slug: SLUG_ENLACES, scraper: scraperComprobadorEnlaces },
   // Consejos con directorio de bodegas (núcleo común en fuentes/consejos/).
   ...SCRAPERS_CONSEJOS,
+  // Navarra: bodegas, vinos y experiencias (guardado compartido con Rioja).
+  "consejo-navarra": { slug: SLUG_NAVARRA, scraper: scraperNavarra },
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]

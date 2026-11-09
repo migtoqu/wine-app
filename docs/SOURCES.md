@@ -419,7 +419,7 @@ Auditoría: unas 40 peticiones, como mucho 7 por sitio, ≥ 4 s entre peticiones
 
 Reglas: solo hechos con enlace a la ficha; **nunca** la descripción de la bodega, imágenes ni nombres de personas (contacto, enólogos, responsables). Las marcas no crean vinos: van a `datos` y al emparejador. La provincia sale del código postal; si no hay, de la tabla de municipios de la D.O.; nunca se pone la de la D.O. por defecto. Proyecto privado y sin ánimo de lucro; **avisar a cada consejo antes de la fase pública** (Cigales es el más restrictivo).
 
-Descartados: **Rías Baixas** (`doriasbaixas.com`) devuelve 403 a `robots.txt`; no se insiste ni se cambia de UA. Navarra va en un PR aparte (§5.2: bodegas, vinos y experiencias).
+Descartados: **Rías Baixas** (`doriasbaixas.com`) devuelve 403 a `robots.txt`; no se insiste ni se cambia de UA.
 
 **Dry-run completo (2026-11-09)**, sin tocar la BD:
 
@@ -433,6 +433,19 @@ Descartados: **Rías Baixas** (`doriasbaixas.com`) devuelve 403 a `robots.txt`; 
 | **Total** | **347** | 293 | | **0** | | 308 | | | |
 
 Las 347 tienen municipio y provincia. Cruce con el catálogo actual (511 bodegas), con el mismo `EmparejadorBodegas` y en el orden de los cron: **319 nuevas** (el catálogo pasaría a ≈ 830), 20 vinculadas a una bodega existente (Protos, Emilio Moro, Pagos del Rey, Marqués de Riscal…) y **8 a revisión**. Seis de esas revisiones son grupos que comparten web, como `sierracantabria.com` (Teso la Monja ≠ Viñedos de Paganos) o `bodegasriojanas.com` (Torreduero, Viore). El guardado manda a revisión cualquier vínculo hecho solo por dominio cuando los nombres no se parecen (`vinculoDudosoPorDominio`). Las webs de redes sociales o del propio consejo no van a `bodegas.web`.
+
+#### Navarra (`navarrawine.com`): bodegas, vinos y experiencias
+
+| Clave | Detalle |
+| --- | --- |
+| Auditoría (2026-11-08) | `robots.txt` solo bloquea `/wp-admin/` y los formularios. El aviso legal prohíbe reproducir o comunicar contenidos sin autorización y no dice nada de la extracción. Sin anti-bot. La REST pública (`wp-json/wp/v2/bodegas`) devuelve `acf` vacío, así que se lee el HTML |
+| Recorrido | `sitemap_index.xml` → `bodegas-`, `vinos-` y `experiencias-sitemap.xml` → fichas, más `/bodegas-navarra/` para la zona |
+| Código | `scrapers/fuentes/consejos/navarra/`. El guardado es el de Rioja, extraído a `consejos/comun/guardar-completo.ts` (`GuardadoConsejoCompleto`, con la D.O. como parámetro); `GuardadoRioja` es ahora una subclase que fija la D.O. Los helpers de tipo, crianza, añada, precio, duración e idiomas pasan a `comun/vinos.ts` y `comun/servicios.ts`; Rioja los re-exporta y sus tests no cambian |
+| Bodega | Contacto, web, coordenadas (iframe del mapa), servicios de enoturismo e instalaciones, y enlaces a sus vinos y experiencias. La ficha no trae CP. El municipio sale de la dirección o de la de sus experiencias, con una lista de municipios de la D.O. La provincia es Navarra (`provinciaUnica`: la D.O. está entera en la Comunidad Foral) |
+| Vino | Nombre, tipo y crianza («Tinto Crianza»), variedades, meses de barrica (hecho `anada.barrica_meses`) y bodega por el enlace «Ver bodega». El precio de la ficha va solo a `datos` |
+| Experiencia | Tipo, precio, duración (la web da horas sin unidad), idiomas, temporada y horario, enlace de reserva y bodega. El texto se usa para clasificar el tipo, pero no se guarda |
+
+NAVARRA_CIFRAS
 
 ---
 

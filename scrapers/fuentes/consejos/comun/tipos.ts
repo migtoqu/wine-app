@@ -54,4 +54,9 @@ export interface DefinicionConsejo {
   provinciaPorMunicipio?: Record<string, string>;
   /** Alias de municipio (otra lengua o grafía → nombre del catálogo), por `claveTexto`. */
   aliasMunicipio?: Record<string, string>;
+  /**
+   * Solo para D.O. que caen enteras en una provincia (Navarra): último recurso si no hay CP ni
+   * municipio conocido. Las D.O. de varias provincias nunca lo usan.
+   */
+  provinciaUnica?: string;
 }

@@ -2,7 +2,12 @@
 import { normalizarCodigoPostal, normalizarEmail, normalizarTelefono, normalizarWeb } from "../../lib/contacto.ts";
 import { comunidadDeProvincia, puntoEnEspana, puntoEwkt } from "../../lib/geo.ts";
 import { capitalizarSiMayusculas, claveNombreBodega, claveTexto, limpiarEspacios, nombreBodegaParaMostrar } from "../../lib/texto.ts";
-import { parsearPrecio, type FichaBodega, type FichaExperiencia, type FichaVino, type Filas } from "./parsear.ts";
+import type { FichaBodega, FichaExperiencia, FichaVino, Filas } from "./parsear.ts";
+import { crianzaDe, separarAnada, tipoVino, type Crianza, type TipoVino } from "../consejos/comun/vinos.ts";
+import { duracionMinutos, idiomasDe, precioDesde, tipoServicio, type TipoServicio } from "../consejos/comun/servicios.ts";
+
+export { crianzaDe, separarAnada, tipoVino, type Crianza, type TipoVino } from "../consejos/comun/vinos.ts";
+export { duracionMinutos, idiomasDe, precioDesde, tipoServicio, type TipoServicio } from "../consejos/comun/servicios.ts";
 
 // ---------------------------------------------------------------------------
 // Provincia y comunidad: la D.O.Ca. abarca La Rioja, Álava (Rioja Alavesa), Navarra y algo de Burgos.
@@ -120,41 +125,6 @@ export function normalizarBodega(f: FichaBodega): BodegaNormalizada {
 // Vinos
 // ---------------------------------------------------------------------------
 
-export type TipoVino = "tinto" | "blanco" | "rosado" | "espumoso" | "generoso" | "dulce" | "naranja";
-export type Crianza = "joven" | "roble" | "crianza" | "reserva" | "gran_reserva" | "otra";
-
-const TIPOS: Record<string, TipoVino> = {
-  tinto: "tinto", blanco: "blanco", rosado: "rosado", espumoso: "espumoso", generoso: "generoso",
-  dulce: "dulce", naranja: "naranja", clarete: "rosado",
-};
-
-export function tipoVino(texto: string | null): TipoVino | null {
-  const c = claveTexto(texto ?? "");
-  return TIPOS[c] ?? Object.entries(TIPOS).find(([k]) => c.split(" ").includes(k))?.[1] ?? null;
-}
-
-/** Crianza por palabras («Gran Reserva», «Crianza», «Roble», «Joven»); «Genérico» no dice nada. */
-export function crianzaDe(...textos: (string | null)[]): Crianza | null {
-  for (const texto of textos) {
-    const c = ` ${claveTexto(texto ?? "")} `;
-    if (/ gran reserva /.test(c)) return "gran_reserva";
-    if (/ reserva /.test(c)) return "reserva";
-    if (/ crianza /.test(c)) return "crianza";
-    if (/ (roble|semicrianza|semi crianza|barrica) /.test(c)) return "roble";
-    if (/ (joven|sin crianza|cosecha) /.test(c)) return "joven";
-  }
-  return null;
-}
-
-/** Quita una añada final del nombre («Irujo Crianza 2018» → «Irujo Crianza», 2018). */
-export function separarAnada(nombre: string, anadaTexto: string | null): { nombre: string; anio: number | null } {
-  const limpio = limpiarEspacios(nombre);
-  const m = /^(.*\S)\s+((?:19|20)\d\d)$/.exec(limpio);
-  const delCampo = /^(?:19|20)\d\d$/.test((anadaTexto ?? "").trim()) ? Number(anadaTexto!.trim()) : null;
-  if (m) return { nombre: m[1]!, anio: delCampo ?? Number(m[2]) };
-  return { nombre: limpio, anio: delCampo };
-}
-
 export interface VinoNormalizado {
   idExterno: string;
   url: string;
@@ -195,59 +165,6 @@ export function normalizarVino(f: FichaVino): VinoNormalizado {
 // ---------------------------------------------------------------------------
 // Experiencias → servicios_bodega
 // ---------------------------------------------------------------------------
-
-export type TipoServicio = "cata" | "visita" | "restaurante" | "alojamiento" | "evento" | "otra" | "actividad";
-
-const reglas: [TipoServicio, RegExp][] = [
-  ["alojamiento", /alojamiento|hotel|duerm|pernoct|noche en/],
-  ["visita", /\bvisita/],
-  ["cata", /\b(cata|catas|degustaci|maridaje)/],
-  ["restaurante", /comida|restaurante|gastronom|almuerzo|men[uú]|cena|brunch|desayuno/],
-  ["evento", /evento|mice|empresa|boda|celebraci|team|incentivo|profesional/],
-];
-
-/** Tipo a partir del título (manda) y de lo que incluye; sin pistas, «actividad». */
-export function tipoServicio(titulo: string, incluye: string[]): TipoServicio {
-  for (const texto of [claveTexto(titulo), claveTexto(incluye.join(" "))]) {
-    for (const [tipo, re] of reglas) if (re.test(texto)) return tipo;
-  }
-  return "actividad";
-}
-
-/** Precio más bajo de una fila PVP («Desde 25€», «Niños: 8€», «Adultos: 26€»). Gratuito = 0. */
-export function precioDesde(filas: string[] | undefined): number | null {
-  if (!filas || filas.length === 0) return null;
-  if (filas.every((f) => /gratuit|gratis/i.test(f))) return 0;
-  const precios = filas.map((f) => parsearPrecio(f.replace(/^[^:]*:/, ""))).filter((n): n is number => n != null && n >= 0);
-  return precios.length ? Math.min(...precios) : null;
-}
-
-/** «2h», «1h 30min», «90 min», «2 horas» → minutos. */
-export function duracionMinutos(filas: string[] | undefined): number | null {
-  const texto = (filas ?? []).join(" ").toLowerCase();
-  const h = /(\d+(?:[.,]\d+)?)\s*(?:h\b|hs?\b|horas?)/.exec(texto);
-  const m = /(\d+)\s*(?:min|m\b|minutos?)/.exec(texto);
-  let min = 0;
-  if (h) min += Math.round(Number(h[1]!.replace(",", ".")) * 60);
-  if (m) min += Number(m[1]);
-  if (!h && !m) return null;
-  return min > 0 && min <= 24 * 60 ? min : null;
-}
-
-const IDIOMAS: Record<string, string> = {
-  castellano: "es", espanol: "es", spanish: "es", ingles: "en", english: "en", frances: "fr", aleman: "de",
-  italiano: "it", portugues: "pt", euskera: "eu", vasco: "eu", catalan: "ca", chino: "zh", japones: "ja",
-  ruso: "ru", holandes: "nl", neerlandes: "nl",
-};
-
-export function idiomasDe(filas: string[] | undefined): string[] {
-  const out: string[] = [];
-  for (const parte of (filas ?? []).join(",").split(/[,/;]|\s+y\s+/)) {
-    const codigo = IDIOMAS[claveTexto(parte)];
-    if (codigo && !out.includes(codigo)) out.push(codigo);
-  }
-  return out;
-}
 
 /** Horario/temporada como texto corto: «Todo el año · Sábados, Domingos: 10:30 a 12:30». */
 export function horarioDe(info: Filas): string | null {

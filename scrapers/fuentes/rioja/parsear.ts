@@ -3,6 +3,9 @@
 import * as cheerio from "cheerio";
 import type { Punto } from "../../lib/geo.ts";
 import { limpiarEspacios, textoONull } from "../../lib/texto.ts";
+import { parsearPrecio } from "../consejos/comun/servicios.ts";
+
+export { parsearPrecio };
 
 export const BASE = "https://riojawine.com";
 export const URL_SITEMAP = `${BASE}/sitemap-es-es.xml`;
@@ -203,14 +206,6 @@ export interface FichaVino {
   uvas: string[];
   /** «Más vinos de la bodega»: hermanos de la misma bodega (explícito). */
   vinos_hermanos: string[];
-}
-
-export function parsearPrecio(s: string | null | undefined): number | null {
-  const m = /\d[\d.,]*/.exec(s ?? "");
-  if (!m) return null;
-  // «1.200,50» (es) → 1200.5; «60,00» → 60; «25.5» → 25.5.
-  const n = Number(m[0].includes(",") ? m[0].replace(/\./g, "").replace(",", ".") : m[0].replace(/[.,]$/, ""));
-  return Number.isFinite(n) ? n : null;
 }
 
 export function parsearVino(html: string, url: string): FichaVino {
