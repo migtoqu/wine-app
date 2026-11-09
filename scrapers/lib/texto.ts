@@ -92,6 +92,13 @@ export function nombreBodegaParaMostrar(razonSocial: string): string {
 const GENERICAS_BODEGA = new Set([
   "bodega", "bodegas", "vinedo", "vinedos", "vino", "vinos", "celler", "cellers",
   "grupo", "hacienda", "de", "del", "la", "las", "los", "el", "y", "e", "the",
+  // «D´Echauz», «d'Anvers»: la «d» elidida es «de».
+  "d",
+  // Adjetivos y reclamos que las guías y webs añaden al nombre de la bodega.
+  "familiares", "familia", "historica", "tradicional", "subterranea", "subterraneas", "hotel",
+  "wines", "wine", "winery", "visita", "visitar", "vistar",
+  // Forma societaria en mitad del nombre («Bodega X, Soc. Coop. - Ribera»).
+  "sociedad", "cooperativa", "coop", "soc", "hnos", "hermanos",
 ]);
 
 /**
@@ -102,6 +109,7 @@ const GENERICAS_BODEGA = new Set([
 export function claveNombreBodega(nombre: string): string {
   const base = quitarTildes(quitarFormaSocietaria(nombre))
     .toLowerCase()
+    .replace(/&/g, " y ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
   const palabras = base.split(" ").filter((p) => p !== "" && !GENERICAS_BODEGA.has(p));
