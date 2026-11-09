@@ -501,6 +501,38 @@ export type Database = {
         }
         Relationships: []
       }
+      historial_precios: {
+        Row: {
+          desde: string
+          hasta: string | null
+          id: string
+          oferta_id: string
+          precio: number
+        }
+        Insert: {
+          desde?: string
+          hasta?: string | null
+          id?: string
+          oferta_id: string
+          precio: number
+        }
+        Update: {
+          desde?: string
+          hasta?: string | null
+          id?: string
+          oferta_id?: string
+          precio?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historial_precios_oferta_id_fkey"
+            columns: ["oferta_id"]
+            isOneToOne: false
+            referencedRelation: "ofertas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       imagenes: {
         Row: {
           alt: string | null
@@ -678,6 +710,98 @@ export type Database = {
           },
           {
             foreignKeyName: "notas_vino_id_fkey"
+            columns: ["vino_id"]
+            isOneToOne: false
+            referencedRelation: "vinos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ofertas: {
+        Row: {
+          anada_id: string | null
+          created_at: string
+          disponible: boolean
+          ean: string | null
+          ejecuciones_sin_ver: number
+          estado_enlace: Database["public"]["Enums"]["estado_enlace"]
+          formato_ml: number
+          id: string
+          id_externo: string
+          moneda: string
+          oculta_admin: boolean
+          precio: number
+          registro_id: string | null
+          tienda_id: string
+          updated_at: string
+          url: string
+          vino_id: string
+          visto_por_ultima_vez: string
+        }
+        Insert: {
+          anada_id?: string | null
+          created_at?: string
+          disponible?: boolean
+          ean?: string | null
+          ejecuciones_sin_ver?: number
+          estado_enlace?: Database["public"]["Enums"]["estado_enlace"]
+          formato_ml?: number
+          id?: string
+          id_externo: string
+          moneda?: string
+          oculta_admin?: boolean
+          precio: number
+          registro_id?: string | null
+          tienda_id: string
+          updated_at?: string
+          url: string
+          vino_id: string
+          visto_por_ultima_vez?: string
+        }
+        Update: {
+          anada_id?: string | null
+          created_at?: string
+          disponible?: boolean
+          ean?: string | null
+          ejecuciones_sin_ver?: number
+          estado_enlace?: Database["public"]["Enums"]["estado_enlace"]
+          formato_ml?: number
+          id?: string
+          id_externo?: string
+          moneda?: string
+          oculta_admin?: boolean
+          precio?: number
+          registro_id?: string | null
+          tienda_id?: string
+          updated_at?: string
+          url?: string
+          vino_id?: string
+          visto_por_ultima_vez?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ofertas_anada_id_fkey"
+            columns: ["anada_id"]
+            isOneToOne: false
+            referencedRelation: "anadas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofertas_registro_id_fkey"
+            columns: ["registro_id"]
+            isOneToOne: false
+            referencedRelation: "registros_fuente"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofertas_tienda_id_fkey"
+            columns: ["tienda_id"]
+            isOneToOne: false
+            referencedRelation: "tiendas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ofertas_vino_id_fkey"
             columns: ["vino_id"]
             isOneToOne: false
             referencedRelation: "vinos"
@@ -1030,6 +1154,78 @@ export type Database = {
         }
         Relationships: []
       }
+      tiendas: {
+        Row: {
+          activa: boolean
+          afiliacion_plantilla: string | null
+          afiliacion_programa: string | null
+          bodega_id: string | null
+          created_at: string
+          dominio: string | null
+          envio_gratis_desde: number | null
+          fuente_id: string | null
+          id: string
+          info_envio: string | null
+          logo_url: string | null
+          nombre: string
+          slug: string
+          tipo: Database["public"]["Enums"]["tipo_tienda"]
+          updated_at: string
+          web: string
+        }
+        Insert: {
+          activa?: boolean
+          afiliacion_plantilla?: string | null
+          afiliacion_programa?: string | null
+          bodega_id?: string | null
+          created_at?: string
+          dominio?: string | null
+          envio_gratis_desde?: number | null
+          fuente_id?: string | null
+          id?: string
+          info_envio?: string | null
+          logo_url?: string | null
+          nombre: string
+          slug: string
+          tipo?: Database["public"]["Enums"]["tipo_tienda"]
+          updated_at?: string
+          web: string
+        }
+        Update: {
+          activa?: boolean
+          afiliacion_plantilla?: string | null
+          afiliacion_programa?: string | null
+          bodega_id?: string | null
+          created_at?: string
+          dominio?: string | null
+          envio_gratis_desde?: number | null
+          fuente_id?: string | null
+          id?: string
+          info_envio?: string | null
+          logo_url?: string | null
+          nombre?: string
+          slug?: string
+          tipo?: Database["public"]["Enums"]["tipo_tienda"]
+          updated_at?: string
+          web?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiendas_bodega_id_fkey"
+            columns: ["bodega_id"]
+            isOneToOne: false
+            referencedRelation: "bodegas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiendas_fuente_id_fkey"
+            columns: ["fuente_id"]
+            isOneToOne: false
+            referencedRelation: "fuentes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       valores_fuente: {
         Row: {
           campo: string
@@ -1196,6 +1392,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      _fusion_mover_ofertas: {
+        Args: { p_destino: string; p_nivel: string; p_origen: string }
+        Returns: undefined
+      }
       _fusion_mover_personales: {
         Args: { p_destino: string; p_origen: string; p_tipo: string }
         Returns: undefined
@@ -1301,6 +1501,8 @@ export type Database = {
           desplazamiento?: number
           limite?: number
           orden?: string
+          precio_max?: number
+          precio_min?: number
           q?: string
           sin_anada?: boolean
           tipos?: Database["public"]["Enums"]["tipo_vino"][]
@@ -1317,11 +1519,16 @@ export type Database = {
           imagen_alt: string
           imagen_url: string
           nombre: string
+          precio_desde: number
           relevancia: number
           slug: string
           tipo: Database["public"]["Enums"]["tipo_vino"]
           total: number
         }[]
+      }
+      marcar_ofertas_no_vistas: {
+        Args: { p_inicio: string; p_tienda: string; p_umbral?: number }
+        Returns: number
       }
       normalizar_busqueda: { Args: { q: string }; Returns: string }
       opciones_filtro_vinos: {
@@ -1334,6 +1541,10 @@ export type Database = {
         }[]
       }
       patron_contiene: { Args: { q: string }; Returns: string }
+      precio_desde_vino: {
+        Args: { p_formato_ml?: number; p_vino: string }
+        Returns: number
+      }
       relevancia_nombre: {
         Args: { nombre: string; qn: string }
         Returns: number
@@ -1386,6 +1597,7 @@ export type Database = {
         | "tienda"
         | "otra"
         | "actividad"
+      tipo_tienda: "online" | "supermercado" | "especializada" | "bodega"
       tipo_vino:
         | "tinto"
         | "blanco"
@@ -1572,6 +1784,7 @@ export const Constants = {
         "otra",
         "actividad",
       ],
+      tipo_tienda: ["online", "supermercado", "especializada", "bodega"],
       tipo_vino: [
         "tinto",
         "blanco",

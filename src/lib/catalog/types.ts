@@ -22,6 +22,9 @@ export type ListarVinosArgs = {
   orden?: string;
   limite?: number;
   desplazamiento?: number;
+  // Precio «desde» (75 cl) en euros.
+  precio_min?: number;
+  precio_max?: number;
 };
 
 export type VinoListItem = {
@@ -40,6 +43,8 @@ export type VinoListItem = {
   imagen_alt: string | null;
   relevancia: number | null;
   total: number;
+  // Oferta visible y disponible más barata en 75 cl (null = sin ofertas).
+  precio_desde: number | null;
 };
 
 export type ListarBodegasArgs = {
