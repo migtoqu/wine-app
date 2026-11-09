@@ -6,9 +6,11 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | --- | --- | --- | --- |
 | `ribera` | `cr-ribera-del-duero` | `bodegas`, `bodega_denominaciones`, `registros_fuente` | `scrape-ribera.yml` (lunes 03:17 UTC) |
 | `vinoseleccion` | `vinoseleccion` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `registros_fuente` | `scrape-vinoseleccion.yml` (miércoles 03:47 UTC) |
+| `vinopremier` | `vinopremier` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `codigos_ean`, `registros_fuente` | `scrape-vinopremier.yml` (manual (cron desactivado hasta que la web responda)) |
 | `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
 | `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 | `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves y sábado 02:37 UTC, 4 lotes) |
+| `enlaces` | `comprobador-enlaces` (no es una fuente de datos) | `comprobaciones_enlace` (y `imagenes.estado_enlace` vía trigger) | `link-check.yml` (domingo 05:17 UTC) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
 
@@ -62,6 +64,24 @@ scrapers/
                          dry-run), db (cliente service role), texto/contacto/geo (normalización), json
   fuentes/<fuente>/      parsear.ts (HTML → datos crudos) · normalizar.ts · guardar.ts · index.ts
                          fixtures/ (HTML mínimo, solo la parte factual) · *.test.ts
+  comprobador-enlaces/   comprobar.ts (HEAD → GET, robots.txt, ritmo por host) · index.ts
+```
+
+## Comprobador de enlaces
+
+Revisa cada semana las URLs del catálogo: `imagenes.url`, `bodegas.web` y `enoturismo_web`, `servicios_bodega.url_reserva` (activos) y las URLs de `procedencia_campos` (bodega, vino, añada).
+
+- Empieza con `sincronizar_comprobaciones_enlace()`: alta de URLs nuevas en `comprobaciones_enlace`, `campos` al día y baja de las que ya no usa ninguna ficha. Después comprueba las filas que no están ignoradas, de la comprobación más antigua a la más reciente.
+- Por enlace: `robots.txt` del origen (una vez por ejecución; 4xx = sin restricciones, 5xx = no se pide nada, sin respuesta = el propio enlace dirá si falla), `HEAD` y, si responde ≥ 400 o hay error de red, `GET` (se cancela el cuerpo). Timeout 20 s.
+- Fallo = 404/410/5xx, DNS, conexión o timeout. **Inconcluso** (no cuenta) = 401/403/429 o robots.txt que lo excluye. Un 429 deja el resto de URLs de ese host para la próxima ejecución.
+- `registrar_comprobacion_enlace()` guarda cada resultado. La BD oculta el enlace tras **2 fallos seguidos** (`oculto`, calculado por trigger) y lo reactiva con el siguiente OK; las imágenes lo reflejan en `estado_enlace`. Las fichas públicas quitan los demás enlaces ocultos con el campo calculado `enlaces_ocultos`.
+- Ritmo: 2–4 s entre peticiones al mismo host y hasta 6 hosts a la vez; los hosts con más enlaces empiezan antes. `--presupuesto-min` (150 por defecto) deja de comprobar enlaces nuevos al agotarse el tiempo; lo pendiente es lo primero la semana siguiente.
+- Contadores en `ejecuciones_scraper`: `nuevos` = enlaces que pasan a ocultos, `actualizados` = reactivados, `errores` = fallos al escribir en la BD (un enlace roto no es un error de la ejecución).
+- El admin lo gestiona en `/admin/enlaces`: reintentar (una comprobación inmediata desde el servidor, sin robots.txt por ser una sola petición pedida a mano), ocultar o mostrar, editar la URL (`admin_editar_url_enlace`, que la cambia en la ficha y reinicia la comprobación) e ignorar (falso positivo: ni se comprueba ni se oculta).
+
+```bash
+# Dry-run sin BD con URLs sueltas (o un fichero con una por línea)
+node scrapers/cli.ts enlaces --dry-run --urls https://example.com/,https://example.com/no-existe
 ```
 
 ## Ribera del Duero
@@ -99,6 +119,18 @@ scrapers/
   - El vino se busca dentro de su bodega con `EmparejadorVinos` (EAN, nombre normalizado); uno muy parecido va a revisión. Si la ficha trae EAN, se guarda en `codigos_ean`.
   - Lo que el admin borra (bodega, vino, añada, imagen) o fusiona no se recrea: ver supresiones.
   - Hechos: tipo, uvas, barrica, grado y temperatura → resumen propio `elaboracion` de la añada (es/en).
+
+## Vinopremier
+
+Tienda Magento (`vinopremier.com`, sin `www`). Mismo flujo que Vinoselección, con estas diferencias:
+
+- Recorre `/vinos/denominaciones/d-o-ribera-del-duero` (24 por página) y `/d-o-rioja`, con `?p=N`. La D.O. del vino (`ribera-del-duero` o `rioja`, por slug) sale de la categoría que lo lista; solo se lee la rejilla de `.column.main`, no los carruseles del menú. Unas 17 páginas + unas 390 fichas (~7 s por petición: ~50 min).
+- De la ficha: JSON-LD `Product` (nombre, SKU, precio, disponibilidad, imagen enlazada), EAN visible, bodega (`h2.page-bodega`) y, del texto libre de la descripción, solo **cifras y nombres**: uvas («Uva: …» o «combinando A, B y C»), meses de barrica, temperatura de servicio y grado si están rotulados. El texto nunca se guarda. La ficha casi nunca trae cata ni maridaje, así que no hay hechos de esos tipos.
+- **Descartes**: packs y lotes (mismas reglas que Vinoselección) y productos sin tipo de vino reconocible («Sidra…»). Un estuche de una sola botella sí cuenta.
+- **Emparejamiento**: primero por **EAN** contra `codigos_ean`. Si el EAN ya es de un vino del catálogo y el nombre de bodega de la tienda no basta, el EAN decide la bodega; si el nombre apunta a *otra* bodega, va a revisión («EAN de otra bodega»). Un EAN de otra añada del mismo vino se asocia a esa añada, sin revisión. Sin EAN, o si no se encuentra: bodega (`Emparejador`) y nombre dentro de la bodega (`EmparejadorVinos`). **Una tienda no crea bodegas**: sin bodega candidata la ficha va a la cola de revisión.
+- `--bodegas ruta.json` en dry-run acepta también una instantánea del catálogo `{bodegas:[{id,nombre,marcas?}], vinos:[{id,bodegaId,nombre,tipo,crianza}], eans:[{ean,vinoId}]}` para calcular cuántos vinos ya existen.
+- Ritmo: 10–14 s entre peticiones y tope de 450 por ejecución (ver incidente en `docs/SOURCES.md` §4.1). Orden de carga: después de Ribera y de Rioja (las bodegas deben existir).
+
 
 ## Ruta del Vino Ribera del Duero (`ruta-ribera`)
 

@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: LayoutProps<"/[lang]/admin">) 
   );
 }
 
-const SECCIONES = ["invitaciones", "usuarios", "bodegas", "vinos", "denominaciones", "uvas", "revision"] as const;
+const SECCIONES = ["invitaciones", "usuarios", "bodegas", "vinos", "denominaciones", "uvas", "revision", "ejecuciones", "enlaces"] as const;
 
 async function AdminGate({ children }: { children: React.ReactNode }) {
   await requireAdmin();

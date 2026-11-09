@@ -52,11 +52,25 @@ function visibleImages(images: RawImage[] | null, preferTipo: string): CatalogIm
 
 type EntidadFicha = "bodega" | "vino" | "anada";
 
+// Enlaces ocultos por el comprobador (o el admin). Llegan en la misma consulta
+// de la ficha como campo calculado `enlaces_ocultos` (URLs, sin más datos) y
+// nunca salen del servidor.
+type ConOcultos = { id: string; enlaces_ocultos: string[] | null };
+
+function ocultosPorId(filas: ConOcultos[]): Map<string, Set<string>> {
+  return new Map(filas.map((f) => [f.id, new Set(f.enlaces_ocultos ?? [])]));
+}
+
+function visible(url: string | null, ocultas: Set<string> | undefined): string | null {
+  return url && ocultas?.has(url) ? null : url;
+}
+
 // Procedencia por campo y resúmenes propios de un conjunto de entidades
 // (tablas polimórficas: sin FK a la entidad, así que van en consultas aparte).
 async function procedenciaYResumenes(
   tipo: EntidadFicha,
   ids: string[],
+  ocultos: Map<string, Set<string>> = new Map(),
 ): Promise<{ procedencia: Map<string, Procedencias>; resumenes: Map<string, Resumen[]> }> {
   const procedencia = new Map<string, Procedencias>();
   const resumenes = new Map<string, Resumen[]>();
@@ -79,7 +93,9 @@ async function procedenciaYResumenes(
 
   for (const p of proc.data) {
     const m = procedencia.get(p.entidad_id) ?? {};
-    m[p.campo] = { origen: p.origen, fuente: p.fuente, url: p.url, observado_en: p.observado_en };
+    // Un enlace de procedencia oculto deja paso a la portada de la fuente.
+    const url = visible(p.url, ocultos.get(p.entidad_id));
+    m[p.campo] = { origen: p.origen, fuente: p.fuente, url, observado_en: p.observado_en };
     procedencia.set(p.entidad_id, m);
   }
 
@@ -112,14 +128,14 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
   const { data, error } = await createPublicClient()
     .from("vinos")
     .select(
-      `id, slug, nombre, tipo, crianza, descripcion, elaboracion, updated_at,
+      `id, slug, nombre, tipo, crianza, descripcion, elaboracion, updated_at, enlaces_ocultos,
        bodega:bodegas!inner(slug, nombre, municipio, provincia),
        denominacion:denominaciones(slug, nombre, tipo),
        fuente:fuentes(nombre, url_base),
        imagenes(${IMAGE_FIELDS}),
        anadas(id, anio, grado, meses_crianza, notas_cata, maridaje, temp_servicio_min,
               temp_servicio_max, produccion_botellas, elaboracion, cata_vista, cata_nariz,
-              cata_boca, updated_at,
+              cata_boca, updated_at, enlaces_ocultos,
               anada_variedades(porcentaje, variedad:variedades_uva(slug, nombre, color)),
               imagenes(${IMAGE_FIELDS}))`,
     )
@@ -128,8 +144,8 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
   if (error) throw new Error(`getVino(${slug}): ${error.message}`);
   if (!data) return null;
   const [delVino, deAnadas] = await Promise.all([
-    procedenciaYResumenes("vino", [data.id]),
-    procedenciaYResumenes("anada", data.anadas.map((a) => a.id)),
+    procedenciaYResumenes("vino", [data.id], ocultosPorId([data])),
+    procedenciaYResumenes("anada", data.anadas.map((a) => a.id), ocultosPorId(data.anadas)),
   ]);
 
   return {
@@ -223,9 +239,9 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
     .select(
       `id, slug, nombre, descripcion, direccion, codigo_postal, municipio, provincia, comunidad,
        web, telefono, email, redes, anio_fundacion, hectareas, estado, historia,
-       enoturismo_web, enoturismo_email, enoturismo_telefono, updated_at,
+       enoturismo_web, enoturismo_email, enoturismo_telefono, updated_at, enlaces_ocultos,
        servicios_bodega(id, tipo, titulo, descripcion, precio_desde, duracion_minutos, idiomas,
-                        horario, url_reserva, activo),
+                        horario, url_reserva, activo, enlaces_ocultos),
        fuente:fuentes(nombre, url_base),
        bodega_denominaciones(principal, denominacion:denominaciones(slug, nombre, tipo)),
        imagenes(${IMAGE_FIELDS})`,
@@ -234,7 +250,8 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
     .maybeSingle();
   if (error) throw new Error(`getBodega(${slug}): ${error.message}`);
   if (!data) return null;
-  const extra = await procedenciaYResumenes("bodega", [data.id]);
+  const ocultas = new Set(data.enlaces_ocultos ?? []);
+  const extra = await procedenciaYResumenes("bodega", [data.id], ocultosPorId([data]));
   const servicios: ServicioBodega[] = data.servicios_bodega
     .filter((s) => s.activo)
     .sort((a, b) => a.tipo.localeCompare(b.tipo) || a.titulo.localeCompare(b.titulo))
@@ -247,7 +264,7 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
       duracion_minutos: s.duracion_minutos,
       idiomas: s.idiomas,
       horario: s.horario,
-      url_reserva: s.url_reserva,
+      url_reserva: visible(s.url_reserva, new Set(s.enlaces_ocultos ?? [])),
     }));
 
   const denominaciones: DenominacionRef[] = [...data.bodega_denominaciones]
@@ -268,7 +285,7 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
     municipio: data.municipio,
     provincia: data.provincia,
     comunidad: data.comunidad,
-    web: data.web,
+    web: visible(data.web, ocultas),
     telefono: data.telefono,
     email: data.email,
     redes: data.redes,
@@ -276,7 +293,7 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
     hectareas: data.hectareas,
     estado: data.estado,
     historia: data.historia,
-    enoturismo_web: data.enoturismo_web,
+    enoturismo_web: visible(data.enoturismo_web, ocultas),
     enoturismo_email: data.enoturismo_email,
     enoturismo_telefono: data.enoturismo_telefono,
     servicios,

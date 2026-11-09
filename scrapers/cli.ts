@@ -5,15 +5,20 @@ import { scraperRibera, SLUG_FUENTE as SLUG_RIBERA } from "./fuentes/ribera/inde
 import { scraperRutaRibera, SLUG_FUENTE as SLUG_RUTA_RIBERA } from "./fuentes/ruta-ribera/index.ts";
 import { scraperRioja, SLUG_FUENTE as SLUG_RIOJA } from "./fuentes/rioja/index.ts";
 import { scraperVinoseleccion, SLUG_FUENTE as SLUG_VINOSELECCION } from "./fuentes/vinoseleccion/index.ts";
+import { scraperVinopremier, SLUG_FUENTE as SLUG_VINOPREMIER } from "./fuentes/vinopremier/index.ts";
 import { scraperWebsBodegas, SLUG_FUENTE as SLUG_WEBS_BODEGAS } from "./fuentes/webs-bodegas/index.ts";
+import { scraperComprobadorEnlaces, SLUG_FUENTE as SLUG_ENLACES } from "./comprobador-enlaces/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
 const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   ribera: { slug: SLUG_RIBERA, scraper: scraperRibera },
   vinoseleccion: { slug: SLUG_VINOSELECCION, scraper: scraperVinoseleccion },
+  vinopremier: { slug: SLUG_VINOPREMIER, scraper: scraperVinopremier },
   "ruta-ribera": { slug: SLUG_RUTA_RIBERA, scraper: scraperRutaRibera },
   rioja: { slug: SLUG_RIOJA, scraper: scraperRioja },
   "webs-bodegas": { slug: SLUG_WEBS_BODEGAS, scraper: scraperWebsBodegas },
+  // No es una fuente: comprueba los enlaces del catálogo (se registra igual en ejecuciones_scraper).
+  enlaces: { slug: SLUG_ENLACES, scraper: scraperComprobadorEnlaces },
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]
@@ -33,6 +38,10 @@ Webs de bodegas (webs-bodegas):
   --lote I/N           solo los sitios del lote I de N (reparto estable por hash del dominio)
   --presupuesto-min N  no empieza sitios nuevos pasados N minutos (por defecto 45)
   --descubrir-webs     prueba también la web del dominio del email de las bodegas sin web
+
+Comprobador de enlaces (enlaces):
+  --urls RUTA|URLS     (dry-run) fichero con una URL por línea o URLs separadas por comas
+  --presupuesto-min N  no comprueba enlaces nuevos pasados N minutos (por defecto 150)
 `;
 
 async function main(): Promise<number> {
@@ -49,6 +58,7 @@ async function main(): Promise<number> {
       lote: { type: "string" },
       "presupuesto-min": { type: "string" },
       "descubrir-webs": { type: "boolean", default: false },
+      urls: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -81,6 +91,7 @@ async function main(): Promise<number> {
       lote: values.lote,
       presupuestoMin: values["presupuesto-min"],
       descubrirWebs: values["descubrir-webs"] ? "1" : undefined,
+      urls: values.urls,
     },
   });
 }

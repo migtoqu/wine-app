@@ -15,7 +15,8 @@ Decisiones de partida (del usuario): **textos** = resumen propio redactado a par
 | 3 | **Webs oficiales de las bodegas de Ribera** | Vinos, uvas, elaboración, historia, enoturismo | **Apta con condiciones**, sitio a sitio (§3) |
 | 4.1 | **Vinopremier** | Vinos, **EAN**, precio, D.O./uva/crianza en el texto | **Apta con condiciones** (§4.1) |
 | 4.2 | **Vinissimus** | ~5.000 vinos y ~1.500 bodegas; precio, graduación, uva | **Apta con condiciones** (§4.2) |
-| 4.3 | Bodeboca, Lavinia, Decántalo, El Corte Inglés | — | **No apta**: bloquean con desafío anti-bot / 403 (§4.3) |
+| 4.3 | Bodeboca, Lavinia, Decántalo, El Corte Inglés | — | **No apta**: bloquean con desafío anti-bot / 403 (§4.3; ECI re-auditado el 2026-11-08) |
+| 4.5 | Carrefour | — | **No apta**: Cloudflare bloquea nuestro UA, incluido el sitemap de vinos (§4.5) |
 | 4.4 | Uvinum / Drinks&Co | — | **No verificada** (error 520 a nuestro UA); baja prioridad (§4.4) |
 | 5.1 | **C.R. DOCa Rioja** (`riojawine.com`) | ~213 bodegas, ~700 vinos, ~370 experiencias con reserva | **Apta con condiciones** (§5.1) |
 | 5.2 | **D.O. Rueda** (2.ª D.O. recomendada) y **D.O. Navarra** | Bodegas con web; Navarra: bodegas, vinos y experiencias estructurados | **Apta con condiciones** (§5.2) |
@@ -42,7 +43,7 @@ Valor y coste de 1 (bajo) a 5 (alto). Se ordena por valor/coste, ajustado por de
 | **9** | Registros oficiales RGSEAA / autonómicos (§7.3) | 2 | 3 | Solo aportan NIF/nº de registro para deduplicar; formato y licencia sin confirmar. |
 | **10** | ACEVIN / otras rutas (§6.2) | 2 | 3 | Útil en cuanto se amplíe a más D.O.; estructura no auditada. |
 | — | Uvinum (§4.4) | 2 | ? | Primero comprobar acceso. |
-| — | Bodeboca, Lavinia, Decántalo, El Corte Inglés | — | — | Descartadas mientras bloqueen (no se elude ningún bloqueo). |
+| — | Bodeboca, Lavinia, Decántalo, El Corte Inglés, Carrefour | — | — | Descartadas mientras bloqueen (no se elude ningún bloqueo). Vía posible: afiliación en Awin, si el usuario se da de alta (§4.3). |
 
 **Cobertura esperable tras 1–6:** Ribera ≈ 300 bodegas (ya) + ~700–900 vinos (Vinoselección ≈ 350, Vinopremier ≈ 370 con solapamiento, más webs de bodega); Rioja ≈ 210 bodegas del Consejo (el DOCa tiene más inscritas: la web solo muestra las adheridas) y ≈ 700 vinos. El objetivo de ~2.000 vinos en Ribera **no se alcanza solo con tiendas** (Vinoselección ≈ 350 y Vinopremier ≈ 370, con alto solapamiento); se llega sumando los vinos de las webs de las propias bodegas (≈ 5–8 vinos por bodega × ~150 bodegas con web con vinos ≈ 750–1.200) y la cobertura de Rioja.
 
@@ -319,11 +320,12 @@ Resumen: con nuestro UA solo **Vinopremier** y **Vinissimus** responden con norm
 ### 4.1 Vinopremier (`vinopremier.com`) — apta con condiciones
 
 - **robots.txt** (para `*`): bloquea `/app/`, `/checkout/`, `/customer/`, `/catalogsearch/`, `/catalog/product/view/`, `/catalog/category/view/`, `/review/`, `/ajax/`, `/feed/`, `/amfeed/`, `/private-feed/` y las queries `price=`, `dir=`, `product_list_*=`, `vp_bodega=`, `vp_do=`, `vp_pais=`, `mg_related_*=`. **No bloquea** `?p=` ni las URLs limpias de producto y categoría. Sin `Crawl-delay`. Declara siete sitemaps.
-- **Términos:** no se han podido leer: `/aviso-legal` devolvió 403 a nuestra herramienta de lectura y las condiciones de venta están en `/condiciones-de-venta`. **Pendiente de revisar a mano antes de programar** (si aparece una cláusula anti-scraping, descartar).
+- **Términos (leídos el 2026-11-08):** `/aviso-legal` devuelve 404; las «Condiciones generales de uso» están en `/condiciones-de-venta` (200) y se leyeron enteras. **No contienen ninguna cláusula contra robots, scraping, extracción automatizada ni bases de datos.** Lo único relevante es el apartado 4, que reserva a Vinopremier «diseños, textos, gráficos, logos…» y exige autorización para su «reproducción, distribución o comunicación pública». Condiciones de uso del scraper: solo hechos, imágenes enlazadas (no copiadas), resúmenes propios, UA identificable, rate limit y parada ante 403/429. robots.txt (host real `vinopremier.com`; `www` redirige): sin `Content-Signal` ni `Crawl-delay`; veta a Baiduspider, Yandex, AhrefsBot, PetalBot, Wget, HTTrack, Python-urllib y Applebot, no a nuestro UA.
 - **Rutas útiles:** índice `https://vinopremier.com/media/sitemap/sitemap_es_index.xml` → `…_products.xml` (6.927 URLs) y `…_products_outstock.xml`; categoría `https://vinopremier.com/vinos/denominaciones/d-o-ribera-del-duero` (30 productos/página, 369 en total → 13 páginas con `?p=N`); ficha `https://vinopremier.com/vino-tinto-aalto.html`.
 - **Estructura:** ficha de 345 KB. JSON-LD `Product` con `name`, `sku` (`VT-AALTO`), `description` (HTML truncado, reservado), `image`, `offers[0].price`/`availability`, `brand` y `manufacturer` (la bodega); `BreadcrumbList` con la D.O. (`/vinos/denominaciones/…`). **EAN** visible («EAN: 8437003104763») y en atributo `ean`. Texto libre con «Zona: D.O. Ribera del Duero. Bodega: Aalto. Uva: 100 % Tinto Fino. Crianza: 20 meses en barricas de roble americano y francés». Las variedades y la crianza salen de ahí con regex.
 - **Campos frente al esquema:** nombre ✔; bodega ✔ (`manufacturer`); D.O. ✔; uvas y % ~ (texto libre); crianza ~ (texto libre); añada ~ (a veces en el nombre); precio/disponibilidad ✔; formato ~ (productos de 9 L aparecen como producto aparte, `…-9-litros.html`); **EAN ✔**; imagen ✔ (enlazar); cata ✘ (casi nunca).
-- **Riesgos:** comercio con ánimo de lucro (misma mitigación que Vinoselección: contacto y atribución); formato no siempre explícito; páginas pesadas. **Veredicto: apta con condiciones** (comunes de la Fase 0 + leer los términos).
+- **Riesgos:** comercio con ánimo de lucro (misma mitigación que Vinoselección: contacto y atribución); formato no siempre explícito; páginas pesadas. **Veredicto: apta con condiciones** (condiciones comunes de la Fase 0; términos leídos sin cláusula anti-scraping).
+- **Incidente (2026-11-08):** durante el primer dry-run completo (UA identificable, 3–5 s entre peticiones, ~290 peticiones en ~41 min, 14:12–14:53 UTC) el sitio dejó de responder desde la IP del equipo de desarrollo (`fetch failed`, también `robots.txt`; sin 403/429 previo), lo que parece un bloqueo a esa IP. Se detuvo la ejecución sin reintentar ni sortear el bloqueo (ni otra IP ni GitHub Actions). Mitigación en el scraper: pausa de 10–14 s entre peticiones, tope de 450 peticiones por ejecución (se marca la ejecución como parcial) y la carga programada no se activa hasta comprobar que la web vuelve a responder.
 
 ### 4.2 Vinissimus (`www.vinissimus.com`) — apta con condiciones
 
@@ -341,7 +343,9 @@ Evidencia (2026-11-08, UA `wine-app-bot/0.1`):
 - **Bodeboca:** `GET /robots.txt` → **403** con página «Just a moment…» (desafío de Cloudflare).
 - **Lavinia:** `robots.txt` 200 con `Allow: /` y la advertencia de que cualquier restricción de las *Content Signals* es «express reservations of rights under Article 4» de la Directiva 2019/790 (excepción de minería de textos y datos); además veta a ClaudeBot, GPTBot, etc. `GET /sitemap.xml` → desafío Cloudflare. Aunque nuestro UA no figura en los vetados, el sitio manifiesta reserva de TDM y desafía a los bots: no rastrear.
 - **Decántalo:** `robots.txt` 200 (`crawl-delay: 1`); `GET /sitemap.xml` → **403** «Attention Required! | Cloudflare».
-- **El Corte Inglés:** `GET /robots.txt` → **`Access Denied`** (Akamai).
+- **El Corte Inglés:** `GET /robots.txt` → **`Access Denied`** (Akamai). **Re-auditado el 2026-11-08 (tarde)**, a petición del usuario: `robots.txt`, `/sitemap.xml` y `/condiciones-de-uso/` → **403 `Access Denied`** (`AkamaiGHost`). Sigue bloqueada; no se pudieron leer términos ni contar referencias de Ribera/Rioja.
+
+**Vía posible (no comprobada): afiliación en Awin.** El Corte Inglés tiene un programa de afiliados en Awin (perfil 13075), igual que Carrefour Supermercado (perfil 25399, §4.5). Awin da *feeds* de producto a los *publishers* aprobados. Hay matices: el alta la tendría que hacer el usuario (nosotros no creamos cuentas); el anunciante decide si aprueba el sitio; el feed está pensado para promocionar con enlaces trackeados, así que hay que respetar sus condiciones de uso; y ECI excluye la categoría supermercado de comisión, donde suele estar el vino, por lo que el vino podría no estar en su feed. No se ha verificado que exista un feed de vinos en ninguna de las dos.
 
 Saltarse estos desafíos va contra las reglas del proyecto. Opciones: (1) escribir a cada tienda ofreciendo atribución y tráfico y pedir acceso a un feed/afiliados (preguntar si ofrecen afiliación o *feeds* de producto: sería la vía legítima para obtener EAN y precio; no se ha comprobado que existan); (2) esperar a que levanten el bloqueo. **Veredicto: no apta** por ahora.
 
@@ -352,6 +356,10 @@ Saltarse estos desafíos va contra las reglas del proyecto. Opciones: (1) escrib
 ### 4.5 Otras
 
 - **Supermercados** (Mercadona, Carrefour, DIA): sus `robots.txt` existen (Mercadona permite todo; DIA bloquea `/products/`; Carrefour bloquea `/buscador/`), pero su catálogo de vino de D.O. es pequeño, volátil y orientado a marca blanca; no aportan bodegas ni historia. No se auditaron términos. Baja prioridad.
+- **Carrefour (`www.carrefour.es`) — no apta (auditada el 2026-11-08, a petición del usuario).** UA `wine-app-bot/0.1`, 3 peticiones, ≥ 12 s entre ellas. Delante hay Cloudflare.
+  - `GET /robots.txt` → 200, servido desde la caché de Cloudflare (`cf-cache-status: HIT`). Para `*` bloquea `/buscador/`, `/browse/*`, `/e-commerce/*`, las facetas (`N-*Z*Z*`, `F-*Z*`) y las queries `?q=`, `?sort=`, `?filter=`…; no tiene `Crawl-delay` para `*` (solo para TwengaBot: 60), y la lista de *bad bots* no incluye nuestro UA. Declara cuatro sitemaps, entre ellos **`/crs/cdn-static/sitemap-bodega/index.xml`**, el de la sección de vinos.
+  - `GET /crs/cdn-static/sitemap-bodega/index.xml`, `GET /crs/cdn-static/sitemap-food/index.xml` y `GET /aviso-legal` → **403 «Sorry, you have been blocked»** (Cloudflare). El bloqueo es por cliente, no por ruta: alcanza incluso a lo que `robots.txt` anuncia.
+  - No se pudieron leer términos ni contar referencias de Ribera/Rioja. No se insiste ni se cambia UA/IP. Vía posible: afiliación en Awin (perfil 25399), con los mismos matices que El Corte Inglés (§4.3).
 - **Vivino y Wine-Searcher:** `robots.txt` bloquea precios, reseñas y acciones (`/prices/`, `/reviews/`, `/ajax/`…); son agregadores con API propia y términos que se esperan restrictivos; sus reseñas son contenido de usuarios. **No recomendadas**; no se leyeron los términos.
 
 ---

@@ -62,13 +62,13 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [x] Scraper 5: Ruta del Vino Ribera del Duero (inactiva hasta tener permiso escrito)
 - [ ] Scraper 6: Vinopremier (EAN) — PR #20 en espera: la web dejó de responder durante el dry-run
 - [x] Carga de semillas: D.O. y variedades de uva españolas
-- [ ] Comprobador de enlaces semanal con ocultación tras 2 fallos consecutivos (aplazado)
+- [x] Comprobador de enlaces semanal con ocultación tras 2 fallos consecutivos
 
 ### Admin
 - [x] Rol admin y protección de `/admin`
 - [x] CRUD de bodegas, vinos, añadas, D.O., uvas
-- [ ] Vista de ejecuciones de scrapers (aplazado)
-- [ ] Vista de enlaces rotos con acciones (aplazado)
+- [x] Vista de ejecuciones de scrapers (`/admin/ejecuciones`)
+- [x] Vista de enlaces rotos con acciones (`/admin/enlaces`)
 
 **Criterio de salida:** D.O. Ribera del Duero cubierta (~300 bodegas, ~2.000 vinos); los invitados usan la app en móvil sin errores graves.
 
