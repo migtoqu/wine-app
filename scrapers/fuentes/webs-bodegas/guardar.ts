@@ -11,16 +11,26 @@ import type { Hecho } from "../../lib/consolidacion/hechos.ts";
 import { PlantillasEsEn } from "../../lib/consolidacion/plantillas.ts";
 import { Resumidor, type GeneradorResumen } from "../../lib/consolidacion/resumen.ts";
 import { insertarConSlug } from "../../lib/consolidacion/slug.ts";
-import { aSupresionVino, cargarSupresiones, clavesAnadasSuprimidas, decisionAdmin, type FilaSupresion } from "../../lib/consolidacion/supresiones.ts";
+import {
+  aSupresionVino,
+  cargarSupresiones,
+  clavesAnadasSuprimidas,
+  clavesImagenesSuprimidas,
+  decisionAdmin,
+  type FilaSupresion,
+} from "../../lib/consolidacion/supresiones.ts";
+import { dominioWeb, normalizarWeb } from "../../lib/contacto.ts";
 import { sinError, type ClienteDb } from "../../lib/db.ts";
 import { igualesJson } from "../../lib/json.ts";
 import type { Log } from "../../lib/log.ts";
 import { claveTexto, slugify } from "../../lib/texto.ts";
 import type { Database, Json } from "../../../src/lib/supabase/database.types.ts";
-import type { BodegaConWeb } from "./entrada.ts";
+import { decidirDenominacion, ResolutorDenominaciones, type Denominacion } from "./denominacion.ts";
+import { candidataPorEmail, type BodegaConWeb } from "./entrada.ts";
+import type { ImagenElegida } from "./imagen.ts";
 import { hechosBodega, hechosServicio, hechosVino } from "./normalizar.ts";
 import { notaPuerta } from "./puerta.ts";
-import type { EntradaSitio, ResultadoSitio, ServicioSitio, VinoSitio } from "./sitio.ts";
+import { normalizarUrl, type EntradaSitio, type PaginaVista, type ResultadoSitio, type ServicioSitio, type VinoSitio } from "./sitio.ts";
 
 export interface ResultadoGuardado {
   nuevos: number;
@@ -69,7 +79,13 @@ export class GuardadoWebs {
   /** bodega → fuente del sitio que la tiene (registro «sitio»), para reutilizarla si cambia el dominio. */
   private fuenteDeBodega = new Map<string, string>();
   private vistoSitio = new Map<string, string>(); // fuente id → visto_por_ultima_vez
-  private denominacionDe = new Map<string, { id: string; nombre: string }>(); // bodega → D.O. principal
+  private dosDe = new Map<string, Denominacion[]>(); // bodega → sus D.O.
+  private resolutorDo = new ResolutorDenominaciones([]);
+  private imagenesSuprimidas = new Set<string>(); // entidad_id|url
+  private paginasPrevias = new Map<string, PaginaVista[]>(); // fuente id → páginas de la visita anterior
+  /** Bodegas sin `web` (para descubrir su web por el dominio del email). */
+  private sinWeb: { id: string; nombre: string; municipio: string | null; email: string | null; slug: string }[] = [];
+  private websIntentadas = new Map<string, string>(); // bodega → visto del registro «web:<id>»
   private variedades = new Map<string, string>(); // clave → id
   private slugsVino = new Set<string>();
   private bodegaDeVino = new Map<string, string>();
@@ -90,6 +106,14 @@ export class GuardadoWebs {
       this.db.from("bodegas").select("id, nombre, slug, municipio, web").not("web", "is", null).order("id").range(d, h),
     );
     this.bodegas = bodegas.filter((b) => b.web).map((b) => ({ id: b.id, nombre: b.nombre, slug: b.slug, municipio: b.municipio, web: b.web! }));
+    this.sinWeb = await paginar("bodegas sin web", (d, h) =>
+      this.db.from("bodegas").select("id, nombre, slug, municipio, email").is("web", null).order("id").range(d, h),
+    );
+    for (const r of await paginar("candidatas de web", (d, h) =>
+      this.db.from("registros_fuente").select("id_externo, visto_por_ultima_vez").eq("fuente_id", this.fuenteMadreId).like("id_externo", "web:%").order("id").range(d, h),
+    )) {
+      this.websIntentadas.set(r.id_externo.slice(4), r.visto_por_ultima_vez);
+    }
 
     const fuentes = await paginar("fuentes", (d, h) =>
       this.db.from("fuentes").select("id, slug, activa, url_base").eq("tipo", "bodega").like("slug", `${PREFIJO_SLUG}%`).order("id").range(d, h),
@@ -103,24 +127,29 @@ export class GuardadoWebs {
       const regs = sinError(
         await this.db
           .from("registros_fuente")
-          .select("fuente_id, entidad_id, visto_por_ultima_vez")
+          .select("fuente_id, entidad_id, visto_por_ultima_vez, paginas:datos->paginas")
           .in("fuente_id", ids.slice(i, i + 200))
           .eq("id_externo", "sitio"),
         "leer registros de sitio",
       );
       for (const r of regs) {
         this.vistoSitio.set(r.fuente_id, r.visto_por_ultima_vez);
+        if (Array.isArray(r.paginas)) this.paginasPrevias.set(r.fuente_id, r.paginas as unknown as PaginaVista[]);
         if (r.entidad_id) this.fuenteDeBodega.set(r.entidad_id, r.fuente_id);
       }
     }
 
+    const denominaciones = sinError(await this.db.from("denominaciones").select("id, nombre, slug, tipo"), "leer denominaciones");
+    this.resolutorDo = new ResolutorDenominaciones(denominaciones);
+    const porId = new Map(denominaciones.map((d) => [d.id, d]));
     const dos = await paginar("D.O. de bodegas", (d, h) =>
-      this.db.from("bodega_denominaciones").select("bodega_id, principal, denominacion:denominaciones(id, nombre)").order("bodega_id").range(d, h),
+      this.db.from("bodega_denominaciones").select("bodega_id, denominacion_id").order("bodega_id").range(d, h),
     );
-    for (const x of dos.sort((a, b) => Number(b.principal) - Number(a.principal))) {
-      const den = x.denominacion as { id: string; nombre: string } | null;
-      if (den && !this.denominacionDe.has(x.bodega_id)) this.denominacionDe.set(x.bodega_id, den);
+    for (const x of dos) {
+      const den = porId.get(x.denominacion_id);
+      if (den) this.dosDe.set(x.bodega_id, [...(this.dosDe.get(x.bodega_id) ?? []), den]);
     }
+    this.imagenesSuprimidas = clavesImagenesSuprimidas(await cargarSupresiones(this.db, "imagen"));
 
     for (const v of sinError(await this.db.from("variedades_uva").select("id, nombre, sinonimos"), "leer variedades")) {
       for (const n of [v.nombre, ...v.sinonimos]) this.variedades.set(claveTexto(n), v.id);
@@ -144,6 +173,36 @@ export class GuardadoWebs {
 
   bodegasConWeb(): BodegaConWeb[] {
     return this.bodegas;
+  }
+
+  resolutor(): ResolutorDenominaciones {
+    return this.resolutorDo;
+  }
+
+  /** Páginas vistas la visita anterior (URL normalizada → modificada), para el rastreo incremental. */
+  previas(dominio: string): Map<string, string> {
+    const f = this.fuentesPorSlug.get(slugFuenteSitio(dominio));
+    const out = new Map<string, string>();
+    for (const p of (f ? this.paginasPrevias.get(f.id) : null) ?? []) if (p.modificada) out.set(normalizarUrl(p.url), p.modificada);
+    return out;
+  }
+
+  /**
+   * Webs candidatas para bodegas sin `web`: el dominio de su email, si no es un proveedor de correo
+   * ni un dominio genérico. Una candidata ya probada no se repite hasta pasados 30 días.
+   */
+  candidatasWeb(): EntradaSitio[] {
+    const hace30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const usados = new Set(this.bodegas.map((b) => dominioWeb(b.web)).filter(Boolean));
+    const out: EntradaSitio[] = [];
+    for (const b of this.sinWeb) {
+      const visto = this.websIntentadas.get(b.id);
+      if (visto && visto > hace30) continue;
+      const c = candidataPorEmail(b.email);
+      if (!c || usados.has(c.dominio)) continue;
+      out.push({ dominio: c.dominio, url: c.url, bodegas: [{ id: b.id, nombre: b.nombre, municipio: b.municipio }], candidata: { origen: "email", detalle: b.email! } });
+    }
+    return out;
   }
 
   municipios(): string[] {
@@ -240,13 +299,37 @@ export class GuardadoWebs {
 
   async guardar(r: ResultadoSitio): Promise<ResultadoGuardado> {
     const out: ResultadoGuardado = { nuevos: 0, actualizados: 0, sinCambios: 0, revision: 0, errores: 0 };
+    // Web candidata de una bodega sin `web`: solo se usa si su portada la nombra.
+    if (r.entrada.candidata) {
+      const bodegaId = r.entrada.bodegas[0]?.id ?? null;
+      const verificada = r.puerta.apta && r.verificacion?.estado === "verificada";
+      await this.guardarRegistro({
+        fuenteId: this.fuenteMadreId, idExterno: `web:${bodegaId}`, url: r.entrada.url,
+        datos: { candidata: r.entrada.candidata, verificacion: r.verificacion, puerta: r.puerta },
+        hechos: [], entidadTipo: verificada && bodegaId ? "bodega" : null, entidadId: verificada ? bodegaId : null,
+        estado: verificada ? "emparejado" : r.verificacion?.estado === "dudosa" && r.puerta.apta ? "revision" : "descartado",
+        confianza: r.verificacion?.puntuacion ?? null,
+      });
+      if (!verificada || !bodegaId) {
+        if (r.verificacion?.estado === "dudosa") out.revision++;
+        return out;
+      }
+      this.websIntentadas.set(bodegaId, new Date().toISOString());
+      this.bodegas.push({ id: bodegaId, nombre: r.entrada.bodegas[0]!.nombre, slug: this.sinWeb.find((b) => b.id === bodegaId)?.slug ?? "bodega", municipio: r.entrada.bodegas[0]!.municipio, web: r.entrada.url });
+    }
     const fuente = await this.fuenteSitio(r);
     this.vistoSitio.set(fuente.id, new Date().toISOString());
     const ahora = new Date().toISOString();
+    // Las páginas no pedidas por no haber cambiado conservan su fecha para la próxima vez.
+    const sinCambios = new Set(r.sinCambios.map(normalizarUrl));
+    const paginas = [...r.paginas, ...(this.paginasPrevias.get(fuente.id) ?? []).filter((p) => sinCambios.has(normalizarUrl(p.url)))];
+    this.paginasPrevias.set(fuente.id, paginas);
     const datosSitio = {
-      dominio: r.entrada.dominio, puerta: r.puerta, huella: r.huella, extractor: r.extractor, paginas: r.paginas,
-      avisos: r.avisos, bodega: r.bodega, peticiones: r.peticiones,
+      dominio: r.entrada.dominio, puerta: r.puerta, huella: r.huella, extractor: r.extractor, paginas, hosts: r.hosts,
+      sin_cambios: r.sinCambios.length, avisos: r.avisos, bodega: r.bodega, peticiones: r.peticiones,
+      imagen: r.imagen ? { ...r.imagen, senales_ia: r.puerta.senales_ia } : null,
       bodegas: r.entrada.bodegas.map((b) => ({ id: b.id, nombre: b.nombre })),
+      ...(r.entrada.candidata ? { candidata: r.entrada.candidata, verificacion: r.verificacion } : {}),
     };
     const bodegasIds = r.entrada.bodegas.map((b) => b.id).filter((x): x is string => !!x);
     const previo = await this.registroPrevio(fuente.id, "sitio");
@@ -282,6 +365,7 @@ export class GuardadoWebs {
     const aporte = (url: string | null): Aporte => ({ registroId, fuenteId: fuente.id, tipoFuente: "bodega", url: url ?? r.entrada.url, observadoEn: ahora });
     // Cada campo con la URL de la página de la que sale (atribución por campo).
     const grupos: [Record<string, unknown>, string | null | undefined][] = [
+      ...(r.entrada.candidata ? [[{ web: normalizarWeb(r.entrada.url) }, r.entrada.url] as [Record<string, unknown>, string]] : []),
       [{ anio_fundacion: b.fundacion_anio }, b.urls.fundacion_anio],
       [{ hectareas: b.hectareas }, b.urls.hectareas],
       [{ enoturismo_web: b.enoturismo_web, enoturismo_email: b.enoturismo_email, enoturismo_telefono: b.enoturismo_telefono }, b.enoturismo_web],
@@ -294,6 +378,16 @@ export class GuardadoWebs {
     }
     for (const campo of ["historia", "descripcion"] as const) {
       if (await this.resumidor.resumir("bodega", bodegaId, campo)) cambios = true;
+    }
+    if (r.imagen && (await this.guardarImagen({ bodega_id: bodegaId }, r.imagen, fuente.id, bodega?.nombre ?? r.entrada.dominio))) cambios = true;
+    // Registros de páginas sin cambios: siguen vistos (sin volver a pedirlas).
+    if (r.sinCambios.length) {
+      for (let i = 0; i < r.sinCambios.length; i += 100) {
+        sinError(
+          await this.db.from("registros_fuente").update({ visto_por_ultima_vez: ahora }).eq("fuente_id", fuente.id).in("url", r.sinCambios.slice(i, i + 100)),
+          "marcar registros sin cambios",
+        );
+      }
     }
     if (previo) {
       if (cambios || !igualesJson((previo.datos as { bodega?: unknown } | null)?.bodega, json(b))) out.actualizados++;
@@ -309,16 +403,66 @@ export class GuardadoWebs {
         this.log.error(`${r.entrada.dominio} · vino «${v.nombre}»: ${(e as Error).message}`);
       }
     }
+    const vistos = new Set<string>();
     for (const s of r.servicios) {
       try {
-        const res = await this.guardarServicio(s, fuente.id, bodegaId);
+        const res = await this.guardarServicio(s, fuente.id, bodegaId, vistos);
         out[res === "nuevo" ? "nuevos" : res === "actualizado" ? "actualizados" : "sinCambios"]++;
       } catch (e) {
         out.errores++;
         this.log.error(`${r.entrada.dominio} · servicio «${s.titulo}»: ${(e as Error).message}`);
       }
     }
+    // Un servicio de esta web que ya no aparece pasa a inactivo (nunca se borra). No se hace si el
+    // rastreo se quedó corto de presupuesto o la página del servicio no se pidió por no cambiar.
+    const completo = !r.avisos.some((a) => a.startsWith("Presupuesto"));
+    if (completo) await this.desactivarServicios(fuente.id, bodegaId, vistos, sinCambios, ahora);
     return out;
+  }
+
+  private async desactivarServicios(fuenteId: string, bodegaId: string, vistos: Set<string>, sinCambios: Set<string>, ahora: string) {
+    const regs = sinError(
+      await this.db
+        .from("registros_fuente")
+        .select("id, entidad_id, url, datos")
+        .eq("fuente_id", fuenteId)
+        .eq("entidad_tipo", "servicio_bodega")
+        .like("id_externo", "servicio:%"),
+      "leer registros de servicios",
+    );
+    for (const reg of regs) {
+      if (!reg.entidad_id || vistos.has(reg.entidad_id) || (reg.url && sinCambios.has(normalizarUrl(reg.url)))) continue;
+      await this.consolidador.consolidar("servicio_bodega", reg.entidad_id, { activo: false }, {
+        registroId: reg.id, fuenteId, tipoFuente: "bodega", url: reg.url, observadoEn: ahora,
+      });
+    }
+    void bodegaId;
+  }
+
+  /** Imagen enlazada (nunca descargada), una por entidad y fuente; respeta las supresiones del admin. */
+  private async guardarImagen(
+    entidad: { bodega_id: string } | { anada_id: string },
+    img: ImagenElegida,
+    fuenteId: string,
+    atribucion: string,
+  ): Promise<boolean> {
+    const [col, id] = "bodega_id" in entidad ? (["bodega_id", entidad.bodega_id] as const) : (["anada_id", entidad.anada_id] as const);
+    if (this.imagenesSuprimidas.has(`${id}|${img.url}`)) return false;
+    const actuales = sinError(await this.db.from("imagenes").select("id, url, fuente_id, principal").eq(col, id), "leer imágenes");
+    const propia = actuales.find((i) => i.fuente_id === fuenteId);
+    if (propia) {
+      if (propia.url === img.url) return false;
+      sinError(await this.db.from("imagenes").update({ url: img.url, tipo: img.tipo, alt: img.alt }).eq("id", propia.id), "actualizar imagen");
+      return true;
+    }
+    sinError(
+      await this.db.from("imagenes").insert({
+        [col]: id, url: img.url, tipo: img.tipo, fuente_id: fuenteId, atribucion: `Web oficial de ${atribucion}`,
+        alt: img.alt, principal: !actuales.some((i) => i.principal),
+      } as Database["public"]["Tables"]["imagenes"]["Insert"]),
+      "guardar imagen",
+    );
+    return true;
   }
 
   private idVariedad(nombre: string): string | null {
@@ -330,8 +474,14 @@ export class GuardadoWebs {
     const ruta = new URL(v.url).pathname.replace(/\/$/, "") || "/";
     const idExterno = `vino:${ruta}${varios ? `#${slugify(v.nombre)}` : ""}`;
     const ahora = new Date().toISOString();
-    const den = this.denominacionDe.get(bodegaId) ?? null;
-    const hechos = hechosVino(v, fuenteId, ahora, den?.nombre ?? null);
+    const decisionDo = decidirDenominacion(
+      v.denominacion?.denominacion ? { ...v.denominacion, denominacion: this.resolutorDo.porSlugDe(v.denominacion.denominacion.slug) } : v.denominacion,
+      this.dosDe.get(bodegaId) ?? [],
+      { vino: v.nombre, bodega: this.bodegas.find((b) => b.id === bodegaId)?.nombre ?? "" },
+    );
+    const den = decisionDo.estado === "asignada" ? decisionDo.denominacion : null;
+    const textoDo = den?.nombre ?? decisionDo.deteccion?.texto ?? null;
+    const hechos = hechosVino(v, fuenteId, ahora, textoDo);
     const previo = await this.registroPrevio(fuenteId, idExterno);
     const decision = decisionAdmin(previo);
     const base = { fuenteId, idExterno, url: v.url, hechos };
@@ -354,6 +504,11 @@ export class GuardadoWebs {
 
     let creado = false;
     if (!vinoId) {
+      // Vino de otra D.O. que no está en la tabla, o de una bodega con varias D.O. sin pista: a revisión.
+      if (decisionDo.estado === "revision") {
+        await this.guardarRegistro({ ...base, datos: { vino: v, emparejamiento: { motivo: decisionDo.motivo, denominacion: decisionDo.deteccion } }, entidadTipo: null, entidadId: null, estado: "revision", confianza: 0 });
+        return "revision";
+      }
       if (!v.tipo) {
         await this.guardarRegistro({ ...base, datos: { vino: v, emparejamiento: { motivo: "tipo_desconocido" } }, entidadTipo: null, entidadId: null, estado: "revision", confianza: 0 });
         return "revision";
@@ -395,12 +550,15 @@ export class GuardadoWebs {
       }
     }
 
-    const registroId = await this.guardarRegistro({ ...base, datos: { vino: v }, entidadTipo: "anada", entidadId: anadaId, estado: "emparejado" });
+    const registroId = await this.guardarRegistro({ ...base, datos: { vino: v, ofertas: v.ofertas }, entidadTipo: "anada", entidadId: anadaId, estado: "emparejado" });
     const aporte: Aporte = { registroId, fuenteId, tipoFuente: "bodega", url: v.url, observadoEn: ahora };
     let cambios = false;
     // La web oficial es la fuente de más rango para tipo y crianza; el nombre solo se fija al crear.
     const camposVino: Record<string, unknown> = { tipo: v.tipo, crianza: v.crianza };
-    if (creado) Object.assign(camposVino, { nombre: v.nombre, denominacion_id: den?.id ?? null });
+    // La D.O. se consolida en cada pasada (corrige la principal de la bodega puesta en la fase A);
+    // si la decisión es dudosa, esta fuente no opina sobre ella.
+    if (decisionDo.estado !== "revision") camposVino.denominacion_id = den?.id ?? null;
+    if (creado) camposVino.nombre = v.nombre;
     if ((await this.consolidador.consolidar("vino", vinoId, camposVino, aporte)).escritos.length) cambios = true;
     const camposAnada = { grado: v.grado, meses_crianza: v.barrica_meses, temp_servicio_min: v.temp_min, temp_servicio_max: v.temp_max };
     if ((await this.consolidador.consolidar("anada", anadaId, camposAnada, aporte)).escritos.length) cambios = true;
@@ -416,6 +574,8 @@ export class GuardadoWebs {
     for (const campo of ["elaboracion", "cata"] as const) {
       if (await this.resumidor.resumir("anada", anadaId, campo)) cambios = true;
     }
+    const nombreBodega = this.bodegas.find((b) => b.id === bodegaId)?.nombre ?? "la bodega";
+    if (v.imagen && (await this.guardarImagen({ anada_id: anadaId }, v.imagen, fuenteId, nombreBodega))) cambios = true;
     if (creado || anadaNueva) return "nuevo";
     return cambios || !igualesJson((previo?.datos as { vino?: unknown } | null)?.vino, json(v)) ? "actualizado" : "sin_cambios";
   }
@@ -460,7 +620,7 @@ export class GuardadoWebs {
     return true;
   }
 
-  private async guardarServicio(s: ServicioSitio, fuenteId: string, bodegaId: string): Promise<"nuevo" | "actualizado" | "sin_cambios" | "descartado"> {
+  private async guardarServicio(s: ServicioSitio, fuenteId: string, bodegaId: string, vistos: Set<string>): Promise<"nuevo" | "actualizado" | "sin_cambios" | "descartado"> {
     const clave = claveTexto(s.titulo);
     const idExterno = `servicio:${s.tipo}:${slugify(s.titulo)}`;
     const ahora = new Date().toISOString();
@@ -490,13 +650,17 @@ export class GuardadoWebs {
         nuevo = true;
       }
     }
+    vistos.add(servicioId);
     const registroId = await this.guardarRegistro({
       fuenteId, idExterno, url: s.url, datos: { servicio: s }, hechos, entidadTipo: "servicio_bodega", entidadId: servicioId, estado: "emparejado",
     });
     const { escritos } = await this.consolidador.consolidar(
       "servicio_bodega",
       servicioId,
-      { precio_desde: s.precio_desde, duracion_minutos: s.duracion_minutos, idiomas: s.idiomas, url_reserva: s.url_reserva },
+      {
+        precio_desde: s.precio_desde, duracion_minutos: s.duracion_minutos, idiomas: s.idiomas, url_reserva: s.url_reserva,
+        descripcion: s.descripcion, horario: [s.horario, s.temporada].filter(Boolean).join(" · ") || null, activo: true,
+      },
       { registroId, fuenteId, tipoFuente: "bodega", url: s.url, observadoEn: ahora },
     );
     if (nuevo) return "nuevo";

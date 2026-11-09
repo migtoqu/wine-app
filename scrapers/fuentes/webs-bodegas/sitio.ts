@@ -6,12 +6,18 @@ import { ClienteHttp, ErrorHttp, ParadaFuente, type Respuesta } from "../../lib/
 import type { Log } from "../../lib/log.ts";
 import { RobotsDenegado } from "../../lib/robots.ts";
 import { claveTexto, limpiarEspacios } from "../../lib/texto.ts";
+import { similitud } from "../../lib/trigram.ts";
+import { claveNombreBodega } from "../../lib/texto.ts";
 import { clasificar, esOtroIdioma, huella, type Clase, type Huella } from "./clasificar.ts";
+import { detectarDenominacion, type DeteccionDo, type ResolutorDenominaciones } from "./denominacion.ts";
+import { ofertaDeJsonLd, ofertaDeWoo, type OfertaWeb } from "./ofertas.ts";
+import { candidatasDePagina, elegirImagenBodega, imagenBotella, type CandidataImagen, type ImagenElegida } from "./imagen.ts";
 import {
   bodegaVacia,
   ES_SERVICIO,
   esNombreDeVino,
   extraerBodega,
+  nombreVino,
   extraerServicio,
   extraerVino,
   secciones,
@@ -62,6 +68,16 @@ export interface EntradaSitio {
   /** URL de `bodegas.web` (la primera si varias bodegas comparten dominio). */
   url: string;
   bodegas: BodegaEntrada[];
+  /** Web candidata para una bodega sin `web` (fase B): hay que verificar que la portada la nombra. */
+  candidata?: { origen: "email" | "registro"; detalle: string };
+}
+
+/** Resultado de comprobar que la portada de una web candidata nombra a la bodega. */
+export interface Verificacion {
+  estado: "verificada" | "dudosa" | "no_verificada";
+  puntuacion: number;
+  /** Texto de la portada que mejor casa (título, og:site_name, h1 u Organization). */
+  texto: string | null;
 }
 
 export interface PaginaVista {
@@ -69,10 +85,18 @@ export interface PaginaVista {
   clase: Clase;
   origen: "html" | "wp" | "woo";
   titulo: string | null;
+  /** lastmod del sitemap o `modified` de WordPress (para el rastreo incremental). */
+  modificada?: string | null;
 }
 
 export interface VinoSitio extends VinoWeb {
   url: string;
+  /** D.O. que dice la ficha, su categoría o su ruta (null = la ficha no dice nada). */
+  denominacion: DeteccionDo | null;
+  /** Imagen de la botella (enlazada). */
+  imagen: ImagenElegida | null;
+  /** Precio, formato, disponibilidad y EAN en la tienda de la bodega (uno por formato o ficha). */
+  ofertas: OfertaWeb[];
 }
 
 export interface ServicioSitio extends ServicioWeb {
@@ -99,6 +123,14 @@ export interface ResultadoSitio {
   bodega: BodegaSitio | null;
   vinos: VinoSitio[];
   servicios: ServicioSitio[];
+  /** Foto de la bodega o del viñedo (enlazada). */
+  imagen: ImagenElegida | null;
+  /** Páginas que no han cambiado desde la última visita: no se piden y sus registros siguen valiendo. */
+  sinCambios: string[];
+  /** Hosts del sitio usados (dominio principal y subdominios como tienda. o enoturismo.). */
+  hosts: string[];
+  /** Solo para webs candidatas (bodegas sin `web`). */
+  verificacion: Verificacion | null;
   peticiones: number;
   segundos: number;
   avisos: string[];
@@ -111,10 +143,18 @@ export interface OpcionesSitio {
   municipios: string[];
   /** Peticiones de contenido por sitio (sin contar portada, robots y aviso legal). */
   maxPeticiones?: number;
+  /** Tope al que sube el presupuesto en sitios con catálogo (más fichas de vino que presupuesto). */
+  maxPeticionesCatalogo?: number;
+  /** Para la D.O. de cada vino. */
+  denominaciones?: ResolutorDenominaciones;
+  /** URL normalizada → fecha de modificación vista la última vez (rastreo incremental). */
+  previas?: (dominio: string) => Map<string, string>;
   ahora?: () => Date;
 }
 
 class PresupuestoAgotado extends Error {}
+/** Subdominio del sitio que bloquea o muestra anti-bot: se deja ese host. */
+class HostBloqueado extends Error {}
 
 /** Contenido de una página lista para extraer. */
 interface Contenido {
@@ -127,6 +167,14 @@ interface Contenido {
   /** Ficha de producto de la Store API de WooCommerce. */
   producto?: ProductoWoo;
   gtin?: string | null;
+  /** Migas o categorías de la tienda (para la D.O.). */
+  categorias?: string[];
+  /** Imágenes candidatas (historia y portada) e imagen del producto (fichas de vino). */
+  imagenes?: CandidataImagen[];
+  imagenProducto?: { url: string; alt: string | null } | null;
+  /** Oferta del JSON-LD `Product.offers` de la ficha. */
+  oferta?: OfertaWeb | null;
+  modificada?: string | null;
 }
 
 interface ProductoWoo {
@@ -137,17 +185,23 @@ interface ProductoWoo {
   short_description?: string;
   categories?: { name: string; slug: string }[];
   attributes?: { name: string; terms?: { name: string }[] }[];
-  prices?: { price?: string; currency_minor_unit?: number };
+  prices?: { price?: string; regular_price?: string; sale_price?: string; currency_code?: string; currency_minor_unit?: number; price_range?: { min_amount?: string; max_amount?: string } | null };
+  images?: { src?: string; alt?: string }[];
+  sku?: string;
+  is_in_stock?: boolean;
 }
 
-const MAX_POR_CLASE: Record<Clase, number> = { vino: 25, historia: 4, enoturismo: 5, contacto: 1, legal: 0, otra: 0 };
+const MAX_POR_CLASE: Record<Clase, number> = { vino: 150, historia: 4, enoturismo: 12, contacto: 1, legal: 0, otra: 0 };
+const MAX_SERVICIOS = 20;
+/** Subdominios del mismo dominio que suelen tener la tienda o las reservas. */
+const SUBDOMINIO_UTIL = /^(tienda|shop|store|enoturismo|visitas|reservas|booking|wine|vinos|experiencias|turismo)\./i;
 const PRIORIDAD_CLASE: Clase[] = ["vino", "historia", "enoturismo", "contacto"];
 const TIPOS_WP_IGNORADOS = /^(attachment|nav_menu_item|wp_|post$|jp_|elementor|e-landing|oembed|revision|customize|user_request|wpcf7|acf|br_|et_|ct_|fl-|mc4wp|product_variation|shop_)/;
 const SUBSITEMAP_UTIL = /page|product|vino|wine|visita|experienc|enoturismo|portfolio|project|anada|pagina/i;
 const SUBSITEMAP_INUTIL = /category|tag|author|attachment|post-sitemap|user|product_cat|product_tag|format|archive|news|noticia|blog/i;
-const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos?|wines?|tinto|blanco|rosado)$/i;
-const CATEGORIA_NO_VINO = /gourmet|alimentaci[oó]n|delicatessen|merchandising|regalos?|packs?|lotes?|accesorios|aceites?|conservas|queso/i;
-const RUTA_NOTICIA = /\/(noticias?\d*|news|blog|actualidad|prensa|press|tag|category|categoria|author)(?:[\/._?-]|$)/i;
+const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b|bodegas?\b|grupo\b|castilla[ -]la[ -]mancha$|¿)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos?|wines?|tinto|blanco|rosado)$/i;
+const CATEGORIA_NO_VINO = /gourmet|alimentaci[oó]n|delicatessen|merchandising|regalos?|packs?|lotes?|accesorios|aceites?|conservas|queso|otras bodegas|vinos de otras|otros vinos|importaci[oó]n|internacional|del mundo|champagne|oporto|porto|destilados|licores/i;
+const RUTA_NOTICIA = /\/(noticias?\d*|news|blog|actualidad|prensa|press|tag|category|categoria|author|[\w-]*en-los-medios|medios|premios-y-[\w-]+)(?:[\/._?-]|$)|\/(19|20)\d\d\/\d\d\/|[?&](add-to-cart|orderby|filter_|share|replytocom|add_to_wishlist)=|\/page\/\d+\/?$/i;
 const RUTA_PRIVADA = /\/(wp-login|wp-admin|login|mi-cuenta|my-account|cuenta|account|carrito|cart|checkout|finalizar-compra)(?:[\/.?]|$)/i;
 const PROTEGIDA = /class=["'][^"']*post-password-form|<title>[^<]*(protegid[oa] con contraseña|password protected)/i;
 const LISTADO = /^(?:nuestros?\s+)?(?:vinos|wines|productos|gama|nuestra gama|tienda|shop|elaboraci[óo]n)$/i;
@@ -216,6 +270,10 @@ export class RastreadorSitio {
       bodega: null,
       vinos: [],
       servicios: [],
+      imagen: null,
+      sinCambios: [],
+      hosts: [],
+      verificacion: null,
       peticiones: 0,
       segundos: 0,
       avisos: [],
@@ -233,6 +291,7 @@ export class RastreadorSitio {
       r.bodega = null;
       r.vinos = [];
       r.servicios = [];
+      r.imagen = null;
     }
     r.peticiones = this.http.peticiones - peticionesAntes;
     r.segundos = Math.round((Date.now() - inicio) / 1000);
@@ -275,6 +334,12 @@ export class RastreadorSitio {
     p.senales_ia = senales.ia;
     if (senales.bloquea) return saltar(p, "content_signal", "Content-Signal: search=no");
 
+    // Web candidata de una bodega sin `web`: la portada tiene que nombrarla antes de seguir.
+    if (entrada.candidata) {
+      r.verificacion = verificarNombre($home, host, entrada.bodegas[0]?.nombre ?? "");
+      if (r.verificacion.estado === "no_verificada") return saltar(p, "no_verificada", `la portada no nombra a «${entrada.bodegas[0]?.nombre}»`);
+    }
+
     const enlacesHome = enlaces($home, portada.url);
     const sigueHome = !directivasHome.includes("nofollow") && !directivasHome.includes("none");
     // 3. Aviso legal.
@@ -303,29 +368,49 @@ export class RastreadorSitio {
 
     // 4. Huella y descubrimiento.
     r.huella = huella(portada.texto, origen, portada.cabeceras);
-    const presupuesto = { quedan: this.o.maxPeticiones ?? 40 };
+    const base = dominioBase(host);
+    const esDelSitio = (h: string) => h === host || h === base || h.endsWith(`.${base}`);
+    const base0 = this.o.maxPeticiones ?? 40;
+    const presupuesto = { quedan: base0, ampliado: false };
     const contenidos: Contenido[] = [];
     const indexable = !directivasHome.includes("noindex") && !directivasHome.includes("none");
     if (indexable) {
       contenidos.push({
         url: portada.url, clase: "historia", origen: "html", titulo: titulo($home) ?? "",
-        bloques: bloques($home), enlaces: enlacesHome,
+        bloques: bloques($home), enlaces: enlacesHome, imagenes: candidatasDePagina($home, portada.url),
       });
     }
+    const ctx = this.contexto(origen, presupuesto, r, esDelSitio, entrada.dominio);
     const extractor = EXTRACTORES[r.huella.plataforma];
     try {
-      r.extractor = await extractor.descubrir(this.contexto(origen, presupuesto, r), contenidos, sigueHome ? enlacesHome : []);
+      r.extractor = await extractor.descubrir(ctx, contenidos, sigueHome ? enlacesHome : []);
+      // Subdominios del propio dominio enlazados desde la portada (tienda., enoturismo.): mismo trato.
+      const subs = subdominiosEnlazados(sigueHome ? enlacesHome : [], host, esDelSitio).slice(0, 2);
+      for (const sub of subs) {
+        const usado = await descubrirSubdominio(ctx, sub, contenidos);
+        if (usado) r.extractor += `+${new URL(sub).host}`;
+      }
+      await profundidad2(ctx, contenidos);
     } catch (e) {
       if (!(e instanceof PresupuestoAgotado)) throw e;
-      r.extractor = r.huella.plataforma;
-      r.avisos.push(`Presupuesto de ${this.o.maxPeticiones ?? 40} peticiones agotado: se extrae lo descubierto`);
+      r.extractor ??= r.huella.plataforma;
+      r.avisos.push(`Presupuesto de ${presupuesto.ampliado ? this.o.maxPeticionesCatalogo ?? 120 : base0} peticiones agotado: se extrae lo descubierto`);
     }
-    r.paginas = contenidos.map((c) => ({ url: c.url, clase: c.clase, origen: c.origen, titulo: c.titulo || null }));
+    r.hosts = [...new Set([host, ...contenidos.map((c) => new URL(c.url).host)])];
+    r.paginas = contenidos.map((c) => ({ url: c.url, clase: c.clase, origen: c.origen, titulo: c.titulo || null, modificada: c.modificada ?? null }));
 
     // 5. Hechos.
     r.bodega = this.hechosBodega(contenidos, enlacesHome);
-    r.vinos = this.vinos(contenidos, ahora.getFullYear());
+    r.vinos = this.vinos(contenidos, ahora.getFullYear(), esDelSitio);
     r.servicios = this.servicios(contenidos, host, entrada.dominio);
+    // Foto de la bodega: páginas de historia (la portada al final).
+    const paginasFoto = contenidos
+      .filter((c) => c.clase === "historia" && c.imagenes?.length)
+      .sort((a, c) => Number(isRaiz(a.url)) - Number(isRaiz(c.url)))
+      .map((c) => ({ url: c.url, candidatas: c.imagenes! }));
+    r.imagen = elegirImagenBodega(paginasFoto, esDelSitio);
+    if (r.imagen && !(await this.robotsPermite(r.imagen.url, esDelSitio))) r.imagen = null;
+    for (const v of r.vinos) if (v.imagen && !(await this.robotsPermite(v.imagen.url, esDelSitio))) v.imagen = null;
     const eno = contenidos.find((c) => c.clase === "enoturismo" && c.origen !== "woo") ?? contenidos.find((c) => c.clase === "enoturismo");
     if (eno || r.servicios.length) {
       r.bodega.enoturismo = true;
@@ -335,19 +420,68 @@ export class RastreadorSitio {
     }
   }
 
-  private contexto(origen: string, presupuesto: { quedan: number }, r: ResultadoSitio): ContextoDescubrimiento {
+  /** Las imágenes de hosts del sitio deben estar permitidas por su robots.txt (ya descargado). */
+  private async robotsPermite(url: string, esDelSitio: (h: string) => boolean): Promise<boolean> {
+    if (!esDelSitio(new URL(url).host)) return true; // CDN de la plataforma: su robots no aplica a la web
+    try {
+      await this.http.comprobarRobots(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private contexto(
+    origen: string,
+    presupuesto: { quedan: number; ampliado: boolean },
+    r: ResultadoSitio,
+    esDelSitio: (h: string) => boolean,
+    dominio: string,
+  ): ContextoDescubrimiento {
+    const hostPrincipal = new URL(origen).host;
+    const bloqueados = new Set<string>();
+    const tope = this.o.maxPeticionesCatalogo ?? 120;
+    const base = this.o.maxPeticiones ?? 40;
     return {
       origen,
       huella: r.huella!,
       log: this.o.log,
       avisos: r.avisos,
+      esDelSitio,
+      previas: this.o.previas?.(dominio) ?? new Map(),
+      sinCambios: r.sinCambios,
       pedir: async (url: string) => {
+        const h = new URL(url).host;
+        if (bloqueados.has(h)) throw new HostBloqueado(h);
         if (presupuesto.quedan <= 0) throw new PresupuestoAgotado();
         presupuesto.quedan--;
-        return this.http.get(url);
+        try {
+          const res = await this.http.get(url);
+          // Un subdominio con desafío anti-bot se deja (el sitio principal ya pasó la puerta).
+          if (h !== hostPrincipal && detectarAntiBot(res.texto)) {
+            bloqueados.add(h);
+            r.avisos.push(`${h}: desafío anti-bot; se deja ese subdominio`);
+            throw new HostBloqueado(h);
+          }
+          return res;
+        } catch (e) {
+          // 403/429 en un subdominio: se deja ese host sin insistir; en el principal, se para el sitio.
+          if (e instanceof ParadaFuente && h !== hostPrincipal) {
+            bloqueados.add(h);
+            r.avisos.push(`${h}: HTTP ${e.status}; se deja ese subdominio`);
+            throw new HostBloqueado(h);
+          }
+          throw e;
+        }
       },
-      textoRobots: () => this.http.textoRobots(origen),
+      textoRobots: (o = origen) => this.http.textoRobots(o),
       quedan: () => presupuesto.quedan,
+      ampliar: (candidatosVino: number) => {
+        // Sitio con catálogo: más fichas de vino que presupuesto → se amplía una vez hasta el tope.
+        if (presupuesto.ampliado || candidatosVino <= presupuesto.quedan) return;
+        presupuesto.ampliado = true;
+        presupuesto.quedan += Math.max(0, tope - base);
+      },
     };
   }
 
@@ -373,13 +507,25 @@ export class RastreadorSitio {
     return b;
   }
 
-  private vinos(contenidos: Contenido[], hoy: number): VinoSitio[] {
+  private vinos(contenidos: Contenido[], hoy: number, esDelSitio: (h: string) => boolean): VinoSitio[] {
+    const r = this.o.denominaciones;
+    const conDo = (v: VinoWeb, c: Contenido, url: string, texto: string, imagen: ImagenElegida | null, ofertas: OfertaWeb[] = []): VinoSitio => ({
+      ...v,
+      url,
+      ofertas,
+      denominacion: r ? detectarDenominacion({ titulo: v.nombre === c.titulo ? c.titulo : `${c.titulo}\n${v.nombre}`, texto, categorias: c.categorias, url }, r) : null,
+      imagen,
+    });
     const out = new Map<string, VinoSitio>();
     const meter = (v: VinoSitio) => {
       if (!v.nombre || v.nombre.length < 2 || v.nombre.length > 80 || !esNombreDeVino(v.nombre) || TITULO_NO_VINO.test(v.nombre)) return;
       const k = `${claveTexto(v.nombre)}|${v.anio ?? ""}`;
       const previo = out.get(k);
-      if (!previo || v.evidencias > previo.evidencias) out.set(k, v);
+      // Mismo vino en otro formato (mágnum, caja) o en dos fichas: se queda la ficha con más datos y
+      // se juntan sus ofertas.
+      const ofertas = [...(previo?.ofertas ?? []), ...v.ofertas].filter((o, i, a) => a.findIndex((x) => x.url === o.url) === i);
+      if (!previo || v.evidencias > previo.evidencias) out.set(k, { ...v, ofertas, imagen: v.imagen ?? previo?.imagen ?? null });
+      else previo.ofertas = ofertas;
     };
     for (const c of contenidos.filter((x) => x.clase === "vino")) {
       if (c.producto) {
@@ -388,7 +534,12 @@ export class RastreadorSitio {
         const atributos = Object.fromEntries((p.attributes ?? []).map((a) => [a.name, (a.terms ?? []).map((t) => t.name).join(", ")]));
         const v = extraerVino(decodificarEntidades(p.name), texto, { atributos, hoy, gtin: c.gtin ?? null });
         const categoriaVino = (p.categories ?? []).some((x) => /vino|wine|tinto|blanco|rosado/i.test(x.name));
-        if (v.evidencias >= 1 || categoriaVino) meter({ ...v, url: p.permalink });
+        const img = p.images?.[0];
+        const atribTexto = Object.entries(atributos).map(([k, x]) => `${k}: ${x}`).join("\n");
+        if (v.evidencias >= 1 || categoriaVino) {
+          const oferta = ofertaDeWoo(p, v.ean);
+          meter(conDo(v, c, p.permalink, `${texto}\n${atribTexto}`, imagenBotella(img?.src, img?.alt || null, p.permalink, esDelSitio), oferta ? [oferta] : []));
+        }
         continue;
       }
       const texto = textoDe(c.bloques);
@@ -396,11 +547,15 @@ export class RastreadorSitio {
       const vinosSecciones = secs.map((s) => extraerVino(s.titulo, s.texto, { hoy })).filter((v) => v.evidencias >= 2);
       // Página-listado con varias fichas: un vino por sección. Si no, la página es una ficha.
       if (vinosSecciones.length >= 2 && esListado(c.url, c.titulo)) {
-        for (const v of vinosSecciones) meter({ ...v, url: c.url });
+        const textoDe2 = new Map(secs.map((s) => [s.titulo, s.texto]));
+        for (const v of vinosSecciones) meter(conDo(v, c, c.url, textoDe2.get(secs.find((s) => nombreDeSeccion(s.titulo) === v.nombre)?.titulo ?? "") ?? "", null));
         continue;
       }
       const v = extraerVino(c.titulo, texto, { hoy, gtin: c.gtin ?? null });
-      if (v.evidencias >= 2 && !TITULO_NO_VINO.test(v.nombre) && !esListado(c.url, c.titulo)) meter({ ...v, url: c.url });
+      if (v.evidencias >= 2 && !TITULO_NO_VINO.test(v.nombre) && !esListado(c.url, c.titulo)) {
+        const oferta = c.oferta ? { ...c.oferta, ean: c.oferta.ean ?? v.ean } : null;
+        meter(conDo(v, c, c.url, texto, imagenBotella(c.imagenProducto?.url, c.imagenProducto?.alt ?? null, c.url, esDelSitio), oferta ? [oferta] : []));
+      }
     }
     return [...out.values()];
   }
@@ -409,7 +564,7 @@ export class RastreadorSitio {
     const out = new Map<string, ServicioSitio>();
     const meter = (s: ServicioSitio) => {
       const k = `${s.tipo}|${claveTexto(s.titulo)}`;
-      if (!out.has(k) && out.size < 8) out.set(k, s);
+      if (!out.has(k) && out.size < MAX_SERVICIOS) out.set(k, s);
     };
     for (const c of contenidos.filter((x) => x.clase === "enoturismo")) {
       if (c.producto) {
@@ -440,10 +595,18 @@ export interface ContextoDescubrimiento {
   huella: Huella;
   log: Log;
   avisos: string[];
+  /** Host principal, el dominio base o un subdominio suyo (tienda., enoturismo.). */
+  esDelSitio(host: string): boolean;
+  /** URL normalizada → fecha de modificación de la visita anterior. */
+  previas: Map<string, string>;
+  /** Aquí se anotan las URLs que no se piden por no haber cambiado. */
+  sinCambios: string[];
   /** GET que descuenta del presupuesto de páginas del sitio (lanza al agotarlo). */
   pedir(url: string): Promise<Respuesta>;
-  textoRobots(): Promise<string | null>;
+  textoRobots(origen?: string): Promise<string | null>;
   quedan(): number;
+  /** Amplía el presupuesto una vez si hay más fichas de vino que peticiones. */
+  ampliar(candidatosVino: number): void;
 }
 
 /** Un extractor añade a `contenidos` las páginas que descubre y devuelve su nombre. */
@@ -459,10 +622,8 @@ const wordpress: Extractor = {
     if (woo) usados.push("woocommerce");
     const api = await wpRest(ctx, contenidos, woo);
     if (api) usados.unshift("wordpress");
-    // Sin API (401/404) o con poco contenido: sitemap y enlaces.
-    if (!api || contenidos.filter((c) => c.clase !== "historia").length < 2) {
-      usados.push(await sitemapYEnlaces(ctx, contenidos, enlacesHome));
-    }
+    // Sitemap y enlaces siempre que quede presupuesto: cubren tipos que la API no lista y webs sin API.
+    if (ctx.quedan() > 3) usados.push(await sitemapYEnlaces(ctx, contenidos, enlacesHome));
     return usados.join("+") || "wordpress";
   },
 };
@@ -473,8 +634,8 @@ const generico: Extractor = {
   },
 };
 
-// Shopify (/products.json, /collections/*.json) y Wix: no hay casos en Ribera (SOURCES §3).
-// Punto de extensión: hoy usan sitemap + enlaces y lo dejan dicho en el log.
+// Shopify (/products.json, /collections/*.json): ningún caso en el catálogo (0 de 129 webs aptas,
+// 2026-11). Punto de extensión: hoy usa sitemap + HTML y lo deja dicho en el log.
 const pendiente = (nombre: string): Extractor => ({
   async descubrir(ctx, contenidos, enlacesHome) {
     ctx.log.info(`${ctx.origen}: plataforma ${nombre} sin extractor propio todavía; se usa sitemap + HTML`);
@@ -482,11 +643,20 @@ const pendiente = (nombre: string): Extractor => ({
   },
 });
 
+// Wix (4 webs): el HTML viene renderizado en servidor; su sitemap índice trae
+// `store-products-sitemap.xml` y `pages-sitemap.xml`, y cada ficha de producto lleva JSON-LD
+// `Product`. No se usa la API interna `/_api/` (no es pública).
+const wix: Extractor = {
+  async descubrir(ctx, contenidos, enlacesHome) {
+    return `wix→${await sitemapYEnlaces(ctx, contenidos, enlacesHome)}`;
+  },
+};
+
 export const EXTRACTORES: Record<Huella["plataforma"], Extractor> = {
   wordpress,
   generico,
   shopify: pendiente("shopify"),
-  wix: pendiente("wix"),
+  wix,
 };
 
 async function pedirJson<T>(ctx: ContextoDescubrimiento, url: string): Promise<{ datos: T; res: Respuesta } | null> {
@@ -502,6 +672,7 @@ async function pedirJson<T>(ctx: ContextoDescubrimiento, url: string): Promise<{
       ctx.avisos.push(`API REST cerrada (HTTP 403): ${new URL(url).pathname}`);
       return null;
     }
+    if (e instanceof HostBloqueado) return null;
     if (e instanceof PresupuestoAgotado || e instanceof ParadaFuente) throw e;
     ctx.log.debug(`${url}: ${(e as Error).message}`);
     return null;
@@ -511,7 +682,7 @@ async function pedirJson<T>(ctx: ContextoDescubrimiento, url: string): Promise<{
 /** Store API de WooCommerce: vinos y experiencias con atributos y precio en una petición. */
 async function tiendaWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[]): Promise<boolean> {
   const productos: ProductoWoo[] = [];
-  for (let pagina = 1; pagina <= 3; pagina++) {
+  for (let pagina = 1; pagina <= 10; pagina++) {
     const r = await pedirJson<ProductoWoo[]>(ctx, new URL(`/wp-json/wc/store/v1/products?per_page=100&page=${pagina}`, ctx.origen).href);
     if (!r || !Array.isArray(r.datos)) break;
     productos.push(...r.datos);
@@ -522,7 +693,7 @@ async function tiendaWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[]): 
   for (const p of productos) {
     if (!p.permalink || esOtroIdioma(p.permalink)) continue;
     try {
-      if (new URL(p.permalink, ctx.origen).host !== new URL(ctx.origen).host) continue;
+      if (!ctx.esDelSitio(new URL(p.permalink, ctx.origen).host)) continue;
     } catch {
       continue;
     }
@@ -530,8 +701,12 @@ async function tiendaWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[]): 
     const cats = (p.categories ?? []).map((c) => c.name).join(" ");
     const servicio = ES_SERVICIO.test(nombre) || /visita|experienc|enoturismo|cata/i.test(cats);
     const clase: Clase = servicio ? "enoturismo" : "vino";
-    if (clase === "vino" && (!esNombreDeVino(nombre) || CATEGORIA_NO_VINO.test(cats) && !/vino|wine/i.test(cats))) continue;
-    contenidos.push({ url: p.permalink, clase, origen: "woo", titulo: nombre, bloques: [], enlaces: [], producto: p });
+    // Reventa de otras bodegas («Otros vinos», «Oporto») o productos que no son vino: fuera.
+    if (clase === "vino" && (!esNombreDeVino(nombre) || CATEGORIA_NO_VINO.test(cats) && (!/vino|wine/i.test(cats) || /otras bodegas|vinos de otras|otros vinos|importaci|internacional|del mundo/i.test(cats)))) continue;
+    contenidos.push({
+      url: p.permalink, clase, origen: "woo", titulo: nombre, bloques: [], enlaces: [], producto: p,
+      categorias: (p.categories ?? []).map((c) => decodificarEntidades(c.name)),
+    });
   }
   return true;
 }
@@ -549,6 +724,7 @@ interface ItemWp {
   type?: string;
   title?: { rendered?: string };
   content?: { rendered?: string; protected?: boolean };
+  modified?: string;
 }
 
 /** API REST de WordPress: páginas y tipos personalizados, clasificados por enlace y título. */
@@ -565,7 +741,7 @@ async function wpRest(ctx: ContextoDescubrimiento, contenidos: Contenido[], conW
   for (const t of utiles.slice(0, 6)) {
     const items: ItemWp[] = [];
     for (let pagina = 1; pagina <= 3; pagina++) {
-      const lista = await pedirJson<ItemWp[]>(ctx, `${base.replace(/\/$/, "")}/wp/v2/${t.rest_base}?per_page=100&page=${pagina}&_fields=id,link,slug,type,title`);
+      const lista = await pedirJson<ItemWp[]>(ctx, `${base.replace(/\/$/, "")}/wp/v2/${t.rest_base}?per_page=100&page=${pagina}&_fields=id,link,slug,type,title,modified`);
       if (!lista || !Array.isArray(lista.datos)) break;
       items.push(...lista.datos);
       if (pagina >= Number(lista.res.cabeceras?.get("x-wp-totalpages") ?? 1)) break;
@@ -577,7 +753,7 @@ async function wpRest(ctx: ContextoDescubrimiento, contenidos: Contenido[], conW
       } catch {
         continue;
       }
-      if (new URL(item.link).host !== new URL(ctx.origen).host || RUTA_NOTICIA.test(item.link)) continue;
+      if (!ctx.esDelSitio(new URL(item.link).host) || RUTA_NOTICIA.test(item.link)) continue;
       if (!item.link || esOtroIdioma(item.link)) continue;
       const tituloItem = decodificarEntidades(item.title?.rendered ?? "");
       const clase = clasificar({ url: item.link, titulo: tituloItem, tipoWp: t.slug === "page" ? null : t.slug });
@@ -585,7 +761,8 @@ async function wpRest(ctx: ContextoDescubrimiento, contenidos: Contenido[], conW
     }
   }
   if (candidatos.length === 0) return true;
-  const elegidos = elegir(candidatos.map((c) => ({ ...c, url: c.item.link })), contenidos);
+  ctx.ampliar(candidatos.filter((c) => c.clase === "vino").length);
+  const elegidos = sinCambiar(ctx, elegir(candidatos.map((c) => ({ ...c, url: c.item.link, modificada: c.item.modified ?? null })), contenidos));
   // Contenido en bloque por tipo (?include=…): una petición por tipo en vez de una por página.
   const porTipo = new Map<TipoWp, typeof elegidos>();
   for (const e of elegidos) porTipo.set(e.tipo, [...(porTipo.get(e.tipo) ?? []), e]);
@@ -605,10 +782,16 @@ async function wpRest(ctx: ContextoDescubrimiento, contenidos: Contenido[], conW
       // Constructores que no exponen el contenido por la API (o tipos sin editor): HTML de la página.
       if (textoDe(bs).length < 200) {
         const c = await paginaHtml(ctx, e.item.link, e.clase, tituloItem);
-        if (c) contenidos.push(c);
+        if (c) contenidos.push({ ...c, modificada: e.modificada });
         continue;
       }
-      contenidos.push({ url: e.item.link, clase: e.clase, origen: "wp", titulo: tituloItem, bloques: bs, enlaces: enlacesDeFragmento(html, e.item.link) });
+      const $f = cargar(`<html><body><main>${html}</main></body></html>`);
+      contenidos.push({
+        url: e.item.link, clase: e.clase, origen: "wp", titulo: tituloItem, bloques: bs, enlaces: enlacesDeFragmento(html, e.item.link),
+        imagenes: e.clase === "historia" ? candidatasDePagina($f, e.item.link) : undefined,
+        imagenProducto: e.clase === "vino" ? primeraImagen($f, e.item.link) : undefined,
+        modificada: e.modificada,
+      });
     }
   }
   return true;
@@ -657,7 +840,7 @@ function prioridadUrl(url: string, clase: Clase): number {
 }
 
 /** Clave de URL para no repetir páginas: sin #, sin / final y sin parámetros de seguimiento. */
-function normalizarUrl(u: string): string {
+export function normalizarUrl(u: string): string {
   try {
     const url = new URL(u);
     url.hash = "";
@@ -693,8 +876,11 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
     const sigue = !directivas.includes("nofollow") && !directivas.includes("none");
     // noindex: la página no se extrae (pero puede seguir sus enlaces si no es nofollow).
     const indexable = !directivas.includes("noindex") && !directivas.includes("none");
-    const producto = nodos.find((n) => n["@type"] === "Product");
+    const producto = nodos.find((n) => n["@type"] === "Product" || (Array.isArray(n["@type"]) && (n["@type"] as unknown[]).includes("Product")));
     const gtin = producto ? (["gtin13", "gtin", "gtin14", "gtin12", "gtin8"].map((k) => producto[k]).find((v) => typeof v === "string" || typeof v === "number") ?? null) : null;
+    // JSON-LD Product en cualquier plataforma (PrestaShop, Magento, Wix, a medida): categoría e imagen.
+    const categoriaLd = producto && typeof producto.category === "string" ? [producto.category] : [];
+    const imagenLd = producto ? primeraUrl(producto.image) : null;
     return {
       url: res.url,
       clase: indexable ? clase : "otra",
@@ -703,76 +889,176 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
       bloques: indexable ? bloques($) : [],
       enlaces: sigue ? enlaces($, res.url) : [],
       gtin: gtin == null ? null : String(gtin),
+      categorias: [...categoriaLd, ...migas($, nodos)],
+      imagenes: indexable && clase === "historia" ? candidatasDePagina($, res.url) : undefined,
+      imagenProducto: clase === "vino" ? (imagenLd ? { url: imagenLd, alt: null } : primeraImagen($, res.url)) : undefined,
+      oferta: producto && clase === "vino" ? ofertaDeJsonLd(producto, res.url, t, gtin == null ? null : String(gtin)) : null,
     };
   } catch (e) {
+    if (e instanceof HostBloqueado) return null;
     if (e instanceof PresupuestoAgotado || e instanceof ParadaFuente) throw e;
     ctx.log.debug(`${url}: ${(e as Error).message}`);
     return null;
   }
 }
 
-/** Sitemap (robots → índices habituales) y, si no hay, enlaces de portada a profundidad 2. */
+/** Sitemap (robots → índices habituales) y enlaces de portada, clasificados y con tope por clase. */
 async function sitemapYEnlaces(ctx: ContextoDescubrimiento, contenidos: Contenido[], enlacesHome: Enlace[]): Promise<string> {
-  const host = new URL(ctx.origen).host;
   const urls = await sitemap(ctx);
-  const candidatos: { url: string; clase: Clase }[] = [];
-  const delSitio = (u: string) => {
-    try {
-      return new URL(u).host === host && !esOtroIdioma(u) && !/\.(pdf|jpe?g|png|webp|gif|zip|docx?|xml)$/i.test(u) && !RUTA_NOTICIA.test(u) && !RUTA_PRIVADA.test(new URL(u).pathname);
-    } catch {
-      return false;
-    }
-  };
-  for (const u of urls.filter(delSitio)) candidatos.push({ url: u, clase: clasificar({ url: u }) });
+  const candidatos: { url: string; clase: Clase; modificada: string | null }[] = [];
+  const delSitio = (u: string) => urlDelSitio(ctx, u);
+  for (const u of urls.filter((x) => delSitio(x.url))) candidatos.push({ url: u.url, clase: clasificar({ url: u.url }), modificada: u.lastmod });
   for (const e of enlacesHome.filter((x) => delSitio(x.url))) {
-    candidatos.push({ url: e.url, clase: clasificar({ url: e.url, titulo: e.texto }) });
+    candidatos.push({ url: e.url, clase: clasificar({ url: e.url, titulo: e.texto }), modificada: null });
   }
-  const unicos = [...new Map(candidatos.filter((c) => MAX_POR_CLASE[c.clase] > 0 && !isRaiz(c.url)).map((c) => [normalizarUrl(c.url), c])).values()];
-  const elegidos = elegir(unicos, contenidos);
-  const listados: Contenido[] = [];
-  for (const e of elegidos) {
+  // Con la Store API de Woo el catálogo ya está completo: sus fichas no se vuelven a pedir por HTML.
+  const prefijosWoo = new Set(
+    contenidos.filter((c) => c.origen === "woo").map((c) => new URL(c.url).pathname.split("/").filter(Boolean).slice(0, -1).join("/")),
+  );
+  const deWoo = (u: string) => prefijosWoo.has(new URL(u).pathname.split("/").filter(Boolean).slice(0, -1).join("/"));
+  // Fichas cuyo slug ya dice que no es un vino (estuche, sacacorchos, lote…): ni se piden.
+  const slugNoVino = (u: string) => !esNombreDeVino(decodeURIComponent(new URL(u).pathname.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " "));
+  const unicos = [...new Map(
+    candidatos
+      .filter((c) => MAX_POR_CLASE[c.clase] > 0 && !isRaiz(c.url) && !(c.clase === "vino" && (deWoo(c.url) || slugNoVino(c.url))))
+      .map((c) => [normalizarUrl(c.url), c]),
+  ).values()];
+  ctx.ampliar(unicos.filter((c) => c.clase === "vino").length);
+  for (const e of sinCambiar(ctx, elegir(unicos, contenidos))) {
     const c = await paginaHtml(ctx, e.url, e.clase);
-    if (!c) continue;
-    contenidos.push(c);
-    if (c.clase === "vino") listados.push(c);
-  }
-  // Profundidad 2: fichas de vino enlazadas desde un listado de vinos (misma sección de la web).
-  if (urls.length === 0 || listados.length > 0) {
-    const ya = new Set(contenidos.map((c) => normalizarUrl(c.url)));
-    for (const l of listados) {
-      const prefijo = new URL(l.url).pathname.replace(/\/$/, "");
-      for (const e of l.enlaces) {
-        if (contenidos.filter((c) => c.clase === "vino").length >= MAX_POR_CLASE.vino || ctx.quedan() <= 0) break;
-        const ruta = new URL(e.url).pathname;
-        const pareceVino = /\b(tinto|blanco|rosado|clarete|crianza|reserva|roble|joven|vendimia|cosecha)\b/i.test(e.texto) && e.texto.length <= 60;
-        if (!delSitio(e.url) || ya.has(normalizarUrl(e.url)) || !(ruta.startsWith(prefijo + "/") || /\/(vinos?|wines?|productos?)\//i.test(ruta) || pareceVino)) continue;
-        ya.add(normalizarUrl(e.url));
-        const c = await paginaHtml(ctx, e.url, "vino");
-        if (c) contenidos.push(c);
-      }
-    }
+    if (c) contenidos.push({ ...c, modificada: e.modificada });
   }
   return urls.length ? "sitemap" : "enlaces";
 }
 
-async function sitemap(ctx: ContextoDescubrimiento): Promise<string[]> {
+function urlDelSitio(ctx: ContextoDescubrimiento, u: string): boolean {
+  try {
+    const url = new URL(u);
+    return ctx.esDelSitio(url.host) && !esOtroIdioma(u) && !/\.(pdf|jpe?g|png|webp|gif|zip|docx?|xml)$/i.test(url.pathname) &&
+      !RUTA_NOTICIA.test(u) && !RUTA_PRIVADA.test(url.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Profundidad 2: fichas de vino enlazadas desde los listados de vinos (de la API, del sitemap o del
+ * HTML) y experiencias enlazadas desde la página de enoturismo.
+ */
+async function profundidad2(ctx: ContextoDescubrimiento, contenidos: Contenido[]): Promise<void> {
+  const ya = new Set(contenidos.map((c) => normalizarUrl(c.url)));
+  const candidatos: { url: string; clase: Clase }[] = [];
+  for (const l of contenidos.filter((c) => (c.clase === "vino" || c.clase === "enoturismo") && c.enlaces.length && !c.producto)) {
+    let prefijo = "";
+    try {
+      prefijo = new URL(l.url).pathname.replace(/\/$/, "");
+    } catch {
+      continue;
+    }
+    for (const e of l.enlaces) {
+      if (!urlDelSitio(ctx, e.url) || ya.has(normalizarUrl(e.url)) || isRaiz(e.url)) continue;
+      const ruta = new URL(e.url).pathname;
+      const debajo = prefijo.length > 1 && ruta.startsWith(prefijo + "/");
+      if (l.clase === "vino") {
+        const pareceVino = /\b(tinto|blanco|rosado|clarete|crianza|reserva|roble|joven|vendimia|cosecha|verdejo|albillo)\b/i.test(e.texto) && e.texto.length <= 60;
+        if (!(debajo || /\/(vinos?|wines?|productos?|producto|product)\//i.test(ruta) || pareceVino)) continue;
+        if (!esNombreDeVino(decodeURIComponent(ruta.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " ")) || !esNombreDeVino(e.texto)) continue;
+        if (wooCubre(contenidos, e.url)) continue;
+        candidatos.push({ url: e.url, clase: "vino" });
+      } else {
+        const pareceServicio = ES_SERVICIO.test(e.texto) && e.texto.length <= 80;
+        if (!(debajo || pareceServicio || clasificar({ url: e.url, titulo: e.texto }) === "enoturismo")) continue;
+        candidatos.push({ url: e.url, clase: "enoturismo" });
+      }
+      ya.add(normalizarUrl(e.url));
+    }
+  }
+  ctx.ampliar(candidatos.filter((c) => c.clase === "vino").length + contenidos.filter((c) => c.clase === "vino").length);
+  for (const e of elegir(candidatos, contenidos)) {
+    const c = await paginaHtml(ctx, e.url, e.clase);
+    if (c) contenidos.push(c);
+  }
+}
+
+/** ¿Esta URL es una ficha de un catálogo que ya trajo la Store API de Woo? */
+function wooCubre(contenidos: Contenido[], u: string): boolean {
+  const carpeta = (x: string) => new URL(x).pathname.split("/").filter(Boolean).slice(0, -1).join("/");
+  const c = carpeta(u);
+  return c !== "" && contenidos.some((x) => x.origen === "woo" && carpeta(x.url) === c);
+}
+
+/** Subdominios del propio dominio enlazados desde la portada (tienda., enoturismo., shop.). */
+function subdominiosEnlazados(lista: Enlace[], host: string, esDelSitio: (h: string) => boolean): string[] {
+  const out = new Set<string>();
+  for (const e of lista) {
+    try {
+      const u = new URL(e.url);
+      if (u.host !== host && esDelSitio(u.host) && SUBDOMINIO_UTIL.test(u.host)) out.add(u.origin);
+    } catch {
+      /* enlace roto */
+    }
+  }
+  return [...out];
+}
+
+/** Tienda Woo y sitemap de un subdominio del sitio; robots.txt, 403 y anti-bot por host (en `pedir`). */
+async function descubrirSubdominio(ctx: ContextoDescubrimiento, origenSub: string, contenidos: Contenido[]): Promise<boolean> {
+  const sub: ContextoDescubrimiento = { ...ctx, origen: origenSub, textoRobots: (o = origenSub) => ctx.textoRobots(o) };
+  const antes = contenidos.length;
+  const woo = await tiendaWoo(sub, contenidos);
+  if (!woo && ctx.quedan() > 3) await sitemapYEnlaces(sub, contenidos, []);
+  return contenidos.length > antes;
+}
+
+/**
+ * Rastreo incremental: una página cuya fecha de modificación no ha cambiado desde la última visita
+ * no se pide (sus registros siguen valiendo). Sin fecha, se pide siempre.
+ */
+function sinCambiar<T extends { url: string; modificada?: string | null }>(ctx: ContextoDescubrimiento, lista: T[]): T[] {
+  return lista.filter((e) => {
+    const previa = ctx.previas.get(normalizarUrl(e.url));
+    if (e.modificada && previa && e.modificada <= previa) {
+      ctx.sinCambios.push(e.url);
+      return false;
+    }
+    return true;
+  });
+}
+
+async function sitemap(ctx: ContextoDescubrimiento): Promise<{ url: string; lastmod: string | null }[]> {
   const robots = (await ctx.textoRobots()) ?? "";
-  const declarados = [...robots.matchAll(/^\s*sitemap\s*:\s*(\S+)/gim)].map((m) => m[1]!);
+  const declarados = [...robots.matchAll(/^\s*sitemap\s*:\s*(\S+)/gim)].map((m) => m[1]!).filter((u) => hostDelSitio(ctx, u));
   const candidatos = declarados.length ? declarados.slice(0, 2) : ["/sitemap_index.xml", "/wp-sitemap.xml", "/sitemap.xml"].map((p) => new URL(p, ctx.origen).href);
+  const urlsDe = (xml: string) =>
+    [...xml.matchAll(/<url>([\s\S]*?)<\/url>/gi)].flatMap((m) => {
+      const loc = m[1]!.match(/<loc>\s*(?:<!\[CDATA\[)?\s*([^<\s\]]+)/i)?.[1];
+      const lastmod = m[1]!.match(/<lastmod>\s*([^<\s]+)\s*<\/lastmod>/i)?.[1] ?? null;
+      return loc ? [{ url: decodificarEntidades(loc), lastmod }] : [];
+    });
   for (const url of candidatos) {
     const xml = await xmlDe(ctx, url);
     if (!xml) continue;
-    const locs = (etiqueta: string) => [...xml.matchAll(new RegExp(`<${etiqueta}>\\s*<loc>\\s*([^<\\s]+)\\s*</loc>`, "gi"))].map((m) => decodificarEntidades(m[1]!));
-    const subs = locs("sitemap");
-    if (subs.length === 0) return locs("url");
-    const out: string[] = [];
-    for (const s of subs.filter((x) => SUBSITEMAP_UTIL.test(x) && !SUBSITEMAP_INUTIL.test(x)).slice(0, 4)) {
-      const sub = await xmlDe(ctx, s);
-      if (sub) out.push(...[...sub.matchAll(/<url>\s*<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => decodificarEntidades(m[1]!)));
+    const subs = [...xml.matchAll(/<sitemap>\s*<loc>\s*(?:<!\[CDATA\[)?\s*([^<\s\]]+)/gi)].map((m) => decodificarEntidades(m[1]!));
+    if (subs.length === 0) return urlsDe(xml);
+    const out: { url: string; lastmod: string | null }[] = [];
+    // Primero los de producto o vino (el catálogo), después páginas y el resto útil.
+    const catalogo = (x: string) => /product|vino|wine|anada|store/i.test(x);
+    const utiles = subs.filter((x) => SUBSITEMAP_UTIL.test(x) && !SUBSITEMAP_INUTIL.test(x)).sort((a, b) => Number(!catalogo(a)) - Number(!catalogo(b)));
+    for (const sm of utiles.slice(0, 6)) {
+      const sub = await xmlDe(ctx, sm);
+      if (sub) out.push(...urlsDe(sub));
     }
     return out;
   }
   return [];
+}
+
+function hostDelSitio(ctx: ContextoDescubrimiento, u: string): boolean {
+  try {
+    return ctx.esDelSitio(new URL(u).host);
+  } catch {
+    return false;
+  }
 }
 
 async function xmlDe(ctx: ContextoDescubrimiento, url: string): Promise<string | null> {
@@ -780,6 +1066,7 @@ async function xmlDe(ctx: ContextoDescubrimiento, url: string): Promise<string |
     const res = await ctx.pedir(url);
     return /<(urlset|sitemapindex)\b/i.test(res.texto.slice(0, 2000)) ? res.texto : null;
   } catch (e) {
+    if (e instanceof HostBloqueado) return null;
     if (e instanceof PresupuestoAgotado || e instanceof ParadaFuente) throw e;
     return null;
   }
@@ -788,6 +1075,68 @@ async function xmlDe(ctx: ContextoDescubrimiento, url: string): Promise<string |
 // ---------------------------------------------------------------------------
 // Utilidades
 // ---------------------------------------------------------------------------
+
+/** Dominio registrable aproximado: «tienda.matarromera.es» → «matarromera.es»; «x.com.es» → «x.com.es». */
+export function dominioBase(host: string): string {
+  const partes = host.toLowerCase().replace(/^www\d*\./, "").split(".");
+  const n = /^(com|org|net|gob|edu|nom)$/.test(partes[partes.length - 2] ?? "") && partes.length >= 3 ? 3 : 2;
+  return partes.slice(-n).join(".");
+}
+
+function primeraUrl(v: unknown): string | null {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) return primeraUrl(v[0]);
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return typeof o.url === "string" ? o.url : typeof o.contentUrl === "string" ? o.contentUrl : null;
+  }
+  return null;
+}
+
+/** Primera imagen de producto plausible de una ficha de vino. */
+function primeraImagen($: ReturnType<typeof cargar>, base: string): { url: string; alt: string | null } | null {
+  const sel = $(".woocommerce-product-gallery img, .product img, .wp-post-image, main img, article img").first();
+  const src = sel.attr("data-large_image") ?? sel.attr("data-src") ?? sel.attr("src") ?? $('meta[property="og:image"]').attr("content");
+  if (!src) return null;
+  try {
+    return { url: new URL(src, base).href, alt: sel.attr("alt")?.trim() || null };
+  } catch {
+    return null;
+  }
+}
+
+const nombreDeSeccion = (t: string) => nombreVino(t);
+
+/**
+ * ¿La portada nombra a la bodega? Clave de nombre contra <title>, og:site_name, h1 y
+ * `Organization.name` (trigramas), o la clave contenida en el dominio.
+ */
+export function verificarNombre($: ReturnType<typeof cargar>, host: string, nombre: string): Verificacion {
+  const clave = claveNombreBodega(nombre);
+  if (!clave) return { estado: "no_verificada", puntuacion: 0, texto: null };
+  const nodos = jsonLd($);
+  const org = nodos.find((n) => n["@type"] === "Organization" || n["@type"] === "Winery" || n["@type"] === "LocalBusiness");
+  const textos = [
+    $("title").first().text(), $('meta[property="og:site_name"]').attr("content"), $("h1").first().text(),
+    typeof org?.name === "string" ? org.name : null,
+  ].filter((t): t is string => !!t && t.trim() !== "");
+  let mejor: { puntuacion: number; texto: string | null } = { puntuacion: 0, texto: null };
+  for (const t of textos) {
+    for (const trozo of [t, ...t.split(/\s+[|–—·•»-]\s+/)]) {
+      const k = claveNombreBodega(trozo);
+      if (!k) continue;
+      // Contenida en un sentido u otro («Pérez Pascuas» ⊂ «Hermanos Pérez Pascuas»), con al menos dos palabras.
+      const contenida = ` ${k} `.includes(` ${clave} `) || (k.split(" ").length >= 2 && ` ${clave} `.includes(` ${k} `));
+      const p = k === clave ? 1 : contenida ? 0.9 : similitud(clave, k);
+      if (p > mejor.puntuacion) mejor = { puntuacion: Math.round(p * 1000) / 1000, texto: limpiarEspacios(trozo).slice(0, 120) };
+    }
+  }
+  const compacta = clave.replace(/\s+/g, "");
+  const enDominio = compacta.length >= 5 && host.replace(/[^a-z0-9]/gi, "").toLowerCase().includes(compacta);
+  if (enDominio && mejor.puntuacion < 0.9) mejor = { puntuacion: 0.9, texto: host };
+  const estado = mejor.puntuacion >= 0.8 ? "verificada" : mejor.puntuacion >= 0.5 ? "dudosa" : "no_verificada";
+  return { estado, ...mejor };
+}
 
 function puertaInicial(entrada: EntradaSitio, ahora: Date): ResultadoPuerta {
   return {

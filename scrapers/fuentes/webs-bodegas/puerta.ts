@@ -16,7 +16,8 @@ export type MotivoSalto =
   | "content_signal"
   | "clausula_legal"
   | "sin_html"
-  | "otro_dominio_compartido";
+  | "otro_dominio_compartido"
+  | "no_verificada";
 
 export interface ResultadoPuerta {
   apta: boolean;
@@ -224,4 +225,5 @@ export const TEXTO_MOTIVO: Record<MotivoSalto, string> = {
   clausula_legal: "el aviso legal prohíbe el rastreo o la extracción automatizada",
   sin_html: "la portada no es HTML",
   otro_dominio_compartido: "la redirección lleva a un dominio de otra bodega",
+  no_verificada: "la web candidata no nombra a la bodega en su portada",
 };
