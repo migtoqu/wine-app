@@ -1,6 +1,7 @@
 import NextLink from "next/link";
 import type { Dictionary } from "@/i18n/dictionaries/es";
 import { localePath, type Locale } from "@/i18n/config";
+import { formatPrice } from "@/i18n/format";
 import { TIPOS_VINO } from "@/lib/catalog/filters";
 import type { CrianzaVino, TipoVino, VinoListItem } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
@@ -12,6 +13,7 @@ export type WineCardLabels = {
   wineTypes: Record<TipoVino, string>;
   agings: Record<CrianzaVino, string>;
   noVintage: string;
+  priceFrom: string;
   placeholderAlt: Record<TipoVino, string>;
 };
 
@@ -21,6 +23,7 @@ export function wineCardLabels(dict: Dictionary): WineCardLabels {
     wineTypes: catalog.wineTypes,
     agings: catalog.agings,
     noVintage: catalog.wine.noVintage,
+    priceFrom: catalog.wine.priceFrom,
     placeholderAlt: Object.fromEntries(
       TIPOS_VINO.map((t) => [t, catalog.wine.placeholderAlt(catalog.wineTypes[t])]),
     ) as Record<TipoVino, string>,
@@ -78,6 +81,12 @@ export function WineCard({ lang, wine, labels, showWinery = true, className }: P
         {(wine.denominacion_nombre || vintages) && (
           <p className="text-sm text-muted">
             {[wine.denominacion_nombre, vintages].filter(Boolean).join(" · ")}
+          </p>
+        )}
+        {wine.precio_desde != null && (
+          <p className="text-sm">
+            {labels.priceFrom}{" "}
+            <span className="font-semibold tabular-nums">{formatPrice(lang, Number(wine.precio_desde))}</span>
           </p>
         )}
       </div>

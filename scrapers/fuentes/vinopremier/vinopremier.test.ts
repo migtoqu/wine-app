@@ -10,7 +10,8 @@ import {
   temperaturaServicio,
   uvasDesdeTexto,
 } from "./normalizar.ts";
-import { hechosVinopremier } from "./guardar.ts";
+import { hechosVinopremier, ofertaVinopremier } from "./guardar.ts";
+import { normalizarOferta } from "../../lib/ofertas.ts";
 import { CATEGORIAS, parsearFicha, parsearListado, rutaProducto, urlListado } from "./parsear.ts";
 
 const [RIBERA, RIOJA] = CATEGORIAS;
@@ -168,5 +169,21 @@ describe("hechos", () => {
     );
     expect(h.find((x) => x.clave === "vino.denominacion")!.valor).toBe("Rioja");
     expect(h.every((x) => x.fuente.origen === "tienda")).toBe(true);
+  });
+});
+
+describe("oferta (comparador de precios)", () => {
+  it("precio, EAN y disponibilidad de la ficha", () => {
+    const n = normalizarVino(ficha("ficha-aalto.html", "vino-tinto-aalto"), RIBERA);
+    const o = ofertaVinopremier(n, "vino-1", "anada-1", null);
+    expect(o).toMatchObject({
+      idExterno: "vino-tinto-aalto",
+      url: "https://vinopremier.com/vino-tinto-aalto.html",
+      ean: "8437003104763",
+      precio: n.datos.precio,
+    });
+    expect(o.precio).toBeGreaterThan(0);
+    expect(typeof o.disponible === "boolean" || o.disponible === null).toBe(true);
+    expect(normalizarOferta(o)).toHaveProperty("fila.formato_ml", n.datos.formato_ml ?? 750);
   });
 });

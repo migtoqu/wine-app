@@ -219,3 +219,29 @@ export type BodegaFicha = {
   imagenes: CatalogImage[];
   vinos: VinoListItem[];
 };
+
+// --- Comparador de precios --------------------------------------------------
+
+export type TramoPrecio = { precio: number; desde: string; hasta: string | null };
+
+export type Oferta = {
+  id: string;
+  url: string;
+  precio: number;
+  formato_ml: number;
+  disponible: boolean;
+  visto_por_ultima_vez: string;
+  anio: number | null; // añada de la oferta (null = sin añada en la tienda)
+  con_anada: boolean; // false = la tienda no indica la añada
+  tienda: {
+    slug: string;
+    nombre: string;
+    web: string;
+    logo_url: string | null;
+    info_envio: string | null;
+    afiliacion_plantilla: string | null;
+  };
+  historial: TramoPrecio[];
+};
+
+export type PuntoPrecio = { fecha: string; precio: number };

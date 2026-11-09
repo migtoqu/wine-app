@@ -39,6 +39,8 @@ export interface Contexto {
   opciones: Record<string, string | undefined>;
   /** La ejecución terminará como 'parcial' aunque no haya errores de ficha. */
   marcarParcial(motivo: string): void;
+  /** ¿Se ha marcado ya como parcial? (p. ej. para no dar por no vistas las ofertas de un listado incompleto). */
+  esParcial(): boolean;
 }
 
 export type Scraper = (ctx: Contexto) => Promise<void>;
@@ -88,6 +90,9 @@ export async function ejecutar(
     marcarParcial(motivo) {
       log.warn(motivo);
       motivosParcial.push(motivo);
+    },
+    esParcial() {
+      return motivosParcial.length > 0;
     },
   };
 

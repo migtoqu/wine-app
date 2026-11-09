@@ -161,6 +161,38 @@ export function VinoFilters({ filters, options, dict }: Props) {
         </div>
       )}
 
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-2 text-sm font-semibold">{search.filterPrice}</legend>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted">{search.priceMin}</span>
+            <input
+              type="number"
+              name="pmin"
+              min={0}
+              max={10000}
+              step={1}
+              inputMode="numeric"
+              defaultValue={filters.precioMin ?? ""}
+              className={selectClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-muted">{search.priceMax}</span>
+            <input
+              type="number"
+              name="pmax"
+              min={0}
+              max={10000}
+              step={1}
+              inputMode="numeric"
+              defaultValue={filters.precioMax ?? ""}
+              className={selectClass}
+            />
+          </label>
+        </div>
+      </fieldset>
+
       {bodegas.length > 0 && (
         <div className="flex flex-col gap-2">
           <label htmlFor="filtro-bodega" className="text-sm font-semibold">

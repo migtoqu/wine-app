@@ -54,6 +54,15 @@ export function ActiveFilters({ filters, options, dict, hrefWith }: Props) {
     ...(filters.bodega
       ? [{ key: "bodega", text: label("bodega", filters.bodega), href: hrefWith({ bodega: null }) }]
       : []),
+    ...(filters.precioMin !== null || filters.precioMax !== null
+      ? [
+          {
+            key: "precio",
+            text: search.priceChip(filters.precioMin, filters.precioMax),
+            href: hrefWith({ precioMin: null, precioMax: null }),
+          },
+        ]
+      : []),
   ];
 
   return (

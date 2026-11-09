@@ -210,6 +210,7 @@ async function WineResults({ lang, dict, filters, hrefWith, base }: ResultsProps
               {filters.q && <option value="relevancia">{search.sortRelevance}</option>}
               <option value="nombre">{search.sortName}</option>
               <option value="novedad">{search.sortNewest}</option>
+              <option value="precio">{search.sortPrice}</option>
             </select>
           </div>
         </div>

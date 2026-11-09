@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { Emparejador, type BodegaCandidata } from "../../emparejamiento/bodegas.ts";
 import { registrosConocidos } from "../../lib/db.ts";
 import type { Contexto } from "../../lib/ejecucion.ts";
+import { RegistroOfertas } from "../../lib/ofertas.ts";
 import { ParadaFuente } from "../../lib/http.ts";
 import { RobotsDenegado } from "../../lib/robots.ts";
 import { claveNombreBodega } from "../../lib/texto.ts";
@@ -64,6 +65,10 @@ export async function scraperVinoseleccion(ctx: Contexto): Promise<void> {
   if (guardado) bodegas = await guardado.preparar();
   else if (ctx.rutaBodegas) bodegas = await bodegasDesdeDryRun(ctx.rutaBodegas);
   else ctx.log.warn("Dry-run sin --bodegas: no hay bodegas con las que emparejar (todo irá a revisión)");
+  // Comparador de precios: cada ficha guardada deja su oferta en la tienda de esta fuente.
+  const inicio = new Date();
+  const ofertas = guardado ? new RegistroOfertas(ctx.db!, ctx.fuenteId!, ctx.log) : null;
+  if (guardado && ofertas && (await ofertas.preparar())) guardado.ofertas = ofertas;
   const emparejador = new Emparejador(bodegas);
   ctx.log.info(`${emparejador.total} bodegas candidatas para emparejar`);
 
@@ -180,4 +185,7 @@ export async function scraperVinoseleccion(ctx: Contexto): Promise<void> {
       ctx.log.error(`${tarjeta.url}: ${(e as Error).message}`);
     }
   }
+
+  // Solo una ejecución completa puede dar ofertas por no vistas.
+  await ofertas?.cerrar(inicio, { completa: ctx.limite == null && ctx.contadores.errores === 0 && !ctx.esParcial() });
 }
