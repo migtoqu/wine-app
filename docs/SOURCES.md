@@ -421,7 +421,18 @@ Reglas: solo hechos con enlace a la ficha; **nunca** la descripción de la bodeg
 
 Descartados: **Rías Baixas** (`doriasbaixas.com`) devuelve 403 a `robots.txt`; no se insiste ni se cambia de UA. Navarra va en un PR aparte (§5.2: bodegas, vinos y experiencias).
 
-DRY_RUN_CIFRAS
+**Dry-run completo (2026-11-09)**, sin tocar la BD:
+
+| Consejo | Bodegas | Peticiones | Tiempo | Errores | Con CP | Con web | Con teléfono | Con email | Otros |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Toro | 63 | 66 | 5,6 min | 0 | 54 | 60 | 61 | 63 | 59 con marcas |
+| Cigales | 27 | 29 | 2,6 min | 0 | 25 | 26 | 27 | 25 | 27 con marcas |
+| Bierzo | 69 | 71 | 4,8 min | 0 | 69 | 55 | 66 | 68 | 61 con coordenadas |
+| Priorat | 114 | 125 | 12,3 min | 0 | 113 | 97 | 112 | 112 | 96 con coordenadas; 89 visitables por el público |
+| Rueda | 74 | 2 | 5 s | 0 | — | 70 | — | — | 43 visitables |
+| **Total** | **347** | 293 | | **0** | | 308 | | | |
+
+Las 347 tienen municipio y provincia. Cruce con el catálogo actual (511 bodegas), con el mismo `EmparejadorBodegas` y en el orden de los cron: **319 nuevas** (el catálogo pasaría a ≈ 830), 20 vinculadas a una bodega existente (Protos, Emilio Moro, Pagos del Rey, Marqués de Riscal…) y **8 a revisión**. Seis de esas revisiones son grupos que comparten web, como `sierracantabria.com` (Teso la Monja ≠ Viñedos de Paganos) o `bodegasriojanas.com` (Torreduero, Viore). El guardado manda a revisión cualquier vínculo hecho solo por dominio cuando los nombres no se parecen (`vinculoDudosoPorDominio`). Las webs de redes sociales o del propio consejo no van a `bodegas.web`.
 
 ---
 

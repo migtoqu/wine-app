@@ -33,6 +33,14 @@ export const ALIAS_MUNICIPIO: Record<string, string> = Object.fromEntries(
   ].map(([a, b]) => [claveTexto(a!), b!]),
 );
 
+/** Todos los municipios de la DOQ (y los vecinos donde algunas bodegas tienen la sede) están en Tarragona. */
+export const PROVINCIA_POR_MUNICIPIO: Record<string, string> = Object.fromEntries(
+  [
+    "Bellmunt del Priorat", "Gratallops", "El Lloar", "La Morera de Montsant", "Escaladei", "Poboleda", "Porrera",
+    "Torroja del Priorat", "La Vilella Alta", "La Vilella Baixa", "El Molar", "Falset", "Cornudella de Montsant",
+  ].map((m) => [claveTexto(m), "Tarragona"]),
+);
+
 export interface PaginaListado {
   entradas: EntradaListado[];
   ultimaPagina: number;
@@ -151,6 +159,7 @@ export const consejoPriorat: DefinicionConsejo = {
   denominacion: { slug: "priorat", nombre: "Priorat" },
   urlsRobots: [URL_LISTADO, urlPagina(2), `${BASE}/cellers/alvaro-palacios-sl/`],
   aliasMunicipio: ALIAS_MUNICIPIO,
+  provinciaPorMunicipio: PROVINCIA_POR_MUNICIPIO,
   async listar(ctx: Contexto) {
     const primera = parsearListado((await ctx.http.get(urlPagina(1))).texto);
     if (primera.ultimaPagina > MAX_PAGINAS) throw new Error(`Paginador anómalo: ${primera.ultimaPagina} páginas`);

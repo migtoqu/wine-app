@@ -206,6 +206,11 @@ describe("Priorat", () => {
     expect(n.hechos.map((h) => h.clave)).not.toContain("bodega.enoturismo");
   });
 
+  it("sin código postal, provincia por municipio (alias incluido)", () => {
+    const f = fichaDesdeListado({ url: "u", datos: { id_externo: "slug:x", nombre: "Terra", municipio: "Torroja" } });
+    expect(normalizarBodega(f, priorat.consejoPriorat).campos).toMatchObject({ municipio: "Torroja del Priorat", provincia: "Tarragona" });
+  });
+
   it("visitasAbiertas", () => {
     expect(priorat.visitasAbiertas("Visites de dilluns a dissabte amb reserva prèvia")).toBe(true);
     expect(priorat.visitasAbiertas("No es fan visites")).toBe(false);
