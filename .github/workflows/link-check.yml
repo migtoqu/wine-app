@@ -1,0 +1,64 @@
+name: Comprobador de enlaces
+
+# Semanal (SCOPE §8), domingo 05:17 UTC: después de que todos los scrapers de
+# la semana hayan escrito sus URLs. Nunca en pull requests.
+on:
+  schedule:
+    - cron: "17 5 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run: no escribe en la BD (lee los enlaces si hay credenciales, o usa 'urls')"
+        type: boolean
+        default: false
+      urls:
+        description: "(dry-run) URLs separadas por comas"
+        type: string
+        default: ""
+      limit:
+        description: "Máximo de enlaces a comprobar (vacío = todos)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: link-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Comprobar enlaces
+        env:
+          # En dry-run con 'urls' no hacen falta; sin 'urls', el dry-run solo lee.
+          SUPABASE_URL: ${{ (!inputs.dry_run || inputs.urls == '') && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ (!inputs.dry_run || inputs.urls == '') && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+          URLS: ${{ inputs.urls }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          args=(enlaces --presupuesto-min 150)
+          if [ -n "$DRY_RUN" ]; then args+=(--dry-run --out scrapers/out/enlaces.json); fi
+          if [ -n "$DRY_RUN" ] && [ -n "$URLS" ]; then args+=(--urls "$URLS"); fi
+          if [ -n "$LIMIT" ]; then args+=(--limit "$LIMIT"); fi
+          node scrapers/cli.ts "${args[@]}"
+
+      - name: Subir resultado del dry-run
+        if: ${{ always() && inputs.dry_run }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: enlaces-dry-run
+          path: scrapers/out/enlaces.json
+          if-no-files-found: ignore
+          retention-days: 14

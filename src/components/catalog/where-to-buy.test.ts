@@ -71,8 +71,8 @@ describe("WhereToBuy", () => {
   it("75 cl: mejor precio disponible, mínimo histórico, selector de formato, ofertas y gráfica", () => {
     const html = render(750);
     expect(html).toContain("Dónde comprar");
-    expect(html).toMatch(/Mejor precio ahora.*21,90\s€.*en Alfa/s);
-    expect(html).toMatch(/Mínimo histórico.*18,00\s€/s);
+    expect(html).toMatch(/Mejor precio ahora[^]*21,90\s€[^]*en Alfa/);
+    expect(html).toMatch(/Mínimo histórico[^]*18,00\s€/);
     expect(html).toContain('href="/es/vino/x?formato=1500"');
     expect(html).toContain("1,5 l");
     expect(html).toContain('aria-current="true"');

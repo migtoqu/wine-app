@@ -10,12 +10,19 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: admin.title, robots: { index: false } };
 }
 
+function haceDias(dias: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - dias);
+  return d.toISOString();
+}
+
 export default async function AdminPage() {
   const lang = await getLocale();
   const { admin } = await getDictionary();
   const supabase = await createClient();
   const count = { count: "exact", head: true } as const;
-  const [invitaciones, usuarios, bodegas, vinos, denominaciones, uvas, tiendas, revision] = await Promise.all([
+  const [invitaciones, usuarios, bodegas, vinos, denominaciones, uvas, tiendas, revision, ejecuciones, enlaces] =
+    await Promise.all([
     supabase
       .from("invitaciones")
       .select("id", count)
@@ -28,6 +35,16 @@ export default async function AdminPage() {
     supabase.from("variedades_uva").select("id", count),
     supabase.from("tiendas").select("id", count),
     supabase.from("registros_fuente").select("id", count).eq("estado_emparejamiento", "revision"),
+    supabase
+      .from("ejecuciones_scraper")
+      .select("id", count)
+      .in("estado", ["parcial", "error"])
+      .gte("inicio", haceDias(7)),
+    supabase
+      .from("comprobaciones_enlace")
+      .select("id", count)
+      .neq("modo", "ignorado")
+      .or("oculto.eq.true,fallos_consecutivos.gt.0"),
   ]);
   const cards = [
     { key: "invitaciones", n: invitaciones.count, suffix: admin.home.pending },
@@ -38,6 +55,8 @@ export default async function AdminPage() {
     { key: "uvas", n: uvas.count },
     { key: "tiendas", n: tiendas.count },
     { key: "revision", n: revision.count, suffix: admin.home.pending },
+    { key: "ejecuciones", n: ejecuciones.count, suffix: admin.home.failedWeek },
+    { key: "enlaces", n: enlaces.count, suffix: admin.home.broken },
   ] as const;
 
   return (

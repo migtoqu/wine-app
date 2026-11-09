@@ -52,6 +52,7 @@ export type Database = {
       }
       anadas: {
         Row: {
+          enlaces_ocultos: string[]
           anio: number | null
           cata_boca: string | null
           cata_nariz: string | null
@@ -153,6 +154,7 @@ export type Database = {
       }
       bodegas: {
         Row: {
+          enlaces_ocultos: string[]
           anio_fundacion: number | null
           codigo_postal: string | null
           comunidad: string | null
@@ -300,6 +302,12 @@ export type Database = {
       }
       comprobaciones_enlace: {
         Row: {
+          campos: string[]
+          metodo: string | null
+          modo: string
+          ultimo_ok: string | null
+          ultimo_resultado: string | null
+          url_final: string | null
           created_at: string
           entidad_id: string
           entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
@@ -313,6 +321,12 @@ export type Database = {
           url: string
         }
         Insert: {
+          campos?: string[]
+          metodo?: string | null
+          modo?: string
+          ultimo_ok?: string | null
+          ultimo_resultado?: string | null
+          url_final?: string | null
           created_at?: string
           entidad_id: string
           entidad_tipo: Database["public"]["Enums"]["entidad_catalogo"]
@@ -326,6 +340,12 @@ export type Database = {
           url: string
         }
         Update: {
+          campos?: string[]
+          metodo?: string | null
+          modo?: string
+          ultimo_ok?: string | null
+          ultimo_resultado?: string | null
+          url_final?: string | null
           created_at?: string
           entidad_id?: string
           entidad_tipo?: Database["public"]["Enums"]["entidad_catalogo"]
@@ -1054,6 +1074,7 @@ export type Database = {
       }
       servicios_bodega: {
         Row: {
+          enlaces_ocultos: string[]
           activo: boolean
           bodega_id: string
           clave: string | null
@@ -1312,6 +1333,7 @@ export type Database = {
       }
       vinos: {
         Row: {
+          enlaces_ocultos: string[]
           bodega_id: string
           created_at: string
           crianza: Database["public"]["Enums"]["crianza_vino"] | null
@@ -1408,6 +1430,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_editar_url_enlace: {
+        Args: { p_id: string; p_url: string }
+        Returns: string
+      }
+      admin_fuentes_con_ejecuciones: {
+        Args: never
+        Returns: { nombre: string; slug: string }[]
+      }
       admin_fusionar: {
         Args: { p_destino: string; p_origen: string; p_tipo: string }
         Returns: undefined
@@ -1448,6 +1478,26 @@ export type Database = {
         }[]
       }
       dominio_web: { Args: { url: string }; Returns: string }
+      enlaces_ocultos:
+        | { Args: { "": Database["public"]["Tables"]["anadas"]["Row"] }; Returns: string[] }
+        | { Args: { "": Database["public"]["Tables"]["bodegas"]["Row"] }; Returns: string[] }
+        | { Args: { "": Database["public"]["Tables"]["servicios_bodega"]["Row"] }; Returns: string[] }
+        | { Args: { "": Database["public"]["Tables"]["vinos"]["Row"] }; Returns: string[] }
+      registrar_comprobacion_enlace: {
+        Args: {
+          p_error?: string
+          p_http?: number
+          p_id: string
+          p_metodo?: string
+          p_resultado: string
+          p_url_final?: string
+        }
+        Returns: Database["public"]["Tables"]["comprobaciones_enlace"]["Row"][]
+      }
+      sincronizar_comprobaciones_enlace: {
+        Args: never
+        Returns: { borrados: number; nuevos: number; total: number }[]
+      }
       f_unaccent: { Args: { "": string }; Returns: string }
       hook_antes_de_crear_usuario: { Args: { event: Json }; Returns: Json }
       invitacion_valida: {

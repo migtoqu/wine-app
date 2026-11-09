@@ -10,6 +10,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
 | `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 | `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves 02:37 UTC, 3 lotes) |
+| `enlaces` | `comprobador-enlaces` (no es una fuente de datos) | `comprobaciones_enlace` (y `imagenes.estado_enlace` vía trigger) | `link-check.yml` (domingo 05:17 UTC) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
 
@@ -63,7 +64,53 @@ scrapers/
                          dry-run), db (cliente service role), texto/contacto/geo (normalización), json
   fuentes/<fuente>/      parsear.ts (HTML → datos crudos) · normalizar.ts · guardar.ts · index.ts
                          fixtures/ (HTML mínimo, solo la parte factual) · *.test.ts
+  comprobador-enlaces/   comprobar.ts (HEAD → GET, robots.txt, ritmo por host) · index.ts
 ```
+
+## Comprobador de enlaces
+
+Revisa cada semana las URLs del catálogo: `imagenes.url`, `bodegas.web` y `enoturismo_web`, `servicios_bodega.url_reserva` (activos) y las URLs de `procedencia_campos` (bodega, vino, añada).
+
+- Empieza con `sincronizar_comprobaciones_enlace()`: alta de URLs nuevas en `comprobaciones_enlace`, `campos` al día y baja de las que ya no usa ninguna ficha. Después comprueba las filas que no están ignoradas, de la comprobación más antigua a la más reciente.
+- Por enlace: `robots.txt` del origen (una vez por ejecución; 4xx = sin restricciones, 5xx = no se pide nada, sin respuesta = el propio enlace dirá si falla), `HEAD` y, si responde ≥ 400 o hay error de red, `GET` (se cancela el cuerpo). Timeout 20 s.
+- Fallo = 404/410/5xx, DNS, conexión o timeout. **Inconcluso** (no cuenta) = 401/403/429 o robots.txt que lo excluye. Un 429 deja el resto de URLs de ese host para la próxima ejecución.
+- `registrar_comprobacion_enlace()` guarda cada resultado. La BD oculta el enlace tras **2 fallos seguidos** (`oculto`, calculado por trigger) y lo reactiva con el siguiente OK; las imágenes lo reflejan en `estado_enlace`. Las fichas públicas quitan los demás enlaces ocultos con el campo calculado `enlaces_ocultos`.
+- Ritmo: 2–4 s entre peticiones al mismo host y hasta 6 hosts a la vez; los hosts con más enlaces empiezan antes. `--presupuesto-min` (150 por defecto) deja de comprobar enlaces nuevos al agotarse el tiempo; lo pendiente es lo primero la semana siguiente.
+- Contadores en `ejecuciones_scraper`: `nuevos` = enlaces que pasan a ocultos, `actualizados` = reactivados, `errores` = fallos al escribir en la BD (un enlace roto no es un error de la ejecución).
+- El admin lo gestiona en `/admin/enlaces`: reintentar (una comprobación inmediata desde el servidor, sin robots.txt por ser una sola petición pedida a mano), ocultar o mostrar, editar la URL (`admin_editar_url_enlace`, que la cambia en la ficha y reinicia la comprobación) e ignorar (falso positivo: ni se comprueba ni se oculta).
+
+```bash
+# Dry-run sin BD con URLs sueltas (o un fichero con una por línea)
+node scrapers/cli.ts enlaces --dry-run --urls https://example.com/,https://example.com/no-existe
+```
+
+## Ofertas y precios (`lib/ofertas.ts`)
+
+Escritura compartida del comparador de precios (migración `20261112110000_comparador_precios`).
+Cualquier scraper que traiga precios (tiendas, webs de bodegas con tienda online) la usa así:
+
+```ts
+const inicio = new Date();
+const ofertas = new RegistroOfertas(ctx.db, ctx.fuenteId, ctx.log);
+if (await ofertas.preparar()) { /* hay tienda activa para esta fuente */ }
+await ofertas.registrarOferta({ idExterno, vinoId, anadaId, url, precio, moneda, formatoMl, disponible, ean, registroId });
+await ofertas.cerrar(inicio, { completa: ctx.limite == null && ctx.contadores.errores === 0 && !ctx.esParcial() });
+```
+
+- La tienda se busca por `tiendas.fuente_id`. Sin tienda, o con la tienda desactivada, no se escribe nada.
+  Una fuente nueva necesita su fila en `tiendas`, que se crea en su migración o desde `/admin/tiendas`.
+- La clave es (tienda, `id_externo`), así que volver a ejecutar no duplica ofertas.
+- `anadaId: null` vale para las tiendas que no indican la añada; la oferta cuelga entonces del vino.
+- El historial (`historial_precios`) lo mantiene un trigger y solo crece cuando cambia el precio.
+- No se tocan `oculta_admin` (lo decide el admin) ni `estado_enlace` (lo lleva el comprobador de enlaces).
+  La única excepción: `estado_enlace` vuelve a `sin_comprobar` si cambia la URL.
+- Supresiones: un vino o una añada que el admin borró no recibe ofertas, y una fusión redirige la oferta al superviviente.
+- Sin precio, con una moneda distinta de EUR o con un formato imposible, la oferta se omite.
+- Si no hay formato, se asume 75 cl.
+- `cerrar()` solo actúa en ejecuciones completas. Las ofertas no vistas suman una ejecución sin ver.
+  Tras `UMBRAL_NO_VISTAS` (3) ejecuciones seguidas pasan a no disponibles; no se borran, para conservar el historial.
+
+Vinoselección y Vinopremier ya registran sus ofertas: lo hace `ofertaVinoseleccion()` / `ofertaVinopremier()` en su `guardar.ts`.
 
 ## Ribera del Duero
 
