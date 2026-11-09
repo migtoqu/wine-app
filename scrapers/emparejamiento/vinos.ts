@@ -1,11 +1,59 @@
-// Emparejamiento de vinos dentro de su bodega (SCOPE §7.2): EAN y nombre
-// normalizado. Un nombre muy parecido (mismo tipo y crianza) va a revisión en
-// vez de crear un vino casi duplicado. Las supresiones del admin cuentan: un
-// vino fusionado es alias del superviviente y uno borrado no se recrea.
-import { claveTexto } from "../lib/texto.ts";
+// Emparejamiento de vinos dentro de su bodega (SCOPE §7.2): EAN, nombre
+// normalizado y nombre canónico (sin añada, formato, D.O., artículos ni el tipo
+// repetido: «TresMatas Reserva 21- Etiquetado nutricional» = «TresMatas
+// Reserva»). Un nombre muy parecido (mismo tipo y crianza) va a revisión en
+// vez de crear un vino casi duplicado; si el nombre canónico coincide con más
+// de un vino de la bodega, también. Las supresiones del admin cuentan: un vino
+// fusionado es alias del superviviente y uno borrado no se recrea.
+import { claveTexto, quitarTildes } from "../lib/texto.ts";
 import { similitud } from "../lib/trigram.ts";
 
 export const UMBRAL_VINO_PARECIDO = 0.8;
+
+// D.O. al final del nombre («Montecillo Singladuras Ribera del Duero»).
+const DO_FINAL =
+  /\s(?:(?:d\s?o\s?ca?|d\s?o\s?p|v\s?t|i\s?g\s?p|vino de la tierra(?: de)?)\s)?(?:ribera del duero|ribera duero|rioja alavesa|rioja alta|rioja oriental|rioja|rueda|toro|cigales|bierzo|arlanza|tierra de leon|castilla y leon|castilla)\s*$/;
+// Palabras que no distinguen un vino de otro de la misma bodega.
+const VACIAS_VINO = new Set(["de", "del", "la", "las", "los", "el", "y", "e", "d", "the", "vino", "vinos"]);
+// Una clave hecha solo de estas palabras no identifica a ningún vino («100% tempranillo»).
+const DESCRIPTIVAS = new Set([
+  "tinto", "blanco", "rosado", "rose", "joven", "roble", "crianza", "reserva", "gran", "barrica", "seleccion",
+  "vendimia", "seleccionada", "tempranillo", "tinta", "fino", "verdejo", "albillo", "mayor", "garnacha", "viura",
+  "godello", "albarino", "mazuelo", "graciano", "maturana", "cabernet", "sauvignon", "merlot", "syrah", "malbec",
+  "chardonnay", "meses", "ribera", "duero", "rioja", "rueda", "toro", "cigales",
+]);
+
+/**
+ * Clave canónica de un nombre de vino: sin añada ni rangos de añadas («22-23», «20/21», «21-»),
+ * formato («(6 bot», «Mágnum», «75 cl», «1,5 l»), sufijos de ficha («Etiquetado nutricional»),
+ * D.O. final, artículos ni «tinto» en un tinto («Heredad de Peñalosa Tinto Roble»). «Blanco» y
+ * «rosado» se conservan: muchas marcas tienen las tres versiones y el tipo del catálogo a veces
+ * está mal («Eguren Ugarte Reserva» figura como blanco).
+ * Las palabras se ordenan («Pomar de Burgos Barrica» = «Barrica Pomar de Burgos»).
+ * Se conservan los números y códigos que distinguen («Corimbo I», «D1»/«M1», «Brut Nature»).
+ * Devuelve "" si no queda nada que identifique al vino.
+ */
+export function claveVino(nombre: string, tipo: string | null = null): string {
+  let t = quitarTildes(nombre).toLowerCase().replace(/[’'´`]/g, "").replace(/&/g, " y ");
+  t = t
+    .replace(/\(\s*\d+\s*(?:bot\w*|botellas?|uds?|unidades|x)?[^)]*\)?/g, " ") // «(6 bot»
+    .replace(/\b(?:info(?:rmacion)?|etiquetado)\s+nutricional\b/g, " ")
+    .replace(/\bficha\s+tecnica\b/g, " ")
+    .replace(/\bnovedad\b|\bnuevo\b/g, " ")
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:cl|ml|l|litros?)\b/g, " ")
+    .replace(/\b(?:magnum|jeroboam|estuche|caja)\b/g, " ")
+    .replace(/\b(?:19[5-9]\d|20[0-4]\d)\b/g, " ")
+    .replace(/\b\d{2}\s*[-/–]\s*\d{2}\b/g, " ")
+    .replace(/\b\d{2}\s*[-–](?=\s|$)/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  t = (" " + t).replace(DO_FINAL, "").trim();
+  const palabras = new Set(t.split(" ").filter((p) => p !== "" && !VACIAS_VINO.has(p) && !(p === "tinto" && tipo === "tinto")));
+  if (![...palabras].some((p) => /[a-z]{3}/.test(p) && !DESCRIPTIVAS.has(p))) return "";
+  return [...palabras].sort().join(" ");
+}
+
+const compatibles = (a: string | null, b: string | null) => a === null || b === null || a === b;
 
 export interface VinoCatalogo {
   id: string;
@@ -36,7 +84,7 @@ export interface ResultadoVino {
   estado: "vinculado" | "suprimido" | "revision" | "nuevo";
   vinoId: string | null;
   supresionId: string | null;
-  motivo: "ean" | "nombre" | "alias" | "parecido" | "ean_otra_bodega" | null;
+  motivo: "ean" | "nombre" | "nombre_canonico" | "alias" | "parecido" | "ean_otra_bodega" | null;
   candidatos: { id: string; nombre: string; puntuacion: number }[];
 }
 
@@ -86,6 +134,23 @@ export class EmparejadorVinos {
 
     const sup = this.supresiones.find((x) => x.bodegaId === s.bodegaId && claveTexto(x.nombre) === clave);
     if (sup) return this.resolverSupresion(sup);
+
+    // Nombre canónico: un único vino compatible (tipo y crianza) → el mismo; varios → revisión.
+    const canon = claveVino(s.nombre, s.tipo);
+    if (canon) {
+      const iguales = vinos.filter(
+        (v) => compatibles(v.tipo, s.tipo) && compatibles(v.crianza, s.crianza) && claveVino(v.nombre, v.tipo) === canon,
+      );
+      if (iguales.length === 1) return { ...vacio, estado: "vinculado", vinoId: iguales[0]!.id, motivo: "nombre_canonico" };
+      if (iguales.length > 1 && !opciones.sinParecidos) {
+        return {
+          estado: "revision", vinoId: null, supresionId: null, motivo: "parecido",
+          candidatos: iguales.slice(0, 3).map((v) => ({ id: v.id, nombre: v.nombre, puntuacion: 1 })),
+        };
+      }
+      const supCanon = this.supresiones.find((x) => x.bodegaId === s.bodegaId && claveVino(x.nombre, s.tipo) === canon);
+      if (supCanon) return this.resolverSupresion(supCanon);
+    }
 
     if (!opciones.sinParecidos) {
       const parecidos = vinos

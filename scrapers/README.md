@@ -222,15 +222,26 @@ Cada registro de fuente deja en `valores_fuente` lo que dice de cada campo (con 
 | --- | --- |
 | NIF o registro de embotellador iguales | 1 |
 | Dominio web igual y exclusivo (`dominioWeb`; se ignoran redes, constructores de webs y tiendas: `esDominioGenerico`) | 0,97 (0,8 si lo comparten varias bodegas) |
-| Clave de nombre exacta: mismo municipio / falta en un lado / otro municipio | 0,97 / 0,9 / 0,5 |
-| Clave contenida | 0,92 / 0,8 / 0,4 |
+| Clave de nombre exacta (entera, sin espacios o por tramos «X - Y»): mismo lugar / sin lugar / otro lugar | 0,97 / 0,85 / 0,5 |
+| Clave contenida (salvo que lo común sea solo el municipio: «Peñafiel» ⊂ «Tierras de Peñafiel» → máx. 0,7) | 0,92 / 0,8 / 0,4 |
 | Trigramas `s` sobre la clave | 0,5 + 0,45·s / 0,9·s / 0,6·s |
-| Nombre = marca exclusiva del CR de la candidata | 0,85 |
-| En contra: NIF distinto → máx. 0,3; dominios propios distintos → máx. 0,85 | |
+| Nombre = marca exclusiva del C.R. de la candidata (razón social ≠ marca) | 0,88 / 0,8 / 0,5 |
+| Teléfono exclusivo igual (no en otro lugar): con nombre/marca ≥ 0,6 / solo | 0,95 / 0,85 |
+| En contra: NIF distinto → máx. 0,3; webs propias sin relación y sin teléfono común → máx. 0,85; **otra provincia → máx. 0,6** (un dominio de grupo nunca basta) | |
+
+- **Lugar** (`emparejamiento/lugar.ts`): mismo municipio o mismo código postal; si falta el municipio, coordenadas a menos de 1 km. El municipio y el CP se sacan de la dirección si la fuente no los da (Ruta del Vino). Provincia por nombre o por los dos primeros dígitos del CP.
+- **Webs relacionadas** (no penalizan): misma etiqueta con otro TLD (`vinotierraranda.es`/`.com`), una dentro de otra (`abadiasanquirce`/`bodegasabadiasanquirce`) o el nombre en la ruta de la web de un grupo (`ferrerwines.com/valdubon/`).
+- **Normalización** (`claveNombreBodega`): además de formas societarias y genéricas, «&» = «y», «d´» = «de», y reclamos como «Familiares», «Histórica», «Hotel», «Wines», «Visitar», «Soc. Coop.».
+- Las marcas las da el C.R. de Ribera: Ruta del Vino y `reemparejar` las cargan con `lib/marcas.ts`; Vinoselección y Vinopremier, con su propio cargador.
 
 ≥ **0,90** con margen ≥ **0,05** → vinculada · **0,60–0,90** (o empate) → `revision`, sin crear nada · < 0,60 → bodega nueva.
 
-Vinos dentro de su bodega (`EmparejadorVinos`): EAN de la misma bodega o nombre normalizado igual → mismo vino; trigramas ≥ 0,8 con el mismo tipo y crianza → `revision`; si no, vino nuevo. El emparejamiento vino de tienda → bodega (`emparejamiento/bodegas.ts`) no cambia.
+Vinos dentro de su bodega (`EmparejadorVinos`): EAN de la misma bodega o nombre normalizado igual → mismo vino; **nombre canónico** (`claveVino`: sin añada ni rangos «22-23», formato «(6 bot»/«Mágnum»/«75 cl», sufijos «Etiquetado nutricional»/«Ficha técnica», D.O. final, artículos ni «tinto» en un tinto; palabras en cualquier orden) igual a un único vino de tipo y crianza compatibles → mismo vino; a varios → `revision`. Se conservan los romanos y códigos («Corimbo I», «D1»/«M1»), «blanco»/«rosado», «Brut Nature», «Vintage». Trigramas ≥ 0,8 con el mismo tipo y crianza → `revision`; si no, vino nuevo.
+
+### Medir y reprocesar
+
+- `node scrapers/emparejamiento/evaluar.ts [--detalle]`: precisión y recall sobre casos reales etiquetados (`emparejamiento/fixtures/`: catálogo de bodegas y vinos, marcas del C.R., fichas de Ruta del Vino y nombres de bodega de Rioja, «parecidos» de la cola). El catálogo se empareja también contra sí mismo (cada bodega/vino frente al resto): cualquier vinculación automática es un falso positivo. `evaluar.test.ts` exige **0 falsos positivos automáticos**.
+- `node scrapers/reemparejar.ts` (en seco por defecto; `--aplicar`, `--fuente`, `--out`, `--instantanea`): vuelve a pasar la cola de revisión por el emparejador. Solo aplica fichas de bodega (enlaza el registro; la próxima ejecución de la fuente consolida); los vinos los resuelve el scraper en su siguiente ejecución. Respeta decisiones del admin y supresiones. Incluye una auditoría de vinculaciones entre fuentes que hoy no se harían, con los `valores_fuente`/`procedencia_campos` que habría que mover.
 
 ### Supresiones y fusiones
 

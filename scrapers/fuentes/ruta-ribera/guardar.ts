@@ -2,7 +2,14 @@
 // y servicios de enoturismo, sobre el núcleo de consolidación. Nunca crea bodegas: lo que no
 // empareja con seguridad va a la cola de revisión (o se descarta si no hay candidata).
 // Con `db = null` (dry-run) empareja y normaliza igual, pero no escribe.
-import { EmparejadorBodegas, type BodegaCatalogo, type ResultadoBodega } from "../../emparejamiento/entidades.ts";
+import {
+  bodegaCatalogoDeFila,
+  COLUMNAS_EMPAREJAR_BODEGA,
+  EmparejadorBodegas,
+  type BodegaCatalogo,
+  type ResultadoBodega,
+} from "../../emparejamiento/entidades.ts";
+import { cargarMarcasCR } from "../../lib/marcas.ts";
 import { Consolidador, type Aporte } from "../../lib/consolidacion/consolidar.ts";
 import { origenDeFuente, type TipoFuente } from "../../lib/consolidacion/decidir.ts";
 import { hechosDe, type Hecho } from "../../lib/consolidacion/hechos.ts";
@@ -97,13 +104,11 @@ export class GuardadoRuta {
       this.tipoFuente = fuente.tipo;
       for (let desde = 0; ; desde += 1000) {
         const filas = sinError(
-          await this.db.from("bodegas").select("id, nombre, municipio, web, nif, registro_embotellador").order("id").range(desde, desde + 999),
+          await this.db.from("bodegas").select(COLUMNAS_EMPAREJAR_BODEGA).order("id").range(desde, desde + 999),
           "leer bodegas",
         );
         for (const b of filas) {
-          this.catalogo.push({
-            id: b.id, nombre: b.nombre, municipio: b.municipio, web: b.web, nif: b.nif, registroEmbotellador: b.registro_embotellador,
-          });
+          this.catalogo.push(bodegaCatalogoDeFila(b));
         }
         if (filas.length < 1000) break;
       }
@@ -136,6 +141,11 @@ export class GuardadoRuta {
       }
     } else {
       this.catalogo = catalogoDryRun;
+    }
+    if (this.db) {
+      // Razón social ≠ marca: las marcas del C.R. llevan a la bodega («Bodegas Durón» → Grupo Solar de Samaniego).
+      const marcas = await cargarMarcasCR(this.db);
+      this.catalogo = this.catalogo.map((b) => ({ ...b, marcas: marcas.get(b.id) ?? b.marcas ?? [] }));
     }
     for (const b of this.catalogo) this.bodegaIds.add(b.id);
     this.prefijos = this.catalogo.map((b) => ({ nombre: b.nombre, bodegaId: b.id }));
@@ -180,7 +190,10 @@ export class GuardadoRuta {
         bodegaId = decision.id;
       } else {
         emp = this.emparejador.emparejar(
-          { nombre: n.nombre, municipio: n.campos.municipio, web: n.campos.web },
+          {
+            nombre: n.nombre, municipio: n.campos.municipio, web: n.campos.web, provincia: n.campos.provincia,
+            codigoPostal: n.campos.codigo_postal, telefono: n.campos.telefono, direccion: n.campos.direccion,
+          },
           { excluir: this.excluir(n.idExterno) },
         );
         if (emp.estado === "vinculada") bodegaId = emp.bodegaId;

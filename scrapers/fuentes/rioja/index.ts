@@ -128,14 +128,16 @@ export async function scraperRioja(ctx: Contexto): Promise<void> {
       return;
     }
     // Dry-run: se empareja contra las bodegas de esta misma ejecución para estimar duplicados y revisiones.
-    const emp = new EmparejadorBodegas(catalogoDry).emparejar({
-      nombre: n.campos.nombre, municipio: n.campos.municipio, web: n.campos.web,
-    });
+    const datos = {
+      nombre: n.campos.nombre, municipio: n.campos.municipio, web: n.campos.web, provincia: n.campos.provincia,
+      codigoPostal: n.campos.codigo_postal, telefono: n.campos.telefono, direccion: n.campos.direccion,
+    };
+    const emp = new EmparejadorBodegas(catalogoDry).emparejar(datos);
     if (emp.estado === "revision") ctx.contadores.revision++;
     else if (emp.estado === "vinculada") ctx.contadores.actualizados++;
     else {
       ctx.contadores.nuevos++;
-      catalogoDry.push({ id: n.idExterno, nombre: n.campos.nombre, municipio: n.campos.municipio, web: n.campos.web });
+      catalogoDry.push({ id: n.idExterno, ...datos });
     }
     idsBodega.set(n.idExterno, emp.estado === "nueva" ? n.idExterno : null);
     ctx.salida.push({ entidad: "bodega", ...n, emparejamiento: { estado: emp.estado, confianza: emp.confianza, candidatos: emp.candidatos } });
