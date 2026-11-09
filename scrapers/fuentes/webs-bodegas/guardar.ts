@@ -477,6 +477,7 @@ export class GuardadoWebs {
     const decisionDo = decidirDenominacion(
       v.denominacion?.denominacion ? { ...v.denominacion, denominacion: this.resolutorDo.porSlugDe(v.denominacion.denominacion.slug) } : v.denominacion,
       this.dosDe.get(bodegaId) ?? [],
+      { vino: v.nombre, bodega: this.bodegas.find((b) => b.id === bodegaId)?.nombre ?? "" },
     );
     const den = decisionDo.estado === "asignada" ? decisionDo.denominacion : null;
     const textoDo = den?.nombre ?? decisionDo.deteccion?.texto ?? null;

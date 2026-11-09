@@ -190,11 +190,20 @@ export function detectarDenominacion(
 export type DecisionDo =
   | { estado: "asignada"; denominacion: Denominacion; deteccion: DeteccionDo }
   | { estado: "sin_do"; deteccion: DeteccionDo | null }
-  | { estado: "revision"; motivo: "do_desconocida" | "do_ambigua"; deteccion: DeteccionDo | null };
+  | { estado: "revision"; motivo: "do_desconocida" | "do_ambigua" | "otra_do"; deteccion: DeteccionDo | null };
 
-/** Decide la D.O. del vino con lo detectado y las D.O. de su bodega. */
-export function decidirDenominacion(deteccion: DeteccionDo | null, dosBodega: Denominacion[]): DecisionDo {
-  if (deteccion?.denominacion) return { estado: "asignada", denominacion: deteccion.denominacion, deteccion };
+/**
+ * Decide la D.O. del vino con lo detectado y las D.O. de su bodega. Un vino de una D.O. que la bodega
+ * no tiene puede ser suyo (grupos con bodegas en varias D.O.) o reventa de otra bodega en su tienda:
+ * solo se asigna si el nombre del vino lleva la marca de la bodega (`marca`, clave del nombre de la
+ * bodega); si no, va a revisión.
+ */
+export function decidirDenominacion(deteccion: DeteccionDo | null, dosBodega: Denominacion[], marca?: { vino: string; bodega: string }): DecisionDo {
+  if (deteccion?.denominacion) {
+    const propia = dosBodega.length === 0 || dosBodega.some((d) => d.slug === deteccion.denominacion!.slug);
+    if (!propia && marca && !llevaMarca(marca.vino, marca.bodega)) return { estado: "revision", motivo: "otra_do", deteccion };
+    return { estado: "asignada", denominacion: deteccion.denominacion, deteccion };
+  }
   if (deteccion && deteccion.clase === "dop") return { estado: "revision", motivo: "do_desconocida", deteccion };
   // IGP fuera de la tabla o «Vino de España»: vino sin D.O., con el texto en los hechos.
   if (deteccion) return { estado: "sin_do", deteccion };
@@ -204,4 +213,11 @@ export function decidirDenominacion(deteccion: DeteccionDo | null, dosBodega: De
   }
   if (dosBodega.length > 1) return { estado: "revision", motivo: "do_ambigua", deteccion: null };
   return { estado: "sin_do", deteccion: null };
+}
+
+/** ¿El nombre del vino contiene alguna palabra distintiva del nombre de la bodega? («Arzuaga Crianza» / «Bodegas Arzuaga Navarro»). */
+export function llevaMarca(vino: string, bodega: string): boolean {
+  const palabras = claveTexto(bodega).split(" ").filter((p) => p.length >= 4 && !/^(bodegas?|vinos?|vinedos?|familia|hermanos|grupo|hacienda|finca|pago|vina|castillo|casa|ribera|duero|rioja)$/.test(p));
+  const v = ` ${claveTexto(vino)} `;
+  return palabras.some((p) => v.includes(` ${p} `));
 }

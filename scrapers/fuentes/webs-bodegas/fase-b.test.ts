@@ -54,13 +54,16 @@ describe("denominación por vino", () => {
     expect(decidirDenominacion(null, [ribera, rioja])).toMatchObject({ estado: "revision", motivo: "do_ambigua" });
     const inventada = detectarDenominacion({ titulo: "X", texto: "D.O. Inventada", url: "https://x.es/x" }, resolutor);
     expect(decidirDenominacion(inventada, [ribera])).toMatchObject({ estado: "revision", motivo: "do_desconocida" });
+    // Otra D.O. sin la marca de la bodega en el nombre: posible reventa → revisión; con la marca, se asigna.
+    expect(decidirDenominacion(rueda, [ribera], { vino: "Albariño Pazo de Rubianes", bodega: "Bodegas Arzuaga Navarro" })).toMatchObject({ estado: "revision", motivo: "otra_do" });
+    expect(decidirDenominacion(rueda, [ribera], { vino: "Arzuaga Verdejo", bodega: "Bodegas Arzuaga Navarro" })).toMatchObject({ estado: "asignada" });
     const espana = detectarDenominacion({ titulo: "X", texto: "Vino de España", url: "https://x.es/x" }, resolutor);
     expect(decidirDenominacion(espana, [ribera])).toMatchObject({ estado: "sin_do" });
   });
 });
 
 describe("falsos vinos vistos en el dry-run de fase B", () => {
-  it.each(["¿Eres mayor de edad?", "Jabón Sólido de Albariño 100g", "AOVE Arzuaga Cornicabra 100%"])("%s no es un vino", (n) => {
+  it.each(["¿Eres mayor de edad?", "Jabón Sólido de Albariño 100g", "AOVE Arzuaga Cornicabra 100%", "Taylor´s Tawny 40 Años", "Moët Champagne Brut"])("%s no es un vino", (n) => {
     expect(esNombreDeVino(n)).toBe(false);
   });
 });

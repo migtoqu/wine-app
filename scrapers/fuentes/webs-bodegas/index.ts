@@ -124,7 +124,7 @@ export async function scraperWebsBodegas(ctx: Contexto): Promise<void> {
       const dos = sitio.bodegas.flatMap((b) => dosPorBodega.get(b.id ?? b.nombre) ?? []);
       for (const v of r.vinos) {
         if (v.imagen) resumen.botellas++;
-        const d = decidirDenominacion(v.denominacion, guardado ? [] : dos);
+        const d = decidirDenominacion(v.denominacion, guardado ? [] : dos, { vino: v.nombre, bodega: sitio.bodegas[0]?.nombre ?? "" });
         if (d.estado === "revision") resumen.doRevision++;
         else if (d.estado === "sin_do") resumen.doSin++;
         else if (!dos.some((x) => x.slug === d.denominacion.slug)) resumen.doOtra++;
@@ -197,7 +197,7 @@ async function salidaDryRun(r: ResultadoSitio, dos: ReturnType<ResolutorDenomina
       : null,
     vinos: await Promise.all(
       r.vinos.map(async (v) => {
-        const decision = decidirDenominacion(v.denominacion, dosBodega);
+        const decision = decidirDenominacion(v.denominacion, dosBodega, { vino: v.nombre, bodega: r.entrada.bodegas[0]?.nombre ?? "" });
         const den = decision.estado === "asignada" ? decision.denominacion.nombre : decision.deteccion?.texto ?? null;
         const h = hechosVino(v, "dry-run", ahora, den);
         return {

@@ -200,7 +200,7 @@ const TIPOS_WP_IGNORADOS = /^(attachment|nav_menu_item|wp_|post$|jp_|elementor|e
 const SUBSITEMAP_UTIL = /page|product|vino|wine|visita|experienc|enoturismo|portfolio|project|anada|pagina/i;
 const SUBSITEMAP_INUTIL = /category|tag|author|attachment|post-sitemap|user|product_cat|product_tag|format|archive|news|noticia|blog/i;
 const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b|bodegas?\b|grupo\b|castilla[ -]la[ -]mancha$|¿)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos?|wines?|tinto|blanco|rosado)$/i;
-const CATEGORIA_NO_VINO = /gourmet|alimentaci[oó]n|delicatessen|merchandising|regalos?|packs?|lotes?|accesorios|aceites?|conservas|queso/i;
+const CATEGORIA_NO_VINO = /gourmet|alimentaci[oó]n|delicatessen|merchandising|regalos?|packs?|lotes?|accesorios|aceites?|conservas|queso|otras bodegas|vinos de otras|otros vinos|importaci[oó]n|internacional|del mundo|champagne|oporto|porto|destilados|licores/i;
 const RUTA_NOTICIA = /\/(noticias?\d*|news|blog|actualidad|prensa|press|tag|category|categoria|author|[\w-]*en-los-medios|medios|premios-y-[\w-]+)(?:[\/._?-]|$)|\/(19|20)\d\d\/\d\d\/|[?&](add-to-cart|orderby|filter_|share|replytocom|add_to_wishlist)=|\/page\/\d+\/?$/i;
 const RUTA_PRIVADA = /\/(wp-login|wp-admin|login|mi-cuenta|my-account|cuenta|account|carrito|cart|checkout|finalizar-compra)(?:[\/.?]|$)/i;
 const PROTEGIDA = /class=["'][^"']*post-password-form|<title>[^<]*(protegid[oa] con contraseña|password protected)/i;
@@ -701,7 +701,8 @@ async function tiendaWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[]): 
     const cats = (p.categories ?? []).map((c) => c.name).join(" ");
     const servicio = ES_SERVICIO.test(nombre) || /visita|experienc|enoturismo|cata/i.test(cats);
     const clase: Clase = servicio ? "enoturismo" : "vino";
-    if (clase === "vino" && (!esNombreDeVino(nombre) || CATEGORIA_NO_VINO.test(cats) && !/vino|wine/i.test(cats))) continue;
+    // Reventa de otras bodegas («Otros vinos», «Oporto») o productos que no son vino: fuera.
+    if (clase === "vino" && (!esNombreDeVino(nombre) || CATEGORIA_NO_VINO.test(cats) && (!/vino|wine/i.test(cats) || /otras bodegas|vinos de otras|otros vinos|importaci|internacional|del mundo/i.test(cats)))) continue;
     contenidos.push({
       url: p.permalink, clase, origen: "woo", titulo: nombre, bloques: [], enlaces: [], producto: p,
       categorias: (p.categories ?? []).map((c) => decodificarEntidades(c.name)),

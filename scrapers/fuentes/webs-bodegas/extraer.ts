@@ -219,7 +219,11 @@ const NO_VINO = /\b(estuches?|cajas?|lotes?|packs?|regalos?|tarjetas?|bonos?|che
 /** Productos que son experiencias de enoturismo (van a servicios). */
 export const ES_SERVICIO = /\b(visitas?|catas?|experiencias?|entradas?|tour|enoturismo|cursos?|talleres?|eventos?)\b/i;
 
+/** Estilos y regiones extranjeras: en la tienda de una bodega española son reventa. */
+const EXTRANJERO = /\b(tawny|late bottled|ruby port|oporto|porto|port wine|champagne|prosecco|bordeaux|bourgogne|burgundy|chianti|barolo|brunello|chablis|sancerre|riesling kabinett|malbec mendoza|whisk(?:e)?y|ginebra|ron|vodka|brandy|cognac)\b/i;
+
 export function esNombreDeVino(nombre: string): boolean {
+  if (EXTRANJERO.test(nombre)) return false;
   // «Reserva» es una crianza, no «reserva tu visita».
   return !NO_VINO.test(nombre.replace(/\bgran\s+reserva\b|\breserva\b(?!\s+tu)/gi, ""));
 }
