@@ -8,6 +8,7 @@ import { scraperVinoseleccion, SLUG_FUENTE as SLUG_VINOSELECCION } from "./fuent
 import { scraperVinopremier, SLUG_FUENTE as SLUG_VINOPREMIER } from "./fuentes/vinopremier/index.ts";
 import { scraperWebsBodegas, SLUG_FUENTE as SLUG_WEBS_BODEGAS } from "./fuentes/webs-bodegas/index.ts";
 import { scraperComprobadorEnlaces, SLUG_FUENTE as SLUG_ENLACES } from "./comprobador-enlaces/index.ts";
+import { SCRAPERS_CONSEJOS } from "./fuentes/consejos/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
 const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
@@ -19,6 +20,8 @@ const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   "webs-bodegas": { slug: SLUG_WEBS_BODEGAS, scraper: scraperWebsBodegas },
   // No es una fuente: comprueba los enlaces del catálogo (se registra igual en ejecuciones_scraper).
   enlaces: { slug: SLUG_ENLACES, scraper: scraperComprobadorEnlaces },
+  // Consejos con directorio de bodegas (núcleo común en fuentes/consejos/).
+  ...SCRAPERS_CONSEJOS,
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]

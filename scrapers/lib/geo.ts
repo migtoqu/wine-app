@@ -60,3 +60,20 @@ export function puntoEnEspana({ lat, lng }: Punto): boolean {
 export function puntoEwkt({ lat, lng }: Punto): string {
   return `SRID=4326;POINT(${lng} ${lat})`;
 }
+
+// Provincia por los dos primeros dígitos del código postal (01–52), con el nombre que usa el catálogo.
+const PROVINCIAS_POR_PREFIJO_CP: string[] = [
+  "Álava", "Albacete", "Alicante", "Almería", "Ávila", "Badajoz", "Illes Balears", "Barcelona", "Burgos", "Cáceres",
+  "Cádiz", "Castellón", "Ciudad Real", "Córdoba", "A Coruña", "Cuenca", "Girona", "Granada", "Guadalajara", "Gipuzkoa",
+  "Huelva", "Huesca", "Jaén", "León", "Lleida", "La Rioja", "Lugo", "Madrid", "Málaga", "Murcia",
+  "Navarra", "Ourense", "Asturias", "Palencia", "Las Palmas", "Pontevedra", "Salamanca", "Santa Cruz de Tenerife", "Cantabria", "Segovia",
+  "Sevilla", "Soria", "Tarragona", "Teruel", "Toledo", "Valencia", "Valladolid", "Bizkaia", "Zamora", "Zaragoza",
+  "Ceuta", "Melilla",
+];
+
+/** «49882» → «Zamora». null si el código no es un CP español válido. */
+export function provinciaDeCodigoPostal(cp: string | null | undefined): string | null {
+  const m = /^(\d{2})\d{3}$/.exec(cp?.trim() ?? "");
+  if (!m) return null;
+  return PROVINCIAS_POR_PREFIJO_CP[Number(m[1]) - 1] ?? null;
+}

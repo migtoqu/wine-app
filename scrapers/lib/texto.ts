@@ -39,7 +39,7 @@ const FORMA_SOCIETARIA = new RegExp(
     [
       ...["slne", "slu", "sll", "sau", "sat", "scl", "scp", "srl", "sl", "sa", "sc", "cb"].map(siglas),
       siglasConPuntos("sal"),
-      "s\\.?\\s?coop\\.?(?:\\s?(?:ltda|l|and|cast|gall)\\.?)?", // S.Coop., S.Coop. Ltda.
+      "s\\.?\\s?coop\\.?(?:\\s?(?:ltda|l|and|cast|gall|cyl|clm)\\.?)?", // S.Coop., S.Coop. Ltda.
       "(?:soc(?:iedad)?|sdad)\\.?\\s?coop(?:erativa)?\\.?(?:\\s?(?:limitada|ltda|l)\\.?)?",
       "ltda\\.?",
     ].join("|") +

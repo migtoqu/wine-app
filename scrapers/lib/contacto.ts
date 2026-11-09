@@ -81,6 +81,7 @@ const DOMINIOS_GENERICOS = [
   "vinoseleccion.com", "bodeboca.com", "decantalo.com", "lavinia.es", "lavinia.com",
   "elcorteingles.es", "vivino.com", "uvinum.es", "amazon.es", "amazon.com", "drinksco.es",
   "vinissimus.com", "riberadelduero.es", "riojawine.com", "gmail.com", "hotmail.com",
+  "dotoro.com", "dotoro.es", "do-cigales.es", "crdobierzo.es", "doqpriorat.org", "dorueda.com", "navarrawine.com",
 ];
 
 /** ¿Es un dominio (o subdominio de uno) que no sirve como clave de bodega? */
