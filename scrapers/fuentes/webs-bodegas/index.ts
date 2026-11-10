@@ -67,7 +67,7 @@ export async function scraperWebsBodegas(ctx: Contexto): Promise<void> {
     aptas: 0, saltadas: new Map<string, number>(), vinos: 0, hechosHistoria: 0, servicios: 0, sinTiempo: 0, conVinos: 0,
     conHistoria: 0, conEnoturismo: 0, imagenesBodega: 0, botellas: 0, doOtra: 0, doSin: 0, doRevision: 0,
     serviciosConIncluye: 0, serviciosConPrecio: 0, serviciosConDuracion: 0, websVerificadas: 0, websDudosas: 0, websNo: 0,
-    sinCambios: 0, subdominios: 0,
+    sinCambios: 0, subdominios: 0, ofertas: 0, conTienda: 0,
   };
 
   const cola = [...sitios];
@@ -121,10 +121,14 @@ export async function scraperWebsBodegas(ctx: Contexto): Promise<void> {
       if (cuentaHechosHistoria(r.bodega) > 0) resumen.conHistoria++;
       if (r.bodega?.enoturismo) resumen.conEnoturismo++;
       if (r.imagen) resumen.imagenesBodega++;
-      const dos = sitio.bodegas.flatMap((b) => dosPorBodega.get(b.id ?? b.nombre) ?? []);
+      // Las D.O. de la bodega (BD en real, JSON en dry-run): un vino sin D.O. en la ficha las hereda.
+      const dos = sitio.bodegas.flatMap((b) => (guardado && b.id ? guardado.denominacionesDe(b.id) : dosPorBodega.get(b.id ?? b.nombre) ?? []));
+      const ofertasSitio = r.vinos.reduce((n, v) => n + v.ofertas.filter((o) => o.precio != null && o.unidades === 1).length, 0);
+      resumen.ofertas += ofertasSitio;
+      if (ofertasSitio) resumen.conTienda++;
       for (const v of r.vinos) {
         if (v.imagen) resumen.botellas++;
-        const d = decidirDenominacion(v.denominacion, guardado ? [] : dos, { vino: v.nombre, bodega: sitio.bodegas[0]?.nombre ?? "" });
+        const d = decidirDenominacion(v.denominacion, dos, { vino: v.nombre, bodega: sitio.bodegas[0]?.nombre ?? "" });
         if (d.estado === "revision") resumen.doRevision++;
         else if (d.estado === "sin_do") resumen.doSin++;
         else if (!dos.some((x) => x.slug === d.denominacion.slug)) resumen.doOtra++;
@@ -161,7 +165,7 @@ export async function scraperWebsBodegas(ctx: Contexto): Promise<void> {
       `${resumen.doRevision} a revisión por D.O.; ${resumen.botellas} con imagen de botella), ${resumen.hechosHistoria} hechos de historia ` +
       `(${resumen.conHistoria} webs), ${resumen.servicios} servicios (${resumen.conEnoturismo} webs con enoturismo; ` +
       `${resumen.serviciosConIncluye} con «incluye», ${resumen.serviciosConPrecio} con precio, ${resumen.serviciosConDuracion} con duración), ` +
-      `${resumen.imagenesBodega} imágenes de bodega, ${resumen.subdominios} webs con subdominios, ${resumen.sinCambios} páginas sin cambios` +
+      `${resumen.ofertas} ofertas con precio (${resumen.conTienda} webs con tienda), ${resumen.imagenesBodega} imágenes de bodega, ${resumen.subdominios} webs con subdominios, ${resumen.sinCambios} páginas sin cambios` +
       `${resumen.sinTiempo ? `; ${resumen.sinTiempo} sin tiempo (siguen en la próxima ejecución)` : ""}`,
   );
   if (resumen.sinTiempo) ctx.marcarParcial(`Presupuesto de ${minutos} min agotado: ${resumen.sinTiempo} sitios pendientes`);

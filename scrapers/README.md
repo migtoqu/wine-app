@@ -247,7 +247,11 @@ Fuera quedan otros idiomas (`/en/`, `/pt-pt/`, `?lang=en`), noticias y blog, y c
   - «Qué incluye» en vocabulario cerrado (`visita_vinedo`, `visita_bodega`, `sala_barricas`, `calado`, `cata`, `cata_comentada`, `aperitivo`, `maridaje`, `comida`, `menu_degustacion`, `copa_regalo`, `botella_regalo`, `guia`, `transporte`, `actividad_vendimia`, `paseo`), vinos de la cata, personas mín./máx., días («de martes a domingo · con reserva previa») y temporada.
   - Descripción propia por plantilla en `servicios_bodega.descripcion`, más `horario`, vía `Consolidador`: el admin manda.
   - Un servicio de esta web que deja de aparecer pasa a `activo = false`, nunca se borra. No ocurre si el rastreo se quedó sin presupuesto o su página no cambió.
-- **Ofertas** (`ofertas.ts`): precio, precio regular, moneda, disponibilidad, formato en ml, unidades por venta, EAN y SKU de la Store API o del JSON-LD `Offer`. Se guardan en `registros_fuente.datos.ofertas` de cada vino, a la espera de las tablas de ofertas.
+- **Ofertas** (`ofertas.ts` → `lib/ofertas.ts`): precio, precio regular, moneda, disponibilidad, formato en ml, unidades por venta, EAN y SKU, de la Store API o del JSON-LD `Offer`.
+  - Siguen guardadas en `registros_fuente.datos.ofertas` de cada vino y, además, se escriben en `ofertas` con `RegistroOfertas`, en una **tienda por bodega**: tipo `bodega`, con `bodega_id` y `fuente_id` = la fuente `web-<dominio>`, creada solo si la web publica precios.
+  - Si la bodega ya tiene otra tienda, no se crea ninguna; una tienda desactivada por el admin no recibe ofertas.
+  - Una oferta por formato y nunca cajas ni lotes. Clave: SKU o ruta de la ficha, más el formato. Sin añada en la ficha → `anada_id` null.
+  - Las ofertas que dejan de verse cuentan como no vistas solo si el rastreo del sitio fue completo: sin presupuesto agotado, sin páginas sin cambios y sin errores.
 - **Webs para bodegas sin `web`**:
   - La candidata es el dominio del email (`info@bodegasx.com` → `https://bodegasx.com/`), nunca proveedores de correo ni buscadores. Una por bodega cada 30 días.
   - Pasa la puerta completa, y su portada tiene que nombrar a la bodega (título, `og:site_name`, h1 u `Organization`, trigramas ≥ 0,8, contenida o en el dominio). Verificada → `bodegas.web` vía `Consolidador` y se rastrea como cualquier sitio. Dudosa → registro `web:<bodega>` en `revision` en la fuente madre. Si no, `descartado`.

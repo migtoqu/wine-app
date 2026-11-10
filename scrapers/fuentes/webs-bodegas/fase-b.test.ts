@@ -6,6 +6,7 @@ import { LimitadorPorHost } from "../../lib/rate-limit.ts";
 import { decidirDenominacion, denominacionesDeSemillas, detectarDenominacion, ResolutorDenominaciones } from "./denominacion.ts";
 import { descripcionServicio, extraerDetalle } from "./enoturismo.ts";
 import { candidataPorEmail } from "./entrada.ts";
+import { entradasOferta } from "./guardar.ts";
 import { esNombreDeVino, extraerServicio } from "./extraer.ts";
 import { cargar } from "./html.ts";
 import { candidatasDePagina, elegirImagenBodega, esFoto, imagenBotella } from "./imagen.ts";
@@ -129,6 +130,20 @@ describe("ofertas de la tienda de la bodega", () => {
     expect(formatoMl("Crianza 0.5l")).toBe(500);
     expect(formatoMl("75 cl")).toBe(750);
     expect(unidades("Caja de 6 botellas")).toBe(6);
+  });
+
+  it("a RegistroOfertas: una por formato, sin cajas; clave por SKU o ruta + formato", () => {
+    const base = { url: "https://x.es/p/crianza/", precio: 15, precio_regular: null, moneda: "EUR", disponible: true, unidades: 1, ean: null, sku: null, precio_max: null };
+    const v = { ofertas: [
+      { ...base, formato_ml: null },
+      { ...base, url: "https://x.es/p/crianza-magnum/", formato_ml: 1500, sku: "CR-MG", precio: 35 },
+      { ...base, url: "https://x.es/p/caja-crianza/", formato_ml: null, unidades: 6, precio: 80 },
+      { ...base, precio: null, url: "https://x.es/p/sin-precio/", formato_ml: null },
+    ] } as unknown as Parameters<typeof entradasOferta>[0];
+    expect(entradasOferta(v, "v1", null, "r1").map((e) => [e.idExterno, e.precio, e.formatoMl])).toEqual([
+      ["url:/p/crianza", 15, null],
+      ["sku:CR-MG@1500", 35, 1500],
+    ]);
   });
 
   it("JSON-LD Offer", () => {
