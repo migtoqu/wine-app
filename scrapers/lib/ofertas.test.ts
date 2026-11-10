@@ -121,6 +121,10 @@ function dbFalsa(datos: {
     let args: unknown[] = [];
     const resultado = () => {
       if (op === "upsert") return { data: null, error: null };
+      if (op === "update") {
+        const urls = (filtros.url as string[] | undefined) ?? [];
+        return { data: (datos.ofertas ?? []).filter((o) => urls.includes(o.url as string)).map((o) => ({ id_externo: o.id_externo })), error: null };
+      }
       if (tabla === "tiendas") return { data: datos.tienda ?? null, error: null };
       if (tabla === "ofertas") return { data: datos.ofertas ?? [], error: null };
       if (tabla === "supresiones") {
@@ -134,6 +138,13 @@ function dbFalsa(datos: {
       order: () => b,
       range: () => b,
       maybeSingle: () => b,
+      in: (c: string, v: unknown) => ((filtros[c] = v), b),
+      update: (...a: unknown[]) => {
+        op = "update";
+        args = a;
+        llamadas.push({ tabla, op, args: [...a, filtros] });
+        return b;
+      },
       upsert: (...a: unknown[]) => {
         op = "upsert";
         args = a;
@@ -157,6 +168,25 @@ function dbFalsa(datos: {
 const log = new Log();
 
 describe("RegistroOfertas", () => {
+  it("refrescarVistas: las ofertas de fichas sin cambios cuentan como vistas sin tocar el precio", async () => {
+    const { db, llamadas } = dbFalsa({
+      tienda: { id: "t1", nombre: "T", activa: true },
+      ofertas: [
+        { id_externo: "a", vino_id: "v", anada_id: null, url: "https://t.es/a/", precio: "10", formato_ml: 750, disponible: true, ean: null, ejecuciones_sin_ver: 2 },
+        { id_externo: "b", vino_id: "v", anada_id: null, url: "https://t.es/b/", precio: "12", formato_ml: 750, disponible: true, ean: null, ejecuciones_sin_ver: 0 },
+      ],
+    });
+    const r = new RegistroOfertas(db, "f1", log);
+    await r.preparar();
+    expect(await r.refrescarVistas(["https://t.es/a/"])).toBe(1);
+    const up = llamadas.find((l) => l.op === "update")!;
+    expect(up.args[0]).toEqual(expect.objectContaining({ ejecuciones_sin_ver: 0 }));
+    expect(up.args[0]).not.toHaveProperty("precio");
+    expect(up.args[1]).toMatchObject({ tienda_id: "t1", url: ["https://t.es/a/"] });
+    expect(r.contadores.refrescadas).toBe(1);
+    expect(await new RegistroOfertas(dbFalsa({ tienda: null }).db, "f1", log).refrescarVistas(["x"])).toBe(0);
+  });
+
   it("sin tienda activa no escribe nada", async () => {
     const { db, llamadas } = dbFalsa({ tienda: { id: "t1", nombre: "T", activa: false } });
     const r = new RegistroOfertas(db, "f1", log);

@@ -31,7 +31,7 @@ import { candidataPorEmail, type BodegaConWeb } from "./entrada.ts";
 import type { ImagenElegida } from "./imagen.ts";
 import { hechosBodega, hechosServicio, hechosVino } from "./normalizar.ts";
 import { notaPuerta } from "./puerta.ts";
-import { normalizarUrl, type EntradaSitio, type PaginaVista, type ResultadoSitio, type ServicioSitio, type VinoSitio } from "./sitio.ts";
+import { normalizarUrl, type EntradaSitio, type PaginaPrevia, type PaginaVista, type ResultadoSitio, type ServicioSitio, type VinoSitio } from "./sitio.ts";
 
 export interface ResultadoGuardado {
   nuevos: number;
@@ -90,6 +90,23 @@ export function entradasOferta(v: VinoSitio, vinoId: string, anadaId: string | n
     });
   }
   return out;
+}
+
+/**
+ * Columnas del vino que aporta esta web. Nunca se envía null: «tipo» y «nombre» son NOT NULL y un
+ * null en el Consolidador significa «la fuente ya no lo da», que podría vaciar un valor bueno de
+ * otra pasada. Un dato que la web no trae simplemente no se aporta.
+ * `denominacionId`: undefined = la decisión de D.O. es dudosa (esta fuente no opina).
+ */
+/** Quita los null/undefined: lo que la web no trae no se aporta (no vacía un valor de otra pasada). */
+export function sinNulos(campos: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(campos).filter(([, x]) => x !== null && x !== undefined));
+}
+
+export function camposVino_(v: Pick<VinoSitio, "tipo" | "crianza" | "nombre">, creado: boolean, denominacionId: string | null | undefined): Record<string, unknown> {
+  const campos: Record<string, unknown> = { tipo: v.tipo, crianza: v.crianza, denominacion_id: denominacionId };
+  if (creado) campos.nombre = v.nombre;
+  return sinNulos(campos);
 }
 
 export class GuardadoWebs {
@@ -209,11 +226,13 @@ export class GuardadoWebs {
     return this.resolutorDo;
   }
 
-  /** Páginas vistas la visita anterior (URL normalizada → modificada), para el rastreo incremental. */
-  previas(dominio: string): Map<string, string> {
+  /** Páginas de la visita anterior (URL normalizada → modificada, vista, oferta), para el rastreo incremental. */
+  previas(dominio: string): Map<string, PaginaPrevia> {
     const f = this.fuentesPorSlug.get(slugFuenteSitio(dominio));
-    const out = new Map<string, string>();
-    for (const p of (f ? this.paginasPrevias.get(f.id) : null) ?? []) if (p.modificada) out.set(normalizarUrl(p.url), p.modificada);
+    const out = new Map<string, PaginaPrevia>();
+    for (const p of (f ? this.paginasPrevias.get(f.id) : null) ?? []) {
+      if (p.modificada) out.set(normalizarUrl(p.url), { modificada: p.modificada, vista: p.vista ?? null, oferta: p.oferta ?? false });
+    }
     return out;
   }
 
@@ -403,7 +422,9 @@ export class GuardadoWebs {
     ];
     let cambios = false;
     for (const [campos, url] of grupos) {
-      const { escritos } = await this.consolidador.consolidar("bodega", bodegaId, campos, aporte(url ?? null));
+      const aportados = sinNulos(campos);
+      if (Object.keys(aportados).length === 0) continue;
+      const { escritos } = await this.consolidador.consolidar("bodega", bodegaId, aportados, aporte(url ?? null));
       if (escritos.length) cambios = true;
     }
     for (const campo of ["historia", "descripcion"] as const) {
@@ -425,7 +446,10 @@ export class GuardadoWebs {
     } else out.nuevos++;
 
     // Tienda online de la bodega: solo si su web publica precios. Una tienda por bodega y fuente.
-    const ofertas = r.vinos.some((v) => v.ofertas.some((o) => o.precio != null)) ? await this.registroOfertas(r, fuente.id, bodegaId, bodega?.nombre ?? r.entrada.dominio) : null;
+    // Tienda online de la bodega: se crea si su web publica precios; si ya existe, también se abre
+    // cuando solo hay fichas sin cambios, para refrescar sus ofertas.
+    const conPrecio = r.vinos.some((v) => v.ofertas.some((o) => o.precio != null));
+    const ofertas = conPrecio || r.sinCambios.length ? await this.registroOfertas(r, fuente.id, bodegaId, bodega?.nombre ?? r.entrada.dominio, conPrecio) : null;
     const inicioOfertas = new Date();
     let erroresVinos = 0;
     for (const v of r.vinos) {
@@ -441,7 +465,9 @@ export class GuardadoWebs {
     // Ofertas que la tienda ya no lista: solo cuentan como no vistas si el rastreo del sitio fue completo
     // (sin presupuesto agotado, sin páginas sin cambios que no se pidieron y sin errores).
     if (ofertas) {
-      const completa = erroresVinos === 0 && r.sinCambios.length === 0 && !r.avisos.some((a) => a.startsWith("Presupuesto"));
+      // Las fichas sin cambios siguen publicadas: sus ofertas cuentan como vistas.
+      await ofertas.refrescarVistas(r.sinCambios);
+      const completa = erroresVinos === 0 && !r.avisos.some((a) => a.startsWith("Presupuesto"));
       await ofertas.cerrar(inicioOfertas, { completa });
     }
     const vistos = new Set<string>();
@@ -466,8 +492,9 @@ export class GuardadoWebs {
    * `RegistroOfertas`. No se crea si la bodega ya tiene otra tienda; una tienda desactivada por el
    * admin no recibe ofertas (lo comprueba `RegistroOfertas.preparar`).
    */
-  private async registroOfertas(r: ResultadoSitio, fuenteId: string, bodegaId: string, nombreBodega: string): Promise<RegistroOfertas | null> {
+  private async registroOfertas(r: ResultadoSitio, fuenteId: string, bodegaId: string, nombreBodega: string, crear = true): Promise<RegistroOfertas | null> {
     const existente = sinError(await this.db.from("tiendas").select("id, fuente_id").eq("fuente_id", fuenteId).maybeSingle(), "leer tienda del sitio");
+    if (!existente && !crear) return null;
     if (!existente) {
       const deBodega = sinError(await this.db.from("tiendas").select("id, fuente_id").eq("bodega_id", bodegaId).maybeSingle(), "leer tienda de la bodega");
       if (deBodega) {
@@ -636,14 +663,10 @@ export class GuardadoWebs {
     const aporte: Aporte = { registroId, fuenteId, tipoFuente: "bodega", url: v.url, observadoEn: ahora };
     let cambios = false;
     // La web oficial es la fuente de más rango para tipo y crianza; el nombre solo se fija al crear.
-    const camposVino: Record<string, unknown> = { tipo: v.tipo, crianza: v.crianza };
-    // La D.O. se consolida en cada pasada (corrige la principal de la bodega puesta en la fase A);
-    // si la decisión es dudosa, esta fuente no opina sobre ella.
-    if (decisionDo.estado !== "revision") camposVino.denominacion_id = den?.id ?? null;
-    if (creado) camposVino.nombre = v.nombre;
+    const camposVino = camposVino_(v, creado, decisionDo.estado !== "revision" ? den?.id ?? null : undefined);
     if ((await this.consolidador.consolidar("vino", vinoId, camposVino, aporte)).escritos.length) cambios = true;
     const camposAnada = { grado: v.grado, meses_crianza: v.barrica_meses, temp_servicio_min: v.temp_min, temp_servicio_max: v.temp_max };
-    if ((await this.consolidador.consolidar("anada", anadaId, camposAnada, aporte)).escritos.length) cambios = true;
+    if ((await this.consolidador.consolidar("anada", anadaId, sinNulos(camposAnada), aporte)).escritos.length) cambios = true;
     const antes = (previo?.datos as { vino?: VinoSitio } | null)?.vino?.variedades;
     if (await this.guardarVariedades(anadaId, v, anadaNueva ? null : antes)) cambios = true;
     if (v.ean) {
@@ -741,10 +764,10 @@ export class GuardadoWebs {
     const { escritos } = await this.consolidador.consolidar(
       "servicio_bodega",
       servicioId,
-      {
+      sinNulos({
         precio_desde: s.precio_desde, duracion_minutos: s.duracion_minutos, idiomas: s.idiomas, url_reserva: s.url_reserva,
         descripcion: s.descripcion, horario: [s.horario, s.temporada].filter(Boolean).join(" · ") || null, activo: true,
-      },
+      }),
       { registroId, fuenteId, tipoFuente: "bodega", url: s.url, observadoEn: ahora },
     );
     if (nuevo) return "nuevo";

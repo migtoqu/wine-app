@@ -83,9 +83,16 @@ export function titulo($: Doc): string | null {
   return limpiarTitulo(t);
 }
 
+/**
+ * Títulos que no nombran nada: plantillas de ficha («Ficha producto», «Ficha técnica»), etiquetado
+ * nutricional y portadas («Inicio», «Tienda»).
+ */
+export const TITULO_GENERICO = /^(?:d\.?\s?o\.?\s|inicio$|home$|vinos?$|wines?$|tienda$|shop$|productos?$|fichas?(?:\s+de)?\s+(?:productos?|t[eé]cnicas?|vinos?|cata)$|fichas?$|etiquetado(?:\s+nutricional)?$|info(?:rmaci[oó]n)?\s+nutricional$|valores\s+nutricionales$|nutrition(?:al)?(?:\s+(?:facts|information))?$|ingredientes$|product\s+sheet$|technical\s+sheet$|data\s+sheet$|descargar(?:\s+ficha)?$|ver\s+producto$|detalles?(?:\s+del\s+producto)?$)/i;
+
+/** Título de página sin el sufijo del sitio; si la primera parte es genérica, la siguiente que no lo sea. */
 export function limpiarTitulo(t: string): string {
-  const partes = limpiarEspacios(decodificarEntidades(t)).split(/\s+[|–—·•»-]\s+/);
-  return partes[0]!.trim();
+  const partes = limpiarEspacios(decodificarEntidades(t)).split(/\s+[|–—·•»:-]\s+/).map((x) => x.trim()).filter(Boolean);
+  return partes.find((x) => !TITULO_GENERICO.test(x)) ?? partes[0] ?? "";
 }
 
 const ENTIDADES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#8211": "–", "#8212": "—", "#038": "&", "#8217": "’", "#8220": "“", "#8221": "”", "#039": "'" };

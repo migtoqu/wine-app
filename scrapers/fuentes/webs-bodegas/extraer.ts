@@ -224,6 +224,9 @@ const EXTRANJERO = /\b(tawny|late bottled|ruby port|oporto|porto|port wine|champ
 
 export function esNombreDeVino(nombre: string): boolean {
   if (EXTRANJERO.test(nombre)) return false;
+  // Plantillas de ficha y etiquetado que algunas webs ponen como título.
+  if (/\b(fichas?\s+(?:de\s+)?(?:productos?|t[eé]cnicas?)|nutricional(?:es)?|etiquetado|ingredientes|declaraci[oó]n|al[eé]rgenos|product sheet)\b/i.test(nombre)) return false;
+  if (/^\s*(fichas?|productos?|t[eé]cnicas?|detalles?)\s*$/i.test(nombre)) return false;
   // «Reserva» es una crianza, no «reserva tu visita».
   return !NO_VINO.test(nombre.replace(/\bgran\s+reserva\b|\breserva\b(?!\s+tu)/gi, ""));
 }
@@ -238,6 +241,9 @@ export function nombreVino(titulo: string): string {
     .replace(/\b(?:19[5-9]\d|20[0-4]\d)\b/g, "")
     .replace(FORMATOS, "")
     .replace(/^\s*(?:vinos?|wines?|comprar)\s+/i, "")
+    // «Ficha producto: X», «X – Ficha técnica», «X (etiquetado nutricional)»
+    .replace(/^\s*fichas?(?:\s+de)?\s+(?:productos?|t[eé]cnicas?|vinos?)\s*[:\-–|]?\s+(?=\S)/i, "")
+    .replace(/[\s\-–|:(]+(?:fichas?(?:\s+de)?\s+(?:productos?|t[eé]cnicas?)|(?:etiquetado|info(?:rmaci[oó]n)?)\s+nutricional|valores\s+nutricionales)\)?\s*$/i, "")
     .replace(/[\s\-–|·,.:()]+$/g, "")
     .replace(/^[\s\-–|·,.:()]+/g, "")
     .replace(/\(\s*\)/g, "");

@@ -6,6 +6,7 @@
 //   const ofertas = new RegistroOfertas(db, fuenteId, log);
 //   await ofertas.preparar();                       // tienda de la fuente + supresiones
 //   await ofertas.registrarOferta({ ... });         // por cada producto emparejado
+//   await ofertas.refrescarVistas(urls);            // fichas que no se volvieron a pedir (incremental)
 //   await ofertas.cerrar(inicio, { completa });     // al final: no vistas → no disponibles
 //
 // Reglas:
@@ -82,6 +83,8 @@ export interface ContadoresOfertas {
   sinCambios: number;
   omitidas: number;
   noDisponibles: number;
+  /** Ofertas de fichas que no se volvieron a pedir (sin cambios) y se dan por vistas. */
+  refrescadas: number;
 }
 
 // Valores de schema.org/ItemAvailability (sin el prefijo de URL).
@@ -172,6 +175,7 @@ export class RegistroOfertas {
     sinCambios: 0,
     omitidas: 0,
     noDisponibles: 0,
+    refrescadas: 0,
   };
 
   constructor(db: ClienteDb, fuenteId: string, log: Log) {
@@ -270,6 +274,35 @@ export class RegistroOfertas {
   }
 
   /**
+   * Rastreo incremental: las fichas de `urls` siguen publicadas pero no se volvieron a pedir porque
+   * no cambiaron. Sus ofertas cuentan como vistas en esta ejecución (sin tocar precio ni datos), así
+   * `cerrar()` no las marca como no vistas. Devuelve cuántas ofertas se refrescaron.
+   */
+  async refrescarVistas(urls: string[]): Promise<number> {
+    if (!this.tienda || urls.length === 0) return 0;
+    const ahora = new Date().toISOString();
+    let n = 0;
+    for (let i = 0; i < urls.length; i += 100) {
+      const filas = sinError(
+        await this.db
+          .from("ofertas")
+          .update({ visto_por_ultima_vez: ahora, ejecuciones_sin_ver: 0 })
+          .eq("tienda_id", this.tienda.id)
+          .in("url", urls.slice(i, i + 100))
+          .select("id_externo"),
+        "refrescar ofertas vistas",
+      );
+      for (const f of filas ?? []) {
+        const previa = this.previas.get(f.id_externo);
+        if (previa) previa.ejecuciones_sin_ver = 0;
+      }
+      n += (filas ?? []).length;
+    }
+    this.contadores.refrescadas += n;
+    return n;
+  }
+
+  /**
    * Fin de la ejecución. Solo si fue completa (sin --limite, sin parada ni volumen anómalo): las
    * ofertas de la tienda no vistas desde `inicio` suman una ejecución sin ver y, al llegar al
    * umbral, pasan a no disponibles. Devuelve cuántas pasaron a no disponibles.
@@ -279,7 +312,8 @@ export class RegistroOfertas {
     if (this.tienda) {
       this.log.info(
         `Ofertas (${this.tienda.nombre}): ${c.nuevas} nuevas, ${c.precio} con cambio de precio, ` +
-          `${c.actualizadas} actualizadas, ${c.sinCambios} sin cambios, ${c.omitidas} omitidas`,
+          `${c.actualizadas} actualizadas, ${c.sinCambios} sin cambios, ${c.omitidas} omitidas` +
+          (c.refrescadas ? `, ${c.refrescadas} refrescadas (fichas sin cambios)` : ""),
       );
     }
     if (!this.tienda || !opciones.completa) return 0;

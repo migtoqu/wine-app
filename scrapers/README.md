@@ -231,7 +231,7 @@ Fuera quedan otros idiomas (`/en/`, `/pt-pt/`, `?lang=en`), noticias y blog, y c
   - **Subdominios** del mismo dominio enlazados desde la portada (`tienda.`, `enoturismo.`, `shop.`…). Cada host pasa robots.txt; un 403/429 o un desafío anti-bot en un subdominio deja ese host sin detener el sitio.
   - Fuera: noticias con fecha, «en los medios», `?add-to-cart`, `/page/N/`, páginas de envío y pago, y slugs que ya dicen que no son un vino (estuche, sacacorchos…).
 - **Plataformas**: Wix va por su sitemap (`store-products-sitemap.xml`) más el JSON-LD de cada ficha, sin `/_api/`. Shopify sigue como punto de extensión (0 webs en el catálogo).
-- **Incremental**: `datos.paginas` guarda la `modificada` (lastmod del sitemap, `modified` de WP) de cada página. Si no ha cambiado, no se pide: sus registros se marcan vistos y no cuentan como desaparecidos.
+- **Incremental**: `datos.paginas` guarda la `modificada` (lastmod del sitemap, `modified` de WP) de cada página. Si no ha cambiado, no se pide: sus registros se marcan vistos y no cuentan como desaparecidos. Excepción: una ficha que dio una oferta con precio se vuelve a leer si lleva más de 7 días sin leerse (`DIAS_REFRESCO_OFERTA`), porque el precio y el stock no cambian el lastmod en muchas webs. La Store API de Woo se lee entera en cada pasada. Las ofertas de las fichas sin cambios se dan por vistas con `RegistroOfertas.refrescarVistas()`, y así `cerrar()` puede marcar las que de verdad desaparecen.
 - **D.O. por vino** (`denominacion.ts`):
   - Orden de búsqueda: la ficha («D.O. Rueda», «D.O.Ca. Rioja», «Vino de la Tierra de Castilla y León», «Denominación: …»), luego la categoría o las migas, luego la ruta (`/vinos-rueda/`; en el slug del vino solo las D.O. de varias palabras).
   - Se resuelve contra `denominaciones`, que tiene las 106 DOP y 43 IGP (semillas `20261112100000`), con alias cerrados.
@@ -251,12 +251,14 @@ Fuera quedan otros idiomas (`/en/`, `/pt-pt/`, `?lang=en`), noticias y blog, y c
   - Siguen guardadas en `registros_fuente.datos.ofertas` de cada vino y, además, se escriben en `ofertas` con `RegistroOfertas`, en una **tienda por bodega**: tipo `bodega`, con `bodega_id` y `fuente_id` = la fuente `web-<dominio>`, creada solo si la web publica precios.
   - Si la bodega ya tiene otra tienda, no se crea ninguna; una tienda desactivada por el admin no recibe ofertas.
   - Una oferta por formato y nunca cajas ni lotes. Clave: SKU o ruta de la ficha, más el formato. Sin añada en la ficha → `anada_id` null.
-  - Las ofertas que dejan de verse cuentan como no vistas solo si el rastreo del sitio fue completo: sin presupuesto agotado, sin páginas sin cambios y sin errores.
+  - Las ofertas que dejan de verse cuentan como no vistas solo si el rastreo del sitio fue completo (sin presupuesto agotado ni errores). Las de fichas sin cambios se refrescan antes de cerrar.
 - **Webs para bodegas sin `web`**:
   - La candidata es el dominio del email (`info@bodegasx.com` → `https://bodegasx.com/`), nunca proveedores de correo ni buscadores. Una por bodega cada 30 días.
   - Pasa la puerta completa, y su portada tiene que nombrar a la bodega (título, `og:site_name`, h1 u `Organization`, trigramas ≥ 0,8, contenida o en el dominio). Verificada → `bodegas.web` vía `Consolidador` y se rastrea como cualquier sitio. Dudosa → registro `web:<bodega>` en `revision` en la fuente madre. Si no, `descartado`.
   - En dry-run: `--descubrir-webs` con el JSON de un dry-run de ribera o rioja.
 - **Workflow**: jueves y sábado a las 02:37 UTC, 4 lotes (`--lote I/4`).
+- **Nunca se envía null al `Consolidador`** (bodega, vino, añada, servicio): un dato que la web no trae (o una página que el incremental no pidió) no se aporta, en vez de «la fuente ya no lo da». Así no se vacía un valor bueno de otra pasada ni se rompen columnas NOT NULL (`vinos.tipo`).
+- **Títulos genéricos** (`TITULO_GENERICO` en `html.ts`): «Ficha producto», «Ficha técnica», «Etiquetado/Información nutricional», «Ingredientes»… se saltan al elegir el título y como prefijo o sufijo del nombre del vino; un nombre que solo es eso no es un vino.
 
 ## Emparejamiento vino → bodega (`emparejamiento/bodegas.ts`)
 
