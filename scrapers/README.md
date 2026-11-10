@@ -7,6 +7,8 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | `ribera` | `cr-ribera-del-duero` | `bodegas`, `bodega_denominaciones`, `registros_fuente` | `scrape-ribera.yml` (lunes 03:17 UTC) |
 | `vinoseleccion` | `vinoseleccion` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `registros_fuente` | `scrape-vinoseleccion.yml` (miércoles 03:47 UTC) |
 | `vinopremier` | `vinopremier` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `codigos_ean`, `registros_fuente` | `scrape-vinopremier.yml` (manual (cron desactivado hasta que la web responda)) |
+| `tienda-vinatis` | `vinatis` | ídem + `ofertas` | `scrape-tienda-vinatis.yml` (viernes 02:13 UTC) |
+| `tienda-vinorea` | `vinorea` | ídem + `ofertas` | `scrape-tienda-vinorea.yml` (domingo 03:13 UTC) |
 | `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
 | `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 | `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves y sábado 02:37 UTC, 4 lotes) |
@@ -159,6 +161,18 @@ Tienda Magento (`vinopremier.com`, sin `www`). Mismo flujo que Vinoselección, c
 - `--bodegas ruta.json` en dry-run acepta también una instantánea del catálogo `{bodegas:[{id,nombre,marcas?}], vinos:[{id,bodegaId,nombre,tipo,crianza}], eans:[{ean,vinoId}]}` para calcular cuántos vinos ya existen.
 - Ritmo: 10–14 s entre peticiones y tope de 450 por ejecución (ver incidente en `docs/SOURCES.md` §4.1). Orden de carga: después de Ribera y de Rioja (las bodegas deben existir).
 
+
+## Tiendas por plataforma (`tienda-<slug>`)
+
+Scraper de tienda **parametrizado por plataforma** en `fuentes/tiendas/` (Ola B; audit en `docs/SOURCES.md` §4.6). Cada tienda es una entrada de `config.ts` (`slug`, `base`, `plataforma`, categorías D.O. → ruta, parámetro de paginación, selector de bodega, tope de peticiones y pausa); la CLI la expone como `tienda-<slug>`.
+
+- **Listados** (`listados.ts`): `magento` (`?p=N`, rejilla `li.product-item`), `woocommerce` (`/page/N/`, `ul.products`), `prestashop` (`?page=N` o `?p=N`, `ul.product_list` en 1.6 y `article.product-miniature` en 1.7) y `vinatis` (el listado ya trae el JSON `product_elastic` con todos los datos: **no se piden fichas**; si `?page=N` no pagina, se para y queda parcial).
+- **Fichas** (`estructurados.ts`): JSON-LD `Product` (también en `@graph`), microdatos `schema.org/Product` del producto principal (sin mezclar relacionados), ficha técnica (`table-data-sheet`, `dl.data-sheet`, `woocommerce-product-attributes`, `#product-attribute-specs-table`) y selector de bodega. GTIN con dígito de control. La descripción solo se lee para sacar cifras; nunca se guarda.
+- **Normalización** (`normalizar.ts`): misma forma que Vinopremier. La D.O. de la ficha manda sobre la de la categoría; un producto de otra D.O. (IGP, Rías Baixas…) dentro de la categoría se descarta.
+- **Emparejamiento y guardado**: los de Vinopremier (`vinopremier/procesar.ts` y `GuardadoVinopremier` con `OpcionesGuardado`: D.O. del foco y atribución). EAN primero, luego bodega y nombre; **una tienda no crea bodegas**; imágenes enlazadas; ofertas con `RegistroOfertas`.
+- **Ritmo**: 10–14 s entre peticiones y tope por ejecución (Vinatis 60, Vinorea 700); al llegar al tope la ejecución queda parcial y no da ofertas por no vistas. Ante 403/429, se para la fuente.
+- Dry-run: `node scrapers/cli.ts tienda-vinorea --dry-run --limit 25 --bodegas catalogo.json`.
+- Alta de una tienda nueva: audit (robots, términos, anti-bot) → entrada en `config.ts` → migración con filas en `fuentes` y `tiendas` → workflow semanal en una franja libre.
 
 ## Ruta del Vino Ribera del Duero (`ruta-ribera`)
 

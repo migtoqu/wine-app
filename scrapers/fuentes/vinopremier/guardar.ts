@@ -1,5 +1,6 @@
 // Vinopremier: upsert idempotente de vino → añada → variedades → imagen → EAN y registro de fuente.
-// Misma lógica que Vinoselección, con D.O. por vino (Ribera del Duero y Rioja) y búsqueda por EAN.
+// Misma lógica que Vinoselección, con D.O. por vino y búsqueda por EAN. Lo reutilizan las tiendas de
+// `fuentes/tiendas/` (D.O. y atribución configurables con `OpcionesGuardado`).
 import type { BodegaCandidata, ResultadoEmparejamiento } from "../../emparejamiento/bodegas.ts";
 import { EmparejadorVinos, type ResultadoVino } from "../../emparejamiento/vinos.ts";
 import { Consolidador, type Aporte } from "../../lib/consolidacion/consolidar.ts";
@@ -105,6 +106,14 @@ function sinEmparejamiento(datos: unknown): unknown {
   return Object.fromEntries(Object.entries(datos).filter(([k]) => k !== "emparejamiento"));
 }
 
+/** Lo que cambia de una tienda a otra al guardar (Vinopremier por defecto). */
+export interface OpcionesGuardado {
+  /** Slugs de `denominaciones` que puede traer la tienda. */
+  denominaciones?: readonly string[];
+  /** Nombre de la tienda en la atribución de las imágenes enlazadas. */
+  atribucion?: string;
+}
+
 export class GuardadoVinopremier {
   private db: ClienteDb;
   private fuenteId: string;
@@ -122,10 +131,20 @@ export class GuardadoVinopremier {
   private consolidador: Consolidador;
   private resumidor: Resumidor;
   private tipoFuente: TipoFuente = "tienda";
+  private slugsDenominacion: readonly string[];
+  private atribucion: string;
   /** Comparador de precios: si se asigna, cada ficha guardada deja su oferta. */
   ofertas: RegistroOfertas | null = null;
 
-  constructor(db: ClienteDb, fuenteId: string, log: Log, generador: GeneradorResumen = new PlantillasEsEn()) {
+  constructor(
+    db: ClienteDb,
+    fuenteId: string,
+    log: Log,
+    generador: GeneradorResumen = new PlantillasEsEn(),
+    opciones: OpcionesGuardado = {},
+  ) {
+    this.slugsDenominacion = opciones.denominaciones ?? CATEGORIAS.map((c) => c.denominacion);
+    this.atribucion = opciones.atribucion ?? "Vinopremier";
     this.db = db;
     this.fuenteId = fuenteId;
     this.log = log;
@@ -151,13 +170,13 @@ export class GuardadoVinopremier {
 
   /** Carga una vez por ejecución D.O., variedades, vinos y las bodegas candidatas. */
   async preparar(): Promise<BodegaCandidata[]> {
-    for (const c of CATEGORIAS) {
+    for (const slug of this.slugsDenominacion) {
       const den = sinError(
-        await this.db.from("denominaciones").select("id").eq("slug", c.denominacion).maybeSingle(),
+        await this.db.from("denominaciones").select("id").eq("slug", slug).maybeSingle(),
         "leer denominación",
       );
-      if (!den) throw new Error(`No existe la denominación '${c.denominacion}' (¿semillas?)`);
-      this.denominaciones.set(c.denominacion, den.id);
+      if (!den) throw new Error(`No existe la denominación '${slug}' (¿semillas?)`);
+      this.denominaciones.set(slug, den.id);
     }
 
     for (const v of sinError(await this.db.from("variedades_uva").select("id, nombre, slug, sinonimos"), "leer variedades")) {
@@ -480,7 +499,7 @@ export class GuardadoVinopremier {
         url: n.imagen,
         tipo: "botella",
         fuente_id: this.fuenteId,
-        atribucion: "Vinopremier",
+        atribucion: this.atribucion,
         alt: n.datos.nombre,
         principal: !actuales.some((i) => i.principal),
       }),

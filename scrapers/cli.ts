@@ -9,6 +9,7 @@ import { scraperVinopremier, SLUG_FUENTE as SLUG_VINOPREMIER } from "./fuentes/v
 import { scraperWebsBodegas, SLUG_FUENTE as SLUG_WEBS_BODEGAS } from "./fuentes/webs-bodegas/index.ts";
 import { scraperComprobadorEnlaces, SLUG_FUENTE as SLUG_ENLACES } from "./comprobador-enlaces/index.ts";
 import { SCRAPERS_CONSEJOS } from "./fuentes/consejos/index.ts";
+import { SCRAPERS_TIENDAS } from "./fuentes/tiendas/index.ts";
 import { scraperNavarra, SLUG_FUENTE as SLUG_NAVARRA } from "./fuentes/consejos/navarra/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
@@ -25,6 +26,8 @@ const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   ...SCRAPERS_CONSEJOS,
   // Navarra: bodegas, vinos y experiencias (guardado compartido con Rioja).
   "consejo-navarra": { slug: SLUG_NAVARRA, scraper: scraperNavarra },
+  // Tiendas con precio, scraper parametrizado por plataforma (fuentes/tiendas/).
+  ...SCRAPERS_TIENDAS,
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]
@@ -35,7 +38,7 @@ Opciones:
   --dry-run      no toca la BD; escribe el resultado normalizado en scrapers/out/
   --limit N      procesa como mucho N fichas
   --out RUTA     fichero JSON de salida del dry-run
-  --bodegas RUTA (vinoseleccion y ruta-ribera, dry-run) JSON de un dry-run de Ribera con las bodegas para emparejar
+  --bodegas RUTA (vinoseleccion, ruta-ribera, vinopremier y tienda-*, dry-run) JSON de un dry-run de Ribera con las bodegas para emparejar
   --verbose      muestra también los logs de depuración
 
 Webs de bodegas (webs-bodegas):

@@ -9,7 +9,7 @@
 1. **No hace falta cambiar de stack.** `fetch` + `cheerio` + `robots-parser` + nuestro `ClienteHttp` cubren el 95 % de los casos. Lo que más rinde son **piezas pequeñas** encima: extractor de microdatos/JSON-LD genérico, validación de EAN, peticiones condicionales (`ETag`/`Last-Modified`) y un registro de adaptadores por sitio.
 2. **Crawlee y Playwright no compensan como base.** Crawlee trae por defecto cabeceras y huellas de navegador simuladas (choca con la regla del proyecto) y duplicaría lo que ya hace `ejecutar()`. Playwright solo como **último recurso por sitio**, desactivado por defecto (§1.1).
 3. **Webs de bodegas con tienda y precio: ≈ 50–55 de las 160** (≈ 40 % de las 129 accesibles). 40 exponen la Store API de WooCommerce con precio y otras ~10–15 tienen WooCommerce con JSON-LD `Offer` en la ficha. **Hoy el crawler no guarda el precio de los vinos**: es la mejora con mejor relación coste/beneficio para el comparador (§3.2).
-4. **Tiendas nuevas aptas a priori: Vinatis, Vila Viniteca, Mariskal, Coalla Gourmet y Vinorea** (robots permisivo, sin anti-bot con nuestro UA, avisos legales sin cláusula anti-robots). **Bloqueadas**: Uvinum/Drinks&Co, Gourmet Hunters y Santa Cecilia (Cloudflare 403). Se suman a Vinissimus, ya apta.
+4. **Tiendas nuevas aptas a priori: Vinatis, Vila Viniteca, Mariskal, Coalla Gourmet y Vinorea** (re-auditadas el 2026-11-10: solo **Vinatis y Vinorea** quedan aptas; ver [SOURCES §4.6](../SOURCES.md)) (robots permisivo, sin anti-bot con nuestro UA, avisos legales sin cláusula anti-robots). **Bloqueadas**: Uvinum/Drinks&Co, Gourmet Hunters y Santa Cecilia (Cloudflare 403). Se suman a Vinissimus, ya apta.
 5. **Afiliados:** la vía legítima para EAN y precio de las tiendas que bloquean. **Vinatis ES está en Tradedoubler con feed de producto**; Vinoselección también aparece en Tradedoubler; ECI y Carrefour en Awin. El alta la tiene que hacer el usuario y cada anunciante decide (§3.3).
 6. **Directorios:** Toro, Cigales, Bierzo y Priorat responden con robots permisivo; Rías Baixas sigue en 403. Ninguno tiene un sitemap de bodegas; habrá que leer una página-listado por consejo (§3.4).
 
@@ -294,7 +294,7 @@ Impactos estimados sobre el catálogo actual (**511 bodegas, 1.204 vinos**) y la
 | Qué | Herramienta | Impacto |
 | --- | --- | --- |
 | Scraper de tienda **parametrizado por plataforma** (PrestaShop / Magento / WooCommerce por sitemap + ficha) | §2.6 | — |
-| Vinorea, Coalla Gourmet, Mariskal, Vila Viniteca, Vinatis (en ese orden: de menos a más volumen y riesgo) | ídem, 10–14 s entre peticiones y tope por ejecución (lección de Vinopremier) | **+5 tiendas**, ≈ +800–1.500 precios; +100–300 vinos nuevos (resto, solapamiento) |
+| Vinorea, Coalla Gourmet, Mariskal, Vila Viniteca, Vinatis (en ese orden: de menos a más volumen y riesgo) | ídem, 10–14 s entre peticiones y tope por ejecución (lección de Vinopremier) | **+5 tiendas**, ≈ +800–1.500 precios; +100–300 vinos nuevos (resto, solapamiento). **Hecho (2026-11-10):** el re-audit dejó **2** (Vinatis y Vinorea); Vila Viniteca, Coalla y Mariskal descartadas ([SOURCES §4.6](../SOURCES.md)) |
 | Vinissimus (ya apta) | ídem | +1 tienda, miles de precios |
 | Emparejamiento por EAN y nombre normalizado (lo lleva otra sesión) | `lib/emparejamiento/` | Requisito para que esos precios caigan en el vino correcto |
 
