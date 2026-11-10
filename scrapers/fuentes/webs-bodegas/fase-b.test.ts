@@ -6,7 +6,9 @@ import { LimitadorPorHost } from "../../lib/rate-limit.ts";
 import { decidirDenominacion, denominacionesDeSemillas, detectarDenominacion, ResolutorDenominaciones } from "./denominacion.ts";
 import { descripcionServicio, extraerDetalle } from "./enoturismo.ts";
 import { candidataPorEmail } from "./entrada.ts";
-import { entradasOferta } from "./guardar.ts";
+import { camposVino_, entradasOferta, sinNulos } from "./guardar.ts";
+import { esNombreDeVino as esVino, nombreVino } from "./extraer.ts";
+import { limpiarTitulo } from "./html.ts";
 import { esNombreDeVino, extraerServicio } from "./extraer.ts";
 import { cargar } from "./html.ts";
 import { candidatasDePagina, elegirImagenBodega, esFoto, imagenBotella } from "./imagen.ts";
@@ -246,5 +248,27 @@ describe("RastreadorSitio fase B", () => {
     const out = await r.rastrear(sitio("https://bodegasx.com/", { candidata: { origen: "email", detalle: "info@bodegasx.com" }, bodegas: [{ id: "b1", nombre: "Viña Sastre", municipio: null }] }));
     expect(out.puerta).toMatchObject({ apta: false, motivo: "no_verificada" });
     expect(pedidas).toEqual(["https://bodegasx.com/robots.txt", "https://bodegasx.com/"]);
+  });
+});
+
+describe("fallos de la carga completa de fase B (run 42591481017, lote 2)", () => {
+  it("nunca se envía null al vino: «tipo» es NOT NULL (herascordon.com, carlosserres.com)", () => {
+    expect(camposVino_({ tipo: null, crianza: null, nombre: "X" }, false, null)).toEqual({});
+    expect(camposVino_({ tipo: "tinto", crianza: null, nombre: "X" }, true, "do-1")).toEqual({ tipo: "tinto", nombre: "X", denominacion_id: "do-1" });
+    // Decisión de D.O. dudosa (undefined): esta fuente no opina sobre la D.O.
+    expect(camposVino_({ tipo: "blanco", crianza: "joven", nombre: "X" }, false, undefined)).toEqual({ tipo: "blanco", crianza: "joven" });
+    // Lo mismo para bodega, añada y servicio: un dato que no llega no vacía el de otra pasada.
+    expect(sinNulos({ anio_fundacion: null, hectareas: 12, redes: undefined })).toEqual({ hectareas: 12 });
+  });
+
+  it("títulos genéricos («Ficha Producto», etiquetado nutricional) no son nombres de vino", () => {
+    expect(limpiarTitulo("Ficha Producto - Viña Pedrosa Crianza")).toBe("Viña Pedrosa Crianza");
+    expect(limpiarTitulo("Etiquetado nutricional | Bodegas X")).toBe("Bodegas X");
+    expect(nombreVino("Ficha producto: Hacienda Monasterio Reserva 2019")).toBe("Hacienda Monasterio Reserva");
+    expect(nombreVino("Pago de Carraovejas – Ficha técnica")).toBe("Pago de Carraovejas");
+    expect(nombreVino("Viña Sastre Roble (etiquetado nutricional)")).toBe("Viña Sastre Roble");
+    for (const n of ["Ficha Producto", "Etiquetado nutricional", "Info nutricional", "Información nutricional Crianza", "Ficha técnica"]) {
+      expect(esVino(nombreVino(n)) && !/^(ficha|etiquetado|info)/i.test(nombreVino(n))).toBe(false);
+    }
   });
 });

@@ -257,6 +257,8 @@ Fuera quedan otros idiomas (`/en/`, `/pt-pt/`, `?lang=en`), noticias y blog, y c
   - Pasa la puerta completa, y su portada tiene que nombrar a la bodega (título, `og:site_name`, h1 u `Organization`, trigramas ≥ 0,8, contenida o en el dominio). Verificada → `bodegas.web` vía `Consolidador` y se rastrea como cualquier sitio. Dudosa → registro `web:<bodega>` en `revision` en la fuente madre. Si no, `descartado`.
   - En dry-run: `--descubrir-webs` con el JSON de un dry-run de ribera o rioja.
 - **Workflow**: jueves y sábado a las 02:37 UTC, 4 lotes (`--lote I/4`).
+- **Nunca se envía null al `Consolidador`** (bodega, vino, añada, servicio): un dato que la web no trae (o una página que el incremental no pidió) no se aporta, en vez de «la fuente ya no lo da». Así no se vacía un valor bueno de otra pasada ni se rompen columnas NOT NULL (`vinos.tipo`).
+- **Títulos genéricos** (`TITULO_GENERICO` en `html.ts`): «Ficha producto», «Ficha técnica», «Etiquetado/Información nutricional», «Ingredientes»… se saltan al elegir el título y como prefijo o sufijo del nombre del vino; un nombre que solo es eso no es un vino.
 
 ## Emparejamiento vino → bodega (`emparejamiento/bodegas.ts`)
 

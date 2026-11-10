@@ -34,6 +34,7 @@ import {
   h1,
   jsonLd,
   limpiarTitulo,
+  TITULO_GENERICO,
   metaRobots,
   migas,
   textoDe,
@@ -213,7 +214,7 @@ function esListado(url: string, tituloPagina: string): boolean {
   return (!conQuery && /^(?:nuestros?-?)?(?:vinos|wines|productos|gama|tienda|shop)(?:\.(?:asp|php|html?))?$/i.test(ultimo)) || LISTADO.test(tituloPagina.trim());
 }
 
-const TITULO_PAGINA_GENERICO = /^(d\.?\s?o\.?\s|inicio|home|vinos?$|wines?$|tienda$|shop$)/i;
+const TITULO_PAGINA_GENERICO = TITULO_GENERICO;
 /** Título: el de la API de WordPress, el `Product` del JSON-LD, og:title, h1 o <title>. */
 function elegirTitulo(preferido: string | undefined, nodos: Record<string, unknown>[], $: ReturnType<typeof cargar>): string {
   const producto = nodos.find((n) => n["@type"] === "Product");
