@@ -225,8 +225,8 @@ const EXTRANJERO = /\b(tawny|late bottled|ruby port|oporto|porto|port wine|champ
 export function esNombreDeVino(nombre: string): boolean {
   if (EXTRANJERO.test(nombre)) return false;
   // Plantillas de ficha y etiquetado que algunas webs ponen como título.
-  if (/\b(fichas?\s+(?:de\s+)?(?:productos?|t[eé]cnicas?)|nutricional(?:es)?|etiquetado|ingredientes|declaraci[oó]n|al[eé]rgenos|product sheet)\b/i.test(nombre)) return false;
-  if (/^\s*(fichas?|productos?|t[eé]cnicas?|detalles?)\s*$/i.test(nombre)) return false;
+  if (/\b(fichas?\s+(?:de\s+)?(?:productos?|t[eé]cnicas?)|nutricional(?:es)?|etiquetado|ingredientes|declaraci[oó]n|al[eé]rgenos|sheets?|nutritional|nutrition facts)\b/i.test(nombre)) return false;
+  if (/^\s*(fichas?|productos?|t[eé]cnicas?|detalles?|technical|data)\s*$/i.test(nombre)) return false;
   // «Reserva» es una crianza, no «reserva tu visita».
   return !NO_VINO.test(nombre.replace(/\bgran\s+reserva\b|\breserva\b(?!\s+tu)/gi, ""));
 }
@@ -234,8 +234,31 @@ export function esNombreDeVino(nombre: string): boolean {
 const FORMATOS = /\b(?:\d{2,4}\s?(?:cl|ml)|\d(?:[.,]\d)?\s?l(?:itros?)?|m[áa]gnum|magnum|jeroboam|doble\s+m[áa]gnum|imperial|botella(?:\s+individual)?|media\s+botella|benjam[ií]n)\b/gi;
 
 /** Nombre del vino sin añada, formato ni D.O. («Aalto 2021 Mágnum» → «Aalto»). */
+// Español e inglés («Ficha X», «Sheet X», «Technical sheet X», «X – Nutritional information»).
+const PLANTILLA = "fichas?(?:\\s+de)?(?:\\s+(?:productos?|t[eé]cnicas?|vinos?))?|info(?:rmaci[oó]n)?\\s+nutricional|etiquetado(?:\\s+nutricional)?|valores\\s+nutricionales|(?:product|technical|tech|data|fact|wine)\\s+sheets?|sheets?|nutritional\\s+(?:information|info|facts)|nutrition\\s+facts";
+const PLANTILLA_PREFIJO = new RegExp(`^\\s*(?:${PLANTILLA})\\s*[:\\-–|]?\\s+(?=\\S)`, "i");
+const PLANTILLA_SUFIJO = new RegExp(`[\\s\\-–|:(+]+(?:${PLANTILLA})\\)?\\s*$`, "i");
+
+/**
+ * Quita las palabras de plantilla que algunas webs ponen en el título de la ficha: «Ficha X»,
+ * «Ficha técnica X», «Info nutricional X», «X – Etiquetado nutricional», «X + Ficha Técnica». Con un
+ * sufijo quitado, también el año de dos cifras que lo precede («TresMatas Reserva 22- Etiquetado…»).
+ * Lo que queda puede ser vacío o genérico («Fichas de producto»): no es un vino.
+ */
+export function limpiarPlantilla(nombre: string): string {
+  let s = limpiarEspacios(nombre);
+  for (let i = 0; i < 2; i++) {
+    const antes = s;
+    s = s.replace(PLANTILLA_PREFIJO, "");
+    const sinSufijo = s.replace(PLANTILLA_SUFIJO, "");
+    if (sinSufijo !== s) s = sinSufijo.replace(/\s+\d{2}\s*[-–]?\s*$/, "");
+    if (s === antes) break;
+  }
+  return limpiarEspacios(s.replace(/[\s\-–|·,:+(]+$/g, ""));
+}
+
 export function nombreVino(titulo: string): string {
-  let s = limpiarEspacios(titulo)
+  let s = limpiarPlantilla(limpiarEspacios(titulo))
     .replace(/\bD\.?\s?O\.?(?:\s?Ca\.?)?\s+Ribera\s+del\s+Duero\b/gi, "")
     .replace(/\bRibera\s+del\s+Duero\b/gi, "")
     .replace(/\b(?:19[5-9]\d|20[0-4]\d)\b/g, "")
