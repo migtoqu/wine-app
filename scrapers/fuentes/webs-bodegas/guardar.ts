@@ -21,6 +21,7 @@ import {
 } from "../../lib/consolidacion/supresiones.ts";
 import { dominioWeb, normalizarWeb } from "../../lib/contacto.ts";
 import { sinError, type ClienteDb } from "../../lib/db.ts";
+import { RegistroOfertas, type EntradaOferta } from "../../lib/ofertas.ts";
 import { igualesJson } from "../../lib/json.ts";
 import type { Log } from "../../lib/log.ts";
 import { claveTexto, slugify } from "../../lib/texto.ts";
@@ -65,6 +66,30 @@ async function paginar<T>(
     todas.push(...(r.data ?? []));
     if ((r.data ?? []).length < 1000) return todas;
   }
+}
+
+/**
+ * Ofertas de un vino para `RegistroOfertas`: una por formato (las cajas y lotes no se comparan con
+ * botellas sueltas). Clave estable: SKU o ruta de la ficha, más el formato.
+ */
+export function entradasOferta(v: VinoSitio, vinoId: string, anadaId: string | null, registroId: string | null): EntradaOferta[] {
+  const out: EntradaOferta[] = [];
+  for (const o of v.ofertas) {
+    if (o.unidades > 1 || o.precio == null) continue;
+    let ruta: string;
+    try {
+      ruta = new URL(o.url).pathname.replace(/\/$/, "") || "/";
+    } catch {
+      continue;
+    }
+    const idExterno = (o.sku ? `sku:${o.sku}` : `url:${ruta}`) + (o.formato_ml ? `@${o.formato_ml}` : "");
+    if (out.some((x) => x.idExterno === idExterno)) continue;
+    out.push({
+      idExterno, vinoId, anadaId, url: o.url, precio: o.precio, moneda: o.moneda, formatoMl: o.formato_ml,
+      disponible: o.disponible, ean: o.ean, registroId,
+    });
+  }
+  return out;
 }
 
 export class GuardadoWebs {
@@ -173,6 +198,11 @@ export class GuardadoWebs {
 
   bodegasConWeb(): BodegaConWeb[] {
     return this.bodegas;
+  }
+
+  /** D.O. de una bodega en la BD (las que hereda un vino cuya ficha no dice ninguna). */
+  denominacionesDe(bodegaId: string): Denominacion[] {
+    return this.dosDe.get(bodegaId) ?? [];
   }
 
   resolutor(): ResolutorDenominaciones {
@@ -394,14 +424,25 @@ export class GuardadoWebs {
       else out.sinCambios++;
     } else out.nuevos++;
 
+    // Tienda online de la bodega: solo si su web publica precios. Una tienda por bodega y fuente.
+    const ofertas = r.vinos.some((v) => v.ofertas.some((o) => o.precio != null)) ? await this.registroOfertas(r, fuente.id, bodegaId, bodega?.nombre ?? r.entrada.dominio) : null;
+    const inicioOfertas = new Date();
+    let erroresVinos = 0;
     for (const v of r.vinos) {
       try {
-        const res = await this.guardarVino(v, fuente.id, bodegaId, r.vinos.filter((x) => x.url === v.url).length > 1);
+        const res = await this.guardarVino(v, fuente.id, bodegaId, r.vinos.filter((x) => x.url === v.url).length > 1, ofertas);
         out[res === "nuevo" ? "nuevos" : res === "actualizado" ? "actualizados" : res === "revision" ? "revision" : "sinCambios"]++;
       } catch (e) {
         out.errores++;
+        erroresVinos++;
         this.log.error(`${r.entrada.dominio} · vino «${v.nombre}»: ${(e as Error).message}`);
       }
+    }
+    // Ofertas que la tienda ya no lista: solo cuentan como no vistas si el rastreo del sitio fue completo
+    // (sin presupuesto agotado, sin páginas sin cambios que no se pidieron y sin errores).
+    if (ofertas) {
+      const completa = erroresVinos === 0 && r.sinCambios.length === 0 && !r.avisos.some((a) => a.startsWith("Presupuesto"));
+      await ofertas.cerrar(inicioOfertas, { completa });
     }
     const vistos = new Set<string>();
     for (const s of r.servicios) {
@@ -418,6 +459,41 @@ export class GuardadoWebs {
     const completo = !r.avisos.some((a) => a.startsWith("Presupuesto"));
     if (completo) await this.desactivarServicios(fuente.id, bodegaId, vistos, sinCambios, ahora);
     return out;
+  }
+
+  /**
+   * Tienda de la bodega (tipo «bodega», enlazada a la bodega y a la fuente del sitio) y su
+   * `RegistroOfertas`. No se crea si la bodega ya tiene otra tienda; una tienda desactivada por el
+   * admin no recibe ofertas (lo comprueba `RegistroOfertas.preparar`).
+   */
+  private async registroOfertas(r: ResultadoSitio, fuenteId: string, bodegaId: string, nombreBodega: string): Promise<RegistroOfertas | null> {
+    const existente = sinError(await this.db.from("tiendas").select("id, fuente_id").eq("fuente_id", fuenteId).maybeSingle(), "leer tienda del sitio");
+    if (!existente) {
+      const deBodega = sinError(await this.db.from("tiendas").select("id, fuente_id").eq("bodega_id", bodegaId).maybeSingle(), "leer tienda de la bodega");
+      if (deBodega) {
+        this.log.warn(`${r.entrada.dominio}: la bodega ya tiene otra tienda; no se guardan ofertas de esta web`);
+        return null;
+      }
+      const url = r.vinos.flatMap((v) => v.ofertas).find((o) => o.precio != null)?.url ?? r.entrada.url;
+      const web = new URL(url).origin;
+      const base = slugify(`tienda ${r.entrada.dominio}`).slice(0, 60).replace(/-+$/, "");
+      const ins = await this.db
+        .from("tiendas")
+        .insert({ nombre: `Tienda online de ${nombreBodega}`, slug: base, tipo: "bodega", web, bodega_id: bodegaId, fuente_id: fuenteId })
+        .select("id")
+        .single();
+      if (ins.error && ins.error.code === "23505") {
+        this.log.warn(`${r.entrada.dominio}: no se pudo crear la tienda (${ins.error.message}); no se guardan ofertas`);
+        return null;
+      }
+      sinError(ins, "crear tienda");
+    }
+    const registro = new RegistroOfertas(this.db, fuenteId, this.log);
+    return (await registro.preparar()) ? registro : null;
+  }
+
+  private async registrarOfertas(ofertas: RegistroOfertas, v: VinoSitio, vinoId: string, anadaId: string | null, registroId: string) {
+    for (const e of entradasOferta(v, vinoId, anadaId, registroId)) await ofertas.registrarOferta(e);
   }
 
   private async desactivarServicios(fuenteId: string, bodegaId: string, vistos: Set<string>, sinCambios: Set<string>, ahora: string) {
@@ -470,7 +546,13 @@ export class GuardadoWebs {
   }
 
   /** Vino dentro de su bodega (EAN, nombre normalizado; parecido → revisión) → añada → uvas → EAN. */
-  private async guardarVino(v: VinoSitio, fuenteId: string, bodegaId: string, varios: boolean): Promise<"nuevo" | "actualizado" | "sin_cambios" | "revision" | "descartado"> {
+  private async guardarVino(
+    v: VinoSitio,
+    fuenteId: string,
+    bodegaId: string,
+    varios: boolean,
+    ofertas: RegistroOfertas | null,
+  ): Promise<"nuevo" | "actualizado" | "sin_cambios" | "revision" | "descartado"> {
     const ruta = new URL(v.url).pathname.replace(/\/$/, "") || "/";
     const idExterno = `vino:${ruta}${varios ? `#${slugify(v.nombre)}` : ""}`;
     const ahora = new Date().toISOString();
@@ -576,6 +658,8 @@ export class GuardadoWebs {
     }
     const nombreBodega = this.bodegas.find((b) => b.id === bodegaId)?.nombre ?? "la bodega";
     if (v.imagen && (await this.guardarImagen({ anada_id: anadaId }, v.imagen, fuenteId, nombreBodega))) cambios = true;
+    // Sin añada en la ficha, la oferta va al vino (anada_id null), no a la añada «sin año».
+    if (ofertas) await this.registrarOfertas(ofertas, v, vinoId, v.anio == null ? null : anadaId, registroId);
     if (creado || anadaNueva) return "nuevo";
     return cambios || !igualesJson((previo?.datos as { vino?: unknown } | null)?.vino, json(v)) ? "actualizado" : "sin_cambios";
   }
