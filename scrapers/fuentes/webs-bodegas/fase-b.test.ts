@@ -288,8 +288,14 @@ describe("fallos de la carga completa de fase B (run 42591481017, lote 2)", () =
     expect(nombreVino("Ficha producto: Hacienda Monasterio Reserva 2019")).toBe("Hacienda Monasterio Reserva");
     expect(nombreVino("Pago de Carraovejas – Ficha técnica")).toBe("Pago de Carraovejas");
     expect(nombreVino("Viña Sastre Roble (etiquetado nutricional)")).toBe("Viña Sastre Roble");
-    for (const n of ["Ficha Producto", "Etiquetado nutricional", "Info nutricional", "Información nutricional Crianza", "Ficha técnica"]) {
-      expect(esVino(nombreVino(n)) && !/^(ficha|etiquetado|info)/i.test(nombreVino(n))).toBe(false);
+    // Solo plantilla: no queda un nombre de vino.
+    for (const n of ["Ficha Producto", "Etiquetado nutricional", "Info nutricional", "Ficha técnica", "Fichas de producto"]) {
+      expect(esVino(nombreVino(n))).toBe(false);
     }
+    // Plantilla + nombre: se queda el nombre (prefijo «Ficha »/«Info nutricional», sufijo «+ Ficha Técnica»).
+    expect(nombreVino("Información nutricional Crianza")).toBe("Crianza");
+    expect(nombreVino("Ficha Rivendel Roble")).toBe("Rivendel Roble");
+    expect(nombreVino("Viña Pedrosa Reserva + Ficha Técnica")).toBe("Viña Pedrosa Reserva");
+    expect(nombreVino("TresMatas Reserva 22- Etiquetado nutricional")).toBe("TresMatas Reserva");
   });
 });
