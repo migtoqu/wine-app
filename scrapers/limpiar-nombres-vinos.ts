@@ -21,7 +21,7 @@ import { claveTexto, slugify } from "./lib/texto.ts";
 import { esNombreDeVino, nombreVino } from "./fuentes/webs-bodegas/extraer.ts";
 
 /** Nombres con palabras de plantilla (mismo criterio que los filtros de webs-bodegas). */
-export const NOMBRE_BASURA = /\b(fichas?|nutricional(?:es)?|etiquetado|ingredientes|al[eé]rgenos|product sheet)\b/i;
+export const NOMBRE_BASURA = /\b(fichas?|nutricional(?:es)?|etiquetado|ingredientes|al[eé]rgenos|sheets?|nutritional|nutrition facts)\b/i;
 
 export interface VinoLimpieza {
   id: string;

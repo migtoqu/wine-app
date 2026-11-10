@@ -8,7 +8,7 @@ import { descripcionServicio, extraerDetalle } from "./enoturismo.ts";
 import { candidataPorEmail } from "./entrada.ts";
 import { camposVino_, entradasOferta, sinNulos } from "./guardar.ts";
 import { esNombreDeVino as esVino, nombreVino } from "./extraer.ts";
-import { limpiarTitulo } from "./html.ts";
+import { idiomaDeTexto, limpiarTitulo } from "./html.ts";
 import { esNombreDeVino, extraerServicio } from "./extraer.ts";
 import { cargar } from "./html.ts";
 import { candidatasDePagina, elegirImagenBodega, esFoto, imagenBotella } from "./imagen.ts";
@@ -297,5 +297,56 @@ describe("fallos de la carga completa de fase B (run 42591481017, lote 2)", () =
     expect(nombreVino("Ficha Rivendel Roble")).toBe("Rivendel Roble");
     expect(nombreVino("Viña Pedrosa Reserva + Ficha Técnica")).toBe("Viña Pedrosa Reserva");
     expect(nombreVino("TresMatas Reserva 22- Etiquetado nutricional")).toBe("TresMatas Reserva");
+  });
+});
+
+describe("Bodegas el Inicio: fichas inglesas «Sheet X» sin prefijo /en/ (los-vinos-3/sheet-…)", () => {
+  // Arranques reales (recortados) de /los-vinos-2/ficha-vastago/ y /los-vinos-3/sheet-vastago/.
+  const ES = "Dicen que la vida está hecha de momentos y así ha sido la mía. He disfrutado de mi trabajo y de cada instante. El vino me ha permitido recorrer España entera donde he encontrado cientos de amigos. Cada copa ha sido una experiencia, cada sorbo una oportunidad de descubrir sensaciones nuevas. Vástago llega a nuestras manos tras una vendimia manual en viñedos situados en los pagos de La Guinda.";
+  const EN = "More than 40 years all and around Spain, enjoying my work with hundreds of friends and sharing thousands of glasses of wine, have encouraged me to look back and analyse the path I have covered. Tinta de Toro is the native grape of this area. It is a Tempranillo variety that stands out from it thanks to the characteristics of nature that have surrounded it for hundreds of years.";
+
+  it("idioma por el texto", () => {
+    expect(idiomaDeTexto(ES)).toBe("es");
+    expect(idiomaDeTexto(EN)).toBe("en");
+    expect(idiomaDeTexto("Vástago 2021. Tinta de Toro.")).toBeNull(); // corto: no se decide
+  });
+
+  it("«Sheet/Technical sheet/Data sheet/Nutritional information» son plantilla", () => {
+    expect(nombreVino("Sheet Vástago")).toBe("Vástago");
+    expect(nombreVino("Technical sheet Pluma Rosé")).toBe("Pluma Rosé");
+    expect(nombreVino("Rivendel Roble – Nutritional information")).toBe("Rivendel Roble");
+    expect(limpiarTitulo("Data sheet | Bodegas el Inicio")).toBe("Bodegas el Inicio");
+    for (const n of ["Sheet", "Technical sheet", "Data sheet", "Nutritional information", "Nutrition facts"]) expect(esVino(nombreVino(n))).toBe(false);
+  });
+
+  const ficha = (t: string, texto: string) => `<html><head><title>${t}</title></head><body><main><h1>${t}</h1><p>${texto}</p><p>Tinta de Toro 100%. 14,5% vol. 12 meses en barrica.</p></main></body></html>`;
+  const base = (extra: Record<string, string>) => ({
+    "https://bodegaselinicio.com/robots.txt": "User-agent: *\nAllow: /\nSitemap: https://bodegaselinicio.com/sitemap.xml\n",
+    "https://bodegaselinicio.com/": '<html><body><a href="/aviso-legal/">Aviso legal</a><main><p>Hola</p></main></body></html>',
+    "https://bodegaselinicio.com/aviso-legal/": AVISO,
+    "https://bodegaselinicio.com/vinos/ficha-vastago/": ficha("Ficha Vástago", ES),
+    ...extra,
+  });
+  const urlset = (...urls: string[]) => `<?xml version="1.0"?><urlset>${urls.map((u) => `<url><loc>https://bodegaselinicio.com${u}</loc></url>`).join("")}</urlset>`;
+
+  it("una ficha cuyo slug ya dice «sheet» ni se pide", async () => {
+    const { r, pedidas } = rastreador(base({
+      "https://bodegaselinicio.com/sitemap.xml": urlset("/vinos/ficha-vastago/", "/vinos/sheet-vastago/"),
+      "https://bodegaselinicio.com/vinos/sheet-vastago/": ficha("Sheet Vástago", EN),
+    }));
+    const out = await r.rastrear(sitio("https://bodegaselinicio.com/"));
+    expect(out.vinos.map((v) => [v.nombre, v.url])).toEqual([["Vástago", "https://bodegaselinicio.com/vinos/ficha-vastago/"]]);
+    expect(pedidas).not.toContain("https://bodegaselinicio.com/vinos/sheet-vastago/");
+  });
+
+  it("una ficha en inglés con slug neutro (sin /en/) se descarta por su texto", async () => {
+    const { r, pedidas } = rastreador(base({
+      "https://bodegaselinicio.com/sitemap.xml": urlset("/vinos/ficha-vastago/", "/vinos-3/vastago-organic/"),
+      "https://bodegaselinicio.com/vinos-3/vastago-organic/": ficha("Vástago Organic", EN),
+    }));
+    const out = await r.rastrear(sitio("https://bodegaselinicio.com/"));
+    expect(pedidas).toContain("https://bodegaselinicio.com/vinos-3/vastago-organic/");
+    expect(out.vinos.map((v) => v.nombre)).toEqual(["Vástago"]);
+    expect(out.avisos.some((a) => a.startsWith("1 páginas en inglés"))).toBe(true);
   });
 });

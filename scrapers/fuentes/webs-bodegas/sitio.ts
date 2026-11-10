@@ -32,6 +32,7 @@ import {
   decodificarEntidades,
   enlaces,
   h1,
+  idiomaDeTexto,
   jsonLd,
   limpiarTitulo,
   TITULO_GENERICO,
@@ -410,6 +411,13 @@ export class RastreadorSitio {
       if (!(e instanceof PresupuestoAgotado)) throw e;
       r.extractor ??= r.huella.plataforma;
       r.avisos.push(`Presupuesto de ${presupuesto.ampliado ? this.o.maxPeticionesCatalogo ?? 120 : base0} peticiones agotado: se extrae lo descubierto`);
+    }
+    // Versión inglesa publicada sin prefijo de idioma (/los-vinos-3/sheet-x/): fuera por su texto. La
+    // portada no se descarta (puede ser bilingüe) ni los productos de la Store API (idioma de la tienda).
+    const enIngles = contenidos.filter((c) => c.origen !== "woo" && !isRaiz(c.url) && idiomaDeTexto(textoDe(c.bloques)) === "en");
+    if (enIngles.length) {
+      r.avisos.push(`${enIngles.length} páginas en inglés sin prefijo de idioma, descartadas (p. ej. ${enIngles[0]!.url})`);
+      for (const c of enIngles) contenidos.splice(contenidos.indexOf(c), 1);
     }
     r.hosts = [...new Set([host, ...contenidos.map((c) => new URL(c.url).host)])];
     const vistaEn = ahora.toISOString();

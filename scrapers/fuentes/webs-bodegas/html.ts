@@ -207,3 +207,24 @@ export function xRobotsTag(valor: string | null | undefined): string[] {
     })
     .filter(Boolean);
 }
+
+// Palabras vacías muy frecuentes: distinguen español de inglés en unas pocas frases.
+const VACIAS_ES = new Set(["el", "la", "los", "las", "de", "del", "y", "en", "con", "que", "por", "para", "su", "sus", "una", "un", "es", "se", "al", "nuestro", "nuestra", "vino"]);
+const VACIAS_EN = new Set(["the", "and", "of", "with", "in", "to", "is", "our", "its", "this", "from", "for", "on", "wine", "aged", "months", "nose", "palate", "grapes"]);
+
+/**
+ * Idioma de un texto por sus palabras vacías («es», «en») o null si es corto o dudoso. Sirve para
+ * las webs que publican la versión inglesa sin prefijo /en/ («/los-vinos-3/sheet-vastago/»).
+ */
+export function idiomaDeTexto(texto: string): "es" | "en" | null {
+  const palabras = texto.toLowerCase().match(/\p{L}+/gu) ?? [];
+  if (palabras.length < 25) return null;
+  let es = 0, en = 0;
+  for (const p of palabras) {
+    if (VACIAS_ES.has(p)) es++;
+    if (VACIAS_EN.has(p)) en++;
+  }
+  if (en >= 5 && en > es * 2) return "en";
+  if (es >= 5 && es > en * 2) return "es";
+  return null;
+}

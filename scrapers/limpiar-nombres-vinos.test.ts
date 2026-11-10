@@ -26,6 +26,8 @@ describe("limpiar-nombres-vinos", () => {
     expect(BASURA).toHaveLength(27);
     expect(BASURA.every(([x]) => NOMBRE_BASURA.test(x))).toBe(true);
     expect(["Viña Pedrosa Crianza", "Aalto PS", "Rivendel Roble"].some((x) => NOMBRE_BASURA.test(x))).toBe(false);
+    // Las 9 fichas inglesas de Bodegas el Inicio («Sheet X») también cuentan.
+    expect(NOMBRE_BASURA.test("Sheet Elas Albariño")).toBe(true);
   });
 
   it("renombra, fusiona con el homónimo de la misma bodega y borra lo que solo es plantilla", () => {
@@ -45,6 +47,14 @@ describe("limpiar-nombres-vinos", () => {
     // El slug «pozo-de-nieve» ya lo usa el vino de otra bodega: se usa el de la bodega.
     expect(de("Pozo de Nieve – Etiquetado nutricional")).toMatchObject({ tipo: "renombrar", nombre: "Pozo de Nieve", slug: "vega-de-yuso-pozo-de-nieve" });
     expect(acciones.filter((a) => a.tipo === "renombrar")).toHaveLength(25);
+  });
+
+  it("«Sheet X» duplicado de «Ficha X»: si la ficha ya se renombró a X, la inglesa se fusiona con ella", () => {
+    const es = vino("Ficha Pluma Rosé", "el-inicio");
+    const en = vino("Sheet Pluma Rosé", "el-inicio");
+    const acc = proponerLimpieza([es, en], [es, en], new Set([es.slug, en.slug]));
+    expect(acc.map((a) => a.tipo)).toEqual(["renombrar", "fusionar"]);
+    expect(acc[1]).toMatchObject({ destino: { id: es.id } });
   });
 
   it("respeta un nombre que el admin ya editó", () => {
