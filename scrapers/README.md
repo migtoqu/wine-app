@@ -9,7 +9,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | `vinopremier` | `vinopremier` | `vinos`, `anadas`, `anada_variedades`, `imagenes`, `codigos_ean`, `registros_fuente` | `scrape-vinopremier.yml` (manual (cron desactivado hasta que la web responda)) |
 | `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
 | `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
-| `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves 02:37 UTC, 3 lotes) |
+| `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves y sábado 02:37 UTC, 4 lotes) |
 | `enlaces` | `comprobador-enlaces` (no es una fuente de datos) | `comprobaciones_enlace` (y `imagenes.estado_enlace` vía trigger) | `link-check.yml` (domingo 05:17 UTC) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).
@@ -83,6 +83,34 @@ Revisa cada semana las URLs del catálogo: `imagenes.url`, `bodegas.web` y `enot
 # Dry-run sin BD con URLs sueltas (o un fichero con una por línea)
 node scrapers/cli.ts enlaces --dry-run --urls https://example.com/,https://example.com/no-existe
 ```
+
+## Ofertas y precios (`lib/ofertas.ts`)
+
+Escritura compartida del comparador de precios (migración `20261112110000_comparador_precios`).
+Cualquier scraper que traiga precios (tiendas, webs de bodegas con tienda online) la usa así:
+
+```ts
+const inicio = new Date();
+const ofertas = new RegistroOfertas(ctx.db, ctx.fuenteId, ctx.log);
+if (await ofertas.preparar()) { /* hay tienda activa para esta fuente */ }
+await ofertas.registrarOferta({ idExterno, vinoId, anadaId, url, precio, moneda, formatoMl, disponible, ean, registroId });
+await ofertas.cerrar(inicio, { completa: ctx.limite == null && ctx.contadores.errores === 0 && !ctx.esParcial() });
+```
+
+- La tienda se busca por `tiendas.fuente_id`. Sin tienda, o con la tienda desactivada, no se escribe nada.
+  Una fuente nueva necesita su fila en `tiendas`, que se crea en su migración o desde `/admin/tiendas`.
+- La clave es (tienda, `id_externo`), así que volver a ejecutar no duplica ofertas.
+- `anadaId: null` vale para las tiendas que no indican la añada; la oferta cuelga entonces del vino.
+- El historial (`historial_precios`) lo mantiene un trigger y solo crece cuando cambia el precio.
+- No se tocan `oculta_admin` (lo decide el admin) ni `estado_enlace` (lo lleva el comprobador de enlaces).
+  La única excepción: `estado_enlace` vuelve a `sin_comprobar` si cambia la URL.
+- Supresiones: un vino o una añada que el admin borró no recibe ofertas, y una fusión redirige la oferta al superviviente.
+- Sin precio, con una moneda distinta de EUR o con un formato imposible, la oferta se omite.
+- Si no hay formato, se asume 75 cl.
+- `cerrar()` solo actúa en ejecuciones completas. Las ofertas no vistas suman una ejecución sin ver.
+  Tras `UMBRAL_NO_VISTAS` (3) ejecuciones seguidas pasan a no disponibles; no se borran, para conservar el historial.
+
+Vinoselección y Vinopremier ya registran sus ofertas: lo hace `ofertaVinoseleccion()` / `ofertaVinopremier()` en su `guardar.ts`.
 
 ## Ribera del Duero
 
@@ -159,7 +187,7 @@ node scrapers/cli.ts ribera --dry-run --limit 40 --out scrapers/out/ribera.json
 node scrapers/cli.ts webs-bodegas --dry-run --webs scrapers/out/ribera.json
 node scrapers/cli.ts webs-bodegas --dry-run --webs https://aalto.es,https://www.bodegadobler.com
 # Ejecución real: lee las bodegas con web de la BD (service role)
-node scrapers/cli.ts webs-bodegas --lote 1/3 --presupuesto-min 45
+node scrapers/cli.ts webs-bodegas --lote 1/4 --presupuesto-min 45
 node scrapers/cli.ts webs-bodegas --dominio aalto.es
 ```
 
@@ -192,6 +220,39 @@ Fuera quedan otros idiomas (`/en/`, `/pt-pt/`, `?lang=en`), noticias y blog, y c
 - `servicio:<tipo>:<título>` → `servicios_bodega` (por bodega + tipo + título normalizado) y `Consolidador` para precio, duración, idiomas y URL de reserva.
 - Supresiones y decisiones del admin respetadas en los tres.
 
+### Fase B (vinos exhaustivos, D.O. por vino, imágenes, enoturismo, ofertas y webs nuevas)
+
+- **Presupuesto adaptativo**: 40 peticiones de contenido por sitio, que suben una vez hasta 120 si hay más fichas de vino candidatas que presupuesto. Topes por clase: vinos 150, historia 4, enoturismo 12, contacto 1; servicios 20. Concurrencia 8 dominios.
+- **Más descubrimiento**:
+  - API REST y sitemap juntos: los sub-sitemaps de producto, vino y añada van primero.
+  - Store API de Woo hasta 10 páginas; sus fichas no se vuelven a pedir por HTML.
+  - Profundidad 2 desde los listados de vinos y desde la página de enoturismo.
+  - JSON-LD `Product`/`Offer` en cualquier HTML.
+  - **Subdominios** del mismo dominio enlazados desde la portada (`tienda.`, `enoturismo.`, `shop.`…). Cada host pasa robots.txt; un 403/429 o un desafío anti-bot en un subdominio deja ese host sin detener el sitio.
+  - Fuera: noticias con fecha, «en los medios», `?add-to-cart`, `/page/N/`, páginas de envío y pago, y slugs que ya dicen que no son un vino (estuche, sacacorchos…).
+- **Plataformas**: Wix va por su sitemap (`store-products-sitemap.xml`) más el JSON-LD de cada ficha, sin `/_api/`. Shopify sigue como punto de extensión (0 webs en el catálogo).
+- **Incremental**: `datos.paginas` guarda la `modificada` (lastmod del sitemap, `modified` de WP) de cada página. Si no ha cambiado, no se pide: sus registros se marcan vistos y no cuentan como desaparecidos.
+- **D.O. por vino** (`denominacion.ts`):
+  - Orden de búsqueda: la ficha («D.O. Rueda», «D.O.Ca. Rioja», «Vino de la Tierra de Castilla y León», «Denominación: …»), luego la categoría o las migas, luego la ruta (`/vinos-rueda/`; en el slug del vino solo las D.O. de varias palabras).
+  - Se resuelve contra `denominaciones`, que tiene las 106 DOP y 43 IGP (semillas `20261112100000`), con alias cerrados.
+  - Sin pista: la D.O. de la bodega solo si tiene una. Con varias → `revision` (`do_ambigua`). «D.O. X» desconocida → `revision` (`do_desconocida`). «Vino de España» → sin D.O.
+  - `denominacion_id` se consolida en cada pasada, así se corrige la D.O. principal que puso la fase A. `bodega_denominaciones` no cambia.
+- **Imágenes** (`imagen.ts`), enlazadas y nunca descargadas:
+  - Bodega: el `og:image` de historia o portada, o una foto grande del contenido cuyo nombre o alt diga bodega o viñedo. Tipo `vinedo`/`bodega`.
+  - Botella por añada: la imagen de Woo, la del JSON-LD o la de la ficha.
+  - Fuera logos, sellos, premios, miniaturas, SVG/GIF y hosts de terceros; la CDN de la plataforma sí vale. Se comprueba robots.txt.
+  - Atribución «Web oficial de X»; `principal` solo si no hay otra; supresiones del admin respetadas.
+  - `noimageai` y `ai-*=no` no impiden enlazar; la señal queda en `datos.imagen.senales_ia`.
+- **Enoturismo** (`enoturismo.ts`):
+  - «Qué incluye» en vocabulario cerrado (`visita_vinedo`, `visita_bodega`, `sala_barricas`, `calado`, `cata`, `cata_comentada`, `aperitivo`, `maridaje`, `comida`, `menu_degustacion`, `copa_regalo`, `botella_regalo`, `guia`, `transporte`, `actividad_vendimia`, `paseo`), vinos de la cata, personas mín./máx., días («de martes a domingo · con reserva previa») y temporada.
+  - Descripción propia por plantilla en `servicios_bodega.descripcion`, más `horario`, vía `Consolidador`: el admin manda.
+  - Un servicio de esta web que deja de aparecer pasa a `activo = false`, nunca se borra. No ocurre si el rastreo se quedó sin presupuesto o su página no cambió.
+- **Ofertas** (`ofertas.ts`): precio, precio regular, moneda, disponibilidad, formato en ml, unidades por venta, EAN y SKU de la Store API o del JSON-LD `Offer`. Se guardan en `registros_fuente.datos.ofertas` de cada vino, a la espera de las tablas de ofertas.
+- **Webs para bodegas sin `web`**:
+  - La candidata es el dominio del email (`info@bodegasx.com` → `https://bodegasx.com/`), nunca proveedores de correo ni buscadores. Una por bodega cada 30 días.
+  - Pasa la puerta completa, y su portada tiene que nombrar a la bodega (título, `og:site_name`, h1 u `Organization`, trigramas ≥ 0,8, contenida o en el dominio). Verificada → `bodegas.web` vía `Consolidador` y se rastrea como cualquier sitio. Dudosa → registro `web:<bodega>` en `revision` en la fuente madre. Si no, `descartado`.
+  - En dry-run: `--descubrir-webs` con el JSON de un dry-run de ribera o rioja.
+- **Workflow**: jueves y sábado a las 02:37 UTC, 4 lotes (`--lote I/4`).
 
 ## Emparejamiento vino → bodega (`emparejamiento/bodegas.ts`)
 
@@ -241,15 +302,26 @@ Cada registro de fuente deja en `valores_fuente` lo que dice de cada campo (con 
 | --- | --- |
 | NIF o registro de embotellador iguales | 1 |
 | Dominio web igual y exclusivo (`dominioWeb`; se ignoran redes, constructores de webs y tiendas: `esDominioGenerico`) | 0,97 (0,8 si lo comparten varias bodegas) |
-| Clave de nombre exacta: mismo municipio / falta en un lado / otro municipio | 0,97 / 0,9 / 0,5 |
-| Clave contenida | 0,92 / 0,8 / 0,4 |
+| Clave de nombre exacta (entera, sin espacios o por tramos «X - Y»): mismo lugar / sin lugar / otro lugar | 0,97 / 0,85 / 0,5 |
+| Clave contenida (salvo que lo común sea solo el municipio: «Peñafiel» ⊂ «Tierras de Peñafiel» → máx. 0,7) | 0,92 / 0,8 / 0,4 |
 | Trigramas `s` sobre la clave | 0,5 + 0,45·s / 0,9·s / 0,6·s |
-| Nombre = marca exclusiva del CR de la candidata | 0,85 |
-| En contra: NIF distinto → máx. 0,3; dominios propios distintos → máx. 0,85 | |
+| Nombre = marca exclusiva del C.R. de la candidata (razón social ≠ marca) | 0,88 / 0,8 / 0,5 |
+| Teléfono exclusivo igual (no en otro lugar): con nombre/marca ≥ 0,6 / solo | 0,95 / 0,85 |
+| En contra: NIF distinto → máx. 0,3; webs propias sin relación y sin teléfono común → máx. 0,85; **otra provincia → máx. 0,6** (un dominio de grupo nunca basta) | |
+
+- **Lugar** (`emparejamiento/lugar.ts`): mismo municipio o mismo código postal; si falta el municipio, coordenadas a menos de 1 km. El municipio y el CP se sacan de la dirección si la fuente no los da (Ruta del Vino). Provincia por nombre o por los dos primeros dígitos del CP.
+- **Webs relacionadas** (no penalizan): misma etiqueta con otro TLD (`vinotierraranda.es`/`.com`), una dentro de otra (`abadiasanquirce`/`bodegasabadiasanquirce`) o el nombre en la ruta de la web de un grupo (`ferrerwines.com/valdubon/`).
+- **Normalización** (`claveNombreBodega`): además de formas societarias y genéricas, «&» = «y», «d´» = «de», y reclamos como «Familiares», «Histórica», «Hotel», «Wines», «Visitar», «Soc. Coop.».
+- Las marcas las da el C.R. de Ribera: Ruta del Vino y `reemparejar` las cargan con `lib/marcas.ts`; Vinoselección y Vinopremier, con su propio cargador.
 
 ≥ **0,90** con margen ≥ **0,05** → vinculada · **0,60–0,90** (o empate) → `revision`, sin crear nada · < 0,60 → bodega nueva.
 
-Vinos dentro de su bodega (`EmparejadorVinos`): EAN de la misma bodega o nombre normalizado igual → mismo vino; trigramas ≥ 0,8 con el mismo tipo y crianza → `revision`; si no, vino nuevo. El emparejamiento vino de tienda → bodega (`emparejamiento/bodegas.ts`) no cambia.
+Vinos dentro de su bodega (`EmparejadorVinos`): EAN de la misma bodega o nombre normalizado igual → mismo vino; **nombre canónico** (`claveVino`: sin añada ni rangos «22-23», formato «(6 bot»/«Mágnum»/«75 cl», sufijos «Etiquetado nutricional»/«Ficha técnica», D.O. final, artículos ni «tinto» en un tinto; palabras en cualquier orden) igual a un único vino de tipo y crianza compatibles → mismo vino; a varios → `revision`. Se conservan los romanos y códigos («Corimbo I», «D1»/«M1»), «blanco»/«rosado», «Brut Nature», «Vintage». Trigramas ≥ 0,8 con el mismo tipo y crianza → `revision`; si no, vino nuevo.
+
+### Medir y reprocesar
+
+- `node scrapers/emparejamiento/evaluar.ts [--detalle]`: precisión y recall sobre casos reales etiquetados (`emparejamiento/fixtures/`: catálogo de bodegas y vinos, marcas del C.R., fichas de Ruta del Vino y nombres de bodega de Rioja, «parecidos» de la cola). El catálogo se empareja también contra sí mismo (cada bodega/vino frente al resto): cualquier vinculación automática es un falso positivo. `evaluar.test.ts` exige **0 falsos positivos automáticos**.
+- `node scrapers/reemparejar.ts` (en seco por defecto; `--aplicar`, `--fuente`, `--out`, `--instantanea`): vuelve a pasar la cola de revisión por el emparejador. Solo aplica fichas de bodega (enlaza el registro; la próxima ejecución de la fuente consolida); los vinos los resuelve el scraper en su siguiente ejecución. Respeta decisiones del admin y supresiones. Incluye una auditoría de vinculaciones entre fuentes que hoy no se harían, con los `valores_fuente`/`procedencia_campos` que habría que mover.
 
 ### Supresiones y fusiones
 

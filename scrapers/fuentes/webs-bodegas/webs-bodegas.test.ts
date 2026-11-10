@@ -356,7 +356,7 @@ describe("hechos y resúmenes", () => {
     expect(h.every((x) => x.fuente.origen === "bodega")).toBe(true);
     expect(cuentaHechosHistoria(b)).toBe(5);
     const v = extraerVino("Doble R Crianza", "Nariz: frutos negros y regaliz. 14% vol.", { hoy: HOY });
-    const hv = hechosVino({ ...v, url: "https://x.es/v" }, "f", "2026-11-08T00:00:00Z", "Ribera del Duero");
+    const hv = hechosVino({ ...v, url: "https://x.es/v", denominacion: null, imagen: null, ofertas: [] }, "f", "2026-11-08T00:00:00Z", "Ribera del Duero");
     expect(hv.filter((x) => x.clave === "anada.cata.nariz").map((x) => x.sujeto)).toEqual(["frutos negros", "regaliz"]);
   });
 });
@@ -409,7 +409,7 @@ describe("RastreadorSitio", () => {
     const out = await r.rastrear(sitio("https://aalto.es/", "Aalto"));
     expect(out.puerta).toMatchObject({ apta: true, motivo: null });
     expect(out.puerta.aviso_legal?.url).toBe("https://aalto.es/aviso-legal/");
-    expect(out.extractor).toBe("wordpress");
+    expect(out.extractor).toMatch(/^wordpress/);
     expect(out.paginas.some((p) => p.url.includes("/en/"))).toBe(false);
     expect(out.vinos.map((v) => [v.nombre, v.anio])).toEqual([["Aalto", 2024]]);
     expect(out.bodega?.fundacion_anio).toBe(1999);

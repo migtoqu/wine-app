@@ -2,7 +2,14 @@
 // (emparejamiento entre fuentes, prioridad por campo, supresiones, decisiones del admin y resumen propio).
 // Extraído de fuentes/rioja/guardar.ts (mismo comportamiento) con la D.O. como parámetro.
 import type { Database } from "../../../../src/lib/supabase/database.types.ts";
-import { EmparejadorBodegas, type BodegaCatalogo, type ResultadoBodega } from "../../../emparejamiento/entidades.ts";
+import {
+  bodegaCatalogoDeFila,
+  COLUMNAS_EMPAREJAR_BODEGA,
+  EmparejadorBodegas,
+  type BodegaCatalogo,
+  type ResultadoBodega,
+} from "../../../emparejamiento/entidades.ts";
+import { coordenadas } from "../../../emparejamiento/lugar.ts";
 import { EmparejadorVinos, type ResultadoVino } from "../../../emparejamiento/vinos.ts";
 import { Consolidador, type Aporte } from "../../../lib/consolidacion/consolidar.ts";
 import type { TipoFuente } from "../../../lib/consolidacion/decidir.ts";
@@ -177,16 +184,13 @@ export class GuardadoConsejoCompleto {
     this.tipoFuente = fuente.tipo;
 
     const bodegas = await paginar("bodegas", (d, h) =>
-      this.db.from("bodegas").select("id, nombre, slug, municipio, web, nif, registro_embotellador").order("id").range(d, h),
+      this.db.from("bodegas").select(`slug, ${COLUMNAS_EMPAREJAR_BODEGA}`).order("id").range(d, h),
     );
     for (const b of bodegas) {
       this.bodegaIds.add(b.id);
       this.bodegaSlug.set(b.id, b.slug);
       this.slugs.add(b.slug);
-      this.catalogo.push({
-        id: b.id, nombre: b.nombre, municipio: b.municipio, web: b.web, nif: b.nif,
-        registroEmbotellador: b.registro_embotellador,
-      });
+      this.catalogo.push(bodegaCatalogoDeFila(b));
     }
     const registros = await paginar("registros", (d, h) =>
       this.db
@@ -337,7 +341,11 @@ export class GuardadoConsejoCompleto {
         nuevo = true;
       } else {
         const emp = this.emparejador.emparejar(
-          { nombre: n.campos.nombre, municipio: n.campos.municipio, web: n.campos.web, ...(n.marcas?.length ? { marcas: n.marcas } : {}) },
+          {
+            nombre: n.campos.nombre, municipio: n.campos.municipio, web: n.campos.web, provincia: n.campos.provincia,
+            codigoPostal: n.campos.codigo_postal, telefono: n.campos.telefono, ubicacion: coordenadas(n.campos.ubicacion),
+            direccion: n.campos.direccion, ...(n.marcas?.length ? { marcas: n.marcas } : {}),
+          },
           { excluir: this.excluir(n.idExterno) },
         );
         if (emp.estado === "suprimida") {
@@ -388,7 +396,11 @@ export class GuardadoConsejoCompleto {
     );
     this.bodegaIds.add(id);
     this.bodegaSlug.set(id, slug);
-    this.catalogo.push({ id, nombre: n.campos.nombre, municipio: n.campos.municipio, web: n.campos.web });
+    this.catalogo.push({
+      id, nombre: n.campos.nombre, municipio: n.campos.municipio, web: n.campos.web, provincia: n.campos.provincia,
+      codigoPostal: n.campos.codigo_postal, telefono: n.campos.telefono, ubicacion: coordenadas(n.campos.ubicacion),
+      ...(n.marcas?.length ? { marcas: n.marcas } : {}),
+    });
     this.reconstruirEmparejador();
     return id;
   }

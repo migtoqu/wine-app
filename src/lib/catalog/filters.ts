@@ -23,7 +23,7 @@ export const CRIANZAS = [
   "otra",
 ] as const satisfies readonly CrianzaVino[];
 
-export const ORDENES = ["relevancia", "nombre", "novedad"] as const;
+export const ORDENES = ["relevancia", "nombre", "novedad", "precio"] as const;
 export type Orden = (typeof ORDENES)[number];
 
 export const VISTAS = ["vinos", "bodegas"] as const;
@@ -47,6 +47,9 @@ export type SearchFilters = {
   variedades: string[];
   anada: Anada | null;
   bodega: string | null;
+  // Precio «desde» en 75 cl, en euros enteros (null = sin límite).
+  precioMin: number | null;
+  precioMax: number | null;
   orden: Orden;
   pagina: number;
 };
@@ -63,6 +66,8 @@ export const PARAM = {
   variedades: "uva",
   anada: "anada",
   bodega: "bodega",
+  precioMin: "pmin",
+  precioMax: "pmax",
   orden: "orden",
   pagina: "pagina",
 } as const satisfies Record<keyof SearchFilters, string>;
@@ -101,6 +106,16 @@ export function parseAnada(raw: string | string[] | undefined): Anada | null {
   return year >= 1800 && year <= 2100 ? year : null;
 }
 
+const MAX_PRECIO = 10_000;
+
+// Euros enteros entre 0 y 10.000 ("12", "12,5" → 12); cualquier otra cosa, sin límite.
+export function parsePrecio(raw: string | string[] | undefined): number | null {
+  const value = first(raw)?.trim().replace(",", ".");
+  if (!value || !/^\d+(\.\d+)?$/.test(value)) return null;
+  const n = Math.floor(Number(value));
+  return n >= 0 && n <= MAX_PRECIO ? n : null;
+}
+
 // El orden por relevancia solo tiene sentido con texto de búsqueda.
 export function defaultOrden(q: string): Orden {
   return q ? "relevancia" : "nombre";
@@ -112,6 +127,11 @@ export function parseSearchFilters(params: RawSearchParams): SearchFilters {
   const orden = first(params[PARAM.orden]) as Orden | undefined;
   const pagina = Number.parseInt(first(params[PARAM.pagina]) ?? "", 10);
   const bodega = pickSlugs(params[PARAM.bodega])[0] ?? null;
+  let precioMin = parsePrecio(params[PARAM.precioMin]);
+  let precioMax = parsePrecio(params[PARAM.precioMax]);
+  if (precioMin !== null && precioMax !== null && precioMin > precioMax) {
+    [precioMin, precioMax] = [precioMax, precioMin];
+  }
 
   return {
     q,
@@ -122,6 +142,8 @@ export function parseSearchFilters(params: RawSearchParams): SearchFilters {
     variedades: pickSlugs(params[PARAM.variedades]),
     anada: parseAnada(params[PARAM.anada]),
     bodega,
+    precioMin: precioMin === 0 ? null : precioMin,
+    precioMax,
     orden:
       orden && ORDENES.includes(orden) && !(orden === "relevancia" && !q)
         ? orden
@@ -152,6 +174,8 @@ export function serializeSearchFilters(
   for (const v of f.variedades) params.append(PARAM.variedades, v);
   if (f.anada !== null) params.set(PARAM.anada, String(f.anada));
   if (f.bodega) params.set(PARAM.bodega, f.bodega);
+  if (f.precioMin !== null) params.set(PARAM.precioMin, String(f.precioMin));
+  if (f.precioMax !== null) params.set(PARAM.precioMax, String(f.precioMax));
   if (f.orden !== defaultOrden(f.q)) params.set(PARAM.orden, f.orden);
   if (f.pagina > 1) params.set(PARAM.pagina, String(f.pagina));
   const query = params.toString();
@@ -166,7 +190,8 @@ export function countActiveFilters(f: SearchFilters): number {
     f.denominaciones.length +
     f.variedades.length +
     (f.anada !== null ? 1 : 0) +
-    (f.bodega ? 1 : 0)
+    (f.bodega ? 1 : 0) +
+    (f.precioMin !== null || f.precioMax !== null ? 1 : 0)
   );
 }
 
@@ -179,6 +204,8 @@ export function clearFilters(f: SearchFilters): Partial<SearchFilters> {
     variedades: [],
     anada: null,
     bodega: null,
+    precioMin: null,
+    precioMax: null,
   };
 }
 
@@ -202,6 +229,8 @@ export function toListarVinosArgs(f: SearchFilters, pageSize = PAGE_SIZE): Lista
   if (f.anada === "sin") args.sin_anada = true;
   else if (f.anada !== null) args.anio = f.anada;
   if (f.bodega) args.bodega = f.bodega;
+  if (f.precioMin !== null) args.precio_min = f.precioMin;
+  if (f.precioMax !== null) args.precio_max = f.precioMax;
   return args;
 }
 

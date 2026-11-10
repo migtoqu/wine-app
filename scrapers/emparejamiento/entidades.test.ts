@@ -67,8 +67,8 @@ describe("EmparejadorBodegas", () => {
     expect(r).toMatchObject({ estado: "vinculada", bodegaId: "aalto", confianza: 0.97 });
   });
 
-  it("nombre igual sin municipio en la fuente → vinculada (0,9)", () => {
-    expect(e.emparejar({ nombre: "Aalto" })).toMatchObject({ estado: "vinculada", confianza: 0.9 });
+  it("nombre igual sin nada que lo confirme → revisión (0,85): «Bodegas Escudero» de Rioja ≠ la de Ribera", () => {
+    expect(e.emparejar({ nombre: "Aalto" })).toMatchObject({ estado: "revision", confianza: 0.85 });
   });
 
   it("nombre igual en otro municipio → no se vincula (podría ser otra bodega)", () => {

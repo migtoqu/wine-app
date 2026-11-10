@@ -6,6 +6,7 @@ import { Emparejador, type BodegaCandidata, type ResultadoEmparejamiento } from 
 import { EmparejadorVinos, type VinoCatalogo } from "../../emparejamiento/vinos.ts";
 import { registrosConocidos } from "../../lib/db.ts";
 import type { Contexto } from "../../lib/ejecucion.ts";
+import { RegistroOfertas } from "../../lib/ofertas.ts";
 import { ClienteHttp, ParadaFuente } from "../../lib/http.ts";
 import { LimitadorPorHost } from "../../lib/rate-limit.ts";
 import { RobotsDenegado } from "../../lib/robots.ts";
@@ -117,6 +118,10 @@ export async function scraperVinopremier(ctx: Contexto): Promise<void> {
     for (const e of c.eans) if (bodegaDe.has(e.vinoId)) eansDry.set(e.ean, { vinoId: e.vinoId, bodegaId: bodegaDe.get(e.vinoId)! });
     ctx.log.info(`Catálogo de prueba: ${c.vinos.length} vinos, ${c.eans.length} EAN`);
   } else ctx.log.warn("Dry-run sin --bodegas: no hay catálogo con el que emparejar (todo irá a revisión)");
+  // Comparador de precios: cada ficha guardada deja su oferta en la tienda de esta fuente.
+  const inicio = new Date();
+  const ofertas = guardado ? new RegistroOfertas(ctx.db!, ctx.fuenteId!, ctx.log) : null;
+  if (guardado && ofertas && (await ofertas.preparar())) guardado.ofertas = ofertas;
   const emparejador = new Emparejador(bodegas);
   ctx.log.info(`${emparejador.total} bodegas candidatas para emparejar`);
   const vinoPorEan = (ean: string | null) => (guardado ? guardado.vinoPorEan(ean) : ean ? (eansDry.get(ean) ?? null) : null);
@@ -249,4 +254,7 @@ export async function scraperVinopremier(ctx: Contexto): Promise<void> {
       ctx.log.error(`${tarjeta.url}: ${(e as Error).message}`);
     }
   }
+
+  // Solo una ejecución completa puede dar ofertas por no vistas.
+  await ofertas?.cerrar(inicio, { completa: ctx.limite == null && ctx.contadores.errores === 0 && !ctx.esParcial() });
 }

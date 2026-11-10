@@ -28,6 +28,12 @@ export type ClaveHecho =
   | "servicio.duracion_minutos" // number, unidad «min»
   | "servicio.idioma"        // string (ISO 639-1), sujeto = el mismo código
   | "servicio.url_reserva"   // string: URL de reserva
+  | "servicio.incluye"       // string (vocabulario cerrado: visita_vinedo, cata, aperitivo…), sujeto = el mismo
+  | "servicio.vinos_cata"    // number: vinos que se catan
+  | "servicio.personas_min"  // number
+  | "servicio.personas_max"  // number
+  | "servicio.horario"       // string (vocabulario cerrado: «de martes a domingo · con reserva previa»)
+  | "servicio.temporada"     // string («todo el año», «de abril a octubre»)
   | "vino.ean"               // string: EAN/GTIN de la botella
   | "vino.nombre"            // string
   | "vino.tipo"              // enum tipo_vino

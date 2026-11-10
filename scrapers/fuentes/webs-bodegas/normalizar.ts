@@ -66,6 +66,12 @@ export function hechosServicio(s: ServicioSitio, fuenteId: string, observadoEn: 
     { clave: "servicio.duracion_minutos", valor: s.duracion_minutos, unidad: "min" },
     { clave: "servicio.url_reserva", valor: s.url_reserva },
     ...s.idiomas.map((i) => ({ clave: "servicio.idioma" as const, valor: i, sujeto: i })),
+    ...s.incluye.map((i) => ({ clave: "servicio.incluye" as const, valor: i, sujeto: i })),
+    { clave: "servicio.vinos_cata", valor: s.vinos_cata },
+    { clave: "servicio.personas_min", valor: s.personas_min },
+    { clave: "servicio.personas_max", valor: s.personas_max },
+    { clave: "servicio.horario", valor: s.horario },
+    { clave: "servicio.temporada", valor: s.temporada },
   ]);
 }
 

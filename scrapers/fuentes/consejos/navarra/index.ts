@@ -31,6 +31,9 @@ import {
 
 export const SLUG_FUENTE = "cr-navarra";
 
+/** Cada cuántas fichas se escribe una línea de progreso (la web a veces tarda > 20 s por ficha). */
+const CADA = 25;
+
 function contar(ctx: Contexto, r: Resultado) {
   const c = ctx.contadores;
   if (r === "nuevo") c.nuevos++;
@@ -48,7 +51,8 @@ async function recorrer(
   procesar: (html: string, url: string) => Promise<void>,
 ): Promise<void> {
   ctx.log.info(`[${tipo}] ${slugs.length} fichas`);
-  for (const slug of slugs) {
+  for (const [i, slug] of slugs.entries()) {
+    if (i > 0 && i % CADA === 0) ctx.log.info(`[${tipo}] ${i}/${slugs.length}`);
     const url = urlFicha(tipo, slug);
     try {
       await procesar((await ctx.http.get(url)).texto, url);

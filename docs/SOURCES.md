@@ -445,7 +445,13 @@ Las 347 tienen municipio y provincia. Cruce con el catálogo actual (511 bodegas
 | Vino | Nombre, tipo y crianza («Tinto Crianza»), variedades, meses de barrica (hecho `anada.barrica_meses`) y bodega por el enlace «Ver bodega». El precio de la ficha va solo a `datos` |
 | Experiencia | Tipo, precio, duración (la web da horas sin unidad), idiomas, temporada y horario, enlace de reserva y bodega. El texto se usa para clasificar el tipo, pero no se guarda |
 
-NAVARRA_CIFRAS
+**Dry-run completo (2026-11-09)**, sin tocar la BD: 322 peticiones, **0 errores**, en 2 h 8 min. Los vinos tardaron unos 28 s por ficha, con dos timeouts reintentados; al día siguiente una ficha respondía en 4 s. El workflow tiene 150 min de margen.
+
+| Entidad | Fichas | Detalle |
+| --- | --- | --- |
+| Bodegas | 30 | Todas con web, teléfono, email y provincia; 24 con zona; 16 con municipio (de la dirección o de sus experiencias); 19 visitables; 8 con coordenadas |
+| Vinos | 255 | Bodega por enlace explícito: 253. Las otras 2 van a revisión (su bodega no tiene ficha). Tipo en todos: 141 tintos, 61 blancos, 45 rosados, 8 dulces. Crianza en 155; uvas en todos; meses de barrica en 126 |
+| Experiencias | 28 | Todas con su bodega, idiomas y horario; 25 con precio; 27 con duración; 24 con enlace de reserva |
 
 ---
 

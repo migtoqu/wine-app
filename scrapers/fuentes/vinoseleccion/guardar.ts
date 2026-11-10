@@ -17,6 +17,7 @@ import {
 import { sinError, type ClienteDb } from "../../lib/db.ts";
 import { igualesJson } from "../../lib/json.ts";
 import type { Log } from "../../lib/log.ts";
+import { disponibleDesde, type EntradaOferta, type RegistroOfertas } from "../../lib/ofertas.ts";
 import { claveNombreBodega, claveTexto, slugify } from "../../lib/texto.ts";
 import type { Database } from "../../../src/lib/supabase/database.types.ts";
 import { SLUG_DENOMINACION } from "../ribera/guardar.ts";
@@ -50,6 +51,27 @@ export function hechosVinoseleccion(n: VinoNormalizado, fuenteId: string, observ
     { clave: "anada.temperatura_max", valor: n.anada.temp_servicio_max, unidad: "ºC" },
     ...n.variedades.map((v) => ({ clave: "anada.variedad" as const, valor: v.porcentaje, sujeto: v.nombre, unidad: "%" })),
   ]);
+}
+
+/** Oferta (precio y disponibilidad) de la ficha para el comparador de precios. */
+export function ofertaVinoseleccion(
+  n: VinoNormalizado,
+  vinoId: string,
+  anadaId: string | null,
+  registroId: string | null,
+): EntradaOferta {
+  return {
+    idExterno: n.idExterno,
+    vinoId,
+    anadaId,
+    url: n.url,
+    precio: n.datos.precio ?? n.datos.tarjeta.precio,
+    moneda: n.datos.moneda,
+    formatoMl: n.datos.formato_ml,
+    disponible: disponibleDesde(n.datos.disponibilidad, n.datos.tarjeta.en_stock),
+    ean: n.datos.ean,
+    registroId,
+  };
 }
 
 // Nombres de tienda que no coinciden con el nombre ni los sinónimos oficiales.
@@ -110,6 +132,8 @@ export class GuardadoVinoseleccion {
   private consolidador: Consolidador;
   private resumidor: Resumidor;
   private tipoFuente: TipoFuente = "tienda";
+  /** Comparador de precios: si se asigna, cada ficha guardada deja su oferta. */
+  ofertas: RegistroOfertas | null = null;
 
   constructor(db: ClienteDb, fuenteId: string, log: Log, generador: GeneradorResumen = new PlantillasEsEn()) {
     this.db = db;
@@ -313,6 +337,7 @@ export class GuardadoVinoseleccion {
     }
 
     const registroId = await this.guardarRegistro(n, "emparejado", anadaId, emparejamiento);
+    await this.ofertas?.registrarOferta(ofertaVinoseleccion(n, vinoId, anadaId, registroId));
     if (vinoCreado) await this.procedenciaVinoNuevo(vinoId, n, registroId);
     const aporte: Aporte = { registroId, fuenteId: this.fuenteId, tipoFuente: this.tipoFuente, url: n.url };
     const campos: Record<string, unknown> = Object.fromEntries(CAMPOS_ANADA.map((k) => [k, n.anada[k]]));

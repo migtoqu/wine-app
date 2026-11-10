@@ -22,9 +22,24 @@ describe("parseSearchFilters", () => {
       variedades: [],
       anada: null,
       bodega: null,
+      precioMin: null,
+      precioMax: null,
       orden: "nombre",
       pagina: 1,
     });
+  });
+
+  it("precio: euros enteros, rango ordenado y 0 como sin mínimo", () => {
+    expect(parseSearchFilters({ pmin: "10", pmax: "25,9" })).toMatchObject({ precioMin: 10, precioMax: 25 });
+    expect(parseSearchFilters({ pmin: "30", pmax: "10" })).toMatchObject({ precioMin: 10, precioMax: 30 });
+    expect(parseSearchFilters({ pmin: "0", pmax: "-3" })).toMatchObject({ precioMin: null, precioMax: null });
+    expect(parseSearchFilters({ pmax: "abc" }).precioMax).toBeNull();
+    expect(parseSearchFilters({ pmax: "99999" }).precioMax).toBeNull();
+    const f = parseSearchFilters({ pmin: "10", pmax: "20", orden: "precio" });
+    expect(serializeSearchFilters(f)).toBe("?pmin=10&pmax=20&orden=precio");
+    expect(countActiveFilters(f)).toBe(1);
+    expect(toListarVinosArgs(f)).toMatchObject({ precio_min: 10, precio_max: 20, orden: "precio" });
+    expect(toListarVinosArgs(parseSearchFilters({}))).not.toHaveProperty("precio_max");
   });
 
   it("normaliza el texto y usa relevancia por defecto si hay búsqueda", () => {
@@ -56,7 +71,7 @@ describe("parseSearchFilters", () => {
       crianza: "eterna",
       do: ["Rioja!", "../etc", "rioja"],
       bodega: "Bodega Con Espacios",
-      orden: "precio",
+      orden: "puntos",
       ver: "mapa",
       pagina: "-3",
       anada: "20x0",

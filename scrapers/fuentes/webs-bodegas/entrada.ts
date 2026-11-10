@@ -4,11 +4,18 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dominioWeb, esDominioGenerico, normalizarWeb } from "../../lib/contacto.ts";
+import { denominacionesDeSemillas, type Denominacion } from "./denominacion.ts";
 import type { BodegaEntrada, EntradaSitio } from "./sitio.ts";
 
 export interface BodegaConWeb extends BodegaEntrada {
   web: string;
+  /** D.O. de la bodega (para decidir la de sus vinos cuando la ficha no dice nada). */
+  denominaciones?: Denominacion[];
+  email?: string | null;
 }
+
+/** D.O. de las bodegas según la fuente del JSON de un dry-run (Consejo Regulador). */
+const DO_DE_FUENTE: Record<string, string> = { "cr-ribera-del-duero": "ribera-del-duero", "cr-rioja": "rioja" };
 
 /** Agrupa bodegas por dominio; descarta webs que no son de la bodega (redes, tiendas, constructores). */
 export function agruparPorDominio(bodegas: BodegaConWeb[]): EntradaSitio[] {
@@ -54,12 +61,7 @@ export function bodegasDeArgumento(arg: string): BodegaConWeb[] {
   }
   const t = contenido.trimStart();
   if (t.startsWith("{") || t.startsWith("[")) {
-    const json = JSON.parse(t) as { registros?: { campos?: { nombre?: string; web?: string | null; municipio?: string | null } }[] } | unknown[];
-    const registros = Array.isArray(json) ? (json as { campos?: Record<string, string | null> }[]) : json.registros ?? [];
-    return registros
-      .map((r) => r.campos ?? (r as Record<string, string | null>))
-      .filter((c): c is { nombre: string; web: string; municipio?: string | null } => !!c?.web && !!c.nombre)
-      .map((c) => ({ id: null, nombre: c.nombre, municipio: c.municipio ?? null, web: c.web }));
+    return bodegasDeJson(t).filter((b): b is BodegaConWeb => !!b.web);
   }
   return t
     .split(/\r?\n/)
@@ -70,3 +72,52 @@ export function bodegasDeArgumento(arg: string): BodegaConWeb[] {
       return { id: null, nombre: nombre?.trim() || (dominioWeb(normalizarWeb(web!)) ?? web!), municipio: municipio?.trim() || null, web: web!.trim() };
     });
 }
+
+type BodegaJson = Omit<BodegaConWeb, "web"> & { web: string | null };
+
+/** Bodegas del JSON de un dry-run de ribera o rioja (o una lista de objetos con nombre/web). */
+function bodegasDeJson(texto: string): BodegaJson[] {
+  const json = JSON.parse(texto) as { fuente?: string; registros?: Record<string, unknown>[] } | Record<string, unknown>[];
+  const registros = Array.isArray(json) ? json : json.registros ?? [];
+  const slugDo = Array.isArray(json) ? undefined : DO_DE_FUENTE[json.fuente ?? ""];
+  const dos = slugDo ? denominacionesDeSemillas().filter((d) => d.slug === slugDo) : [];
+  return registros
+    .filter((r) => !r.entidad || r.entidad === "bodega")
+    .map((r) => (r.campos ?? r) as { nombre?: string; web?: string | null; municipio?: string | null; email?: string | null })
+    .filter((c) => !!c?.nombre)
+    .map((c) => ({ id: null, nombre: c.nombre!, municipio: c.municipio ?? null, web: c.web ?? null, email: c.email ?? null, denominaciones: dos }));
+}
+
+/** Dry-run de `--descubrir-webs`: bodegas del JSON sin web y con email de dominio propio. */
+export function candidatasDeArgumento(arg: string, conWeb: BodegaConWeb[]): EntradaSitio[] {
+  let texto: string;
+  try {
+    texto = readFileSync(arg, "utf8");
+  } catch {
+    return [];
+  }
+  if (!/^\s*[[{]/.test(texto)) return [];
+  const usados = new Set(conWeb.map((b) => dominioWeb(normalizarWeb(b.web))).filter(Boolean));
+  const out: EntradaSitio[] = [];
+  for (const b of bodegasDeJson(texto)) {
+    if (b.web) continue;
+    const c = candidataPorEmail(b.email);
+    if (!c || usados.has(c.dominio)) continue;
+    usados.add(c.dominio);
+    out.push({ dominio: c.dominio, url: c.url, bodegas: [{ id: null, nombre: b.nombre, municipio: b.municipio }], candidata: { origen: "email", detalle: b.email! } });
+  }
+  return out;
+}
+
+// Proveedores de correo: su dominio no es la web de la bodega.
+const CORREO_GENERICO = /^(gmail|googlemail|hotmail|outlook|live|msn|yahoo|ymail|icloud|me|mac|aol|gmx|protonmail|proton|telefonica|movistar|terra|ono|jazztel|orange|vodafone|wanadoo|euskaltel|telecable|mundo-r|r|ya|infonegocio|arrakis|retemail|correo|mail|email|yandex|zoho)\./i;
+
+/** Web candidata a partir del email («info@bodegasx.com» → https://bodegasx.com/), o null. */
+export function candidataPorEmail(email: string | null | undefined): { dominio: string; url: string } | null {
+  const m = email?.trim().toLowerCase().match(/^[^@\s]+@([a-z0-9.-]+\.[a-z]{2,})$/);
+  if (!m) return null;
+  const dominio = dominioWeb(`https://${m[1]}`);
+  if (!dominio || CORREO_GENERICO.test(dominio) || esDominioGenerico(dominio)) return null;
+  return { dominio, url: `https://${m[1]!.replace(/^(?:mail|correo|email|smtp)\./, "")}/` };
+}
+
