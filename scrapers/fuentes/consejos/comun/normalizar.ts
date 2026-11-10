@@ -54,7 +54,7 @@ export interface BodegaNormalizada {
   datos: DatosRegistroConsejo;
 }
 
-type Config = Pick<DefinicionConsejo, "denominacion" | "provinciaPorMunicipio" | "aliasMunicipio">;
+type Config = Pick<DefinicionConsejo, "denominacion" | "provinciaPorMunicipio" | "aliasMunicipio" | "provinciaUnica">;
 
 /** «(Zamora)», «León, España», «VALLADOLID» → nombre de provincia reconocido, o null. */
 export function provinciaDeTexto(texto: string | null): string | null {
@@ -112,7 +112,7 @@ export function webPropia(web: string | null): string | null {
 export function normalizarBodega(f: FichaConsejo, cfg: Config): BodegaNormalizada {
   const cp = normalizarCodigoPostal(f.codigo_postal);
   const municipio = municipioDe(f.municipio, cfg.aliasMunicipio);
-  const provincia = provinciaDe(cp, municipio, f.provincia_texto, cfg.provinciaPorMunicipio);
+  const provincia = provinciaDe(cp, municipio, f.provincia_texto, cfg.provinciaPorMunicipio) ?? cfg.provinciaUnica ?? null;
   const campos: CamposBodega = {
     nombre: nombreBodegaParaMostrar(f.nombre),
     direccion: f.direccion ? capitalizarSiMayusculas(f.direccion).replace(/[\s,]+$/, "") || null : null,
