@@ -88,7 +88,21 @@ export interface PaginaVista {
   titulo: string | null;
   /** lastmod del sitemap o `modified` de WordPress (para el rastreo incremental). */
   modificada?: string | null;
+  /** Cuándo se leyó la página por última vez (ISO). */
+  vista?: string | null;
+  /** La página dio al menos una oferta con precio (ficha de la tienda). */
+  oferta?: boolean;
 }
+
+/** Lo que se recuerda de una página de la visita anterior (rastreo incremental). */
+export interface PaginaPrevia {
+  modificada: string;
+  vista: string | null;
+  oferta: boolean;
+}
+
+/** Una ficha con oferta se vuelve a leer como mucho cada 7 días aunque no cambie (precio y stock). */
+export const DIAS_REFRESCO_OFERTA = 7;
 
 export interface VinoSitio extends VinoWeb {
   url: string;
@@ -149,7 +163,7 @@ export interface OpcionesSitio {
   /** Para la D.O. de cada vino. */
   denominaciones?: ResolutorDenominaciones;
   /** URL normalizada → fecha de modificación vista la última vez (rastreo incremental). */
-  previas?: (dominio: string) => Map<string, string>;
+  previas?: (dominio: string) => Map<string, PaginaPrevia>;
   ahora?: () => Date;
 }
 
@@ -398,11 +412,16 @@ export class RastreadorSitio {
       r.avisos.push(`Presupuesto de ${presupuesto.ampliado ? this.o.maxPeticionesCatalogo ?? 120 : base0} peticiones agotado: se extrae lo descubierto`);
     }
     r.hosts = [...new Set([host, ...contenidos.map((c) => new URL(c.url).host)])];
-    r.paginas = contenidos.map((c) => ({ url: c.url, clase: c.clase, origen: c.origen, titulo: c.titulo || null, modificada: c.modificada ?? null }));
+    const vistaEn = ahora.toISOString();
 
     // 5. Hechos.
     r.bodega = this.hechosBodega(contenidos, enlacesHome);
     r.vinos = this.vinos(contenidos, ahora.getFullYear(), esDelSitio);
+    const conOferta = new Set(r.vinos.flatMap((v) => v.ofertas.filter((o) => o.precio != null).map((o) => normalizarUrl(o.url))));
+    r.paginas = contenidos.map((c) => ({
+      url: c.url, clase: c.clase, origen: c.origen, titulo: c.titulo || null, modificada: c.modificada ?? null, vista: vistaEn,
+      oferta: conOferta.has(normalizarUrl(c.url)),
+    }));
     r.servicios = this.servicios(contenidos, host, entrada.dominio);
     // Foto de la bodega: páginas de historia (la portada al final).
     const paginasFoto = contenidos
@@ -450,6 +469,7 @@ export class RastreadorSitio {
       avisos: r.avisos,
       esDelSitio,
       previas: this.o.previas?.(dominio) ?? new Map(),
+      ahora: (this.o.ahora ?? (() => new Date()))(),
       sinCambios: r.sinCambios,
       pedir: async (url: string) => {
         const h = new URL(url).host;
@@ -598,8 +618,10 @@ export interface ContextoDescubrimiento {
   avisos: string[];
   /** Host principal, el dominio base o un subdominio suyo (tienda., enoturismo.). */
   esDelSitio(host: string): boolean;
-  /** URL normalizada → fecha de modificación de la visita anterior. */
-  previas: Map<string, string>;
+  /** URL normalizada → modificación, lectura y oferta de la visita anterior. */
+  previas: Map<string, PaginaPrevia>;
+  /** Momento del rastreo (para la caducidad de las ofertas). */
+  ahora: Date;
   /** Aquí se anotan las URLs que no se piden por no haber cambiado. */
   sinCambios: string[];
   /** GET que descuenta del presupuesto de páginas del sitio (lanza al agotarlo). */
@@ -1018,7 +1040,10 @@ async function descubrirSubdominio(ctx: ContextoDescubrimiento, origenSub: strin
 function sinCambiar<T extends { url: string; modificada?: string | null }>(ctx: ContextoDescubrimiento, lista: T[]): T[] {
   return lista.filter((e) => {
     const previa = ctx.previas.get(normalizarUrl(e.url));
-    if (e.modificada && previa && e.modificada <= previa) {
+    // Una ficha de la tienda se relee cada DIAS_REFRESCO_OFERTA días aunque no cambie: el precio y
+    // el stock no tocan el lastmod en muchas webs.
+    const caducada = previa?.oferta && (!previa.vista || ctx.ahora.getTime() - Date.parse(previa.vista) > DIAS_REFRESCO_OFERTA * 86_400_000);
+    if (e.modificada && previa && e.modificada <= previa.modificada && !caducada) {
       ctx.sinCambios.push(e.url);
       return false;
     }

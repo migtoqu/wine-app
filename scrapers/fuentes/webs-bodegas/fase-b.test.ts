@@ -13,7 +13,7 @@ import { esNombreDeVino, extraerServicio } from "./extraer.ts";
 import { cargar } from "./html.ts";
 import { candidatasDePagina, elegirImagenBodega, esFoto, imagenBotella } from "./imagen.ts";
 import { formatoMl, ofertaDeJsonLd, ofertaDeWoo, unidades } from "./ofertas.ts";
-import { dominioBase, RastreadorSitio, verificarNombre, type EntradaSitio } from "./sitio.ts";
+import { dominioBase, RastreadorSitio, verificarNombre, type EntradaSitio, type PaginaPrevia } from "./sitio.ts";
 
 const fx = (f: string) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url), "utf8");
 const resolutor = new ResolutorDenominaciones(denominacionesDeSemillas());
@@ -179,7 +179,7 @@ describe("webs para bodegas sin web", () => {
 // Rastreo: subdominios, incremental y verificación
 // ---------------------------------------------------------------------------
 
-function rastreador(rutas: Record<string, string | { status?: number; cuerpo?: string; tipo?: string }>, previas = new Map<string, string>()) {
+function rastreador(rutas: Record<string, string | { status?: number; cuerpo?: string; tipo?: string }>, previas = new Map<string, PaginaPrevia>()) {
   const pedidas: string[] = [];
   const fetchFalso = vi.fn<typeof fetch>(async (entrada) => {
     const url = String(entrada);
@@ -232,12 +232,33 @@ describe("RastreadorSitio fase B", () => {
       "https://ejemplo.es/vinos/a-verdejo/": ficha("A Verdejo"),
       "https://ejemplo.es/vinos/b-verdejo/": ficha("B Verdejo"),
     };
-    const previas = new Map([["https://ejemplo.es/vinos/a-verdejo", "2026-10-01"], ["https://ejemplo.es/vinos/b-verdejo", "2026-10-01"]]);
+    const previa = (vista: string, oferta = false): PaginaPrevia => ({ modificada: "2026-10-01", vista, oferta });
+    const previas = new Map([["https://ejemplo.es/vinos/a-verdejo", previa("2026-11-08T00:00:00Z")], ["https://ejemplo.es/vinos/b-verdejo", previa("2026-11-08T00:00:00Z")]]);
     const { r, pedidas } = rastreador(rutas, previas);
     const out = await r.rastrear(sitio("https://ejemplo.es/"));
     expect(out.sinCambios).toEqual(["https://ejemplo.es/vinos/a-verdejo/"]);
     expect(pedidas).not.toContain("https://ejemplo.es/vinos/a-verdejo/");
     expect(out.vinos.map((v) => v.nombre)).toEqual(["B Verdejo"]);
+    expect(out.paginas.find((p) => p.url.endsWith("/b-verdejo/"))?.vista).toBe("2026-11-09T10:00:00.000Z");
+  });
+
+  it("incremental: una ficha con oferta que no se lee desde hace más de 7 días se vuelve a pedir aunque no cambie", async () => {
+    const rutas = {
+      "https://ejemplo.es/robots.txt": "User-agent: *\nAllow: /\nSitemap: https://ejemplo.es/sitemap.xml\n",
+      "https://ejemplo.es/": '<html><body><a href="/aviso-legal/">Aviso legal</a><main><p>Hola</p></main></body></html>',
+      "https://ejemplo.es/aviso-legal/": AVISO,
+      "https://ejemplo.es/sitemap.xml": `<?xml version="1.0"?><urlset><url><loc>https://ejemplo.es/vinos/a-verdejo/</loc><lastmod>2026-10-01</lastmod></url><url><loc>https://ejemplo.es/vinos/b-verdejo/</loc><lastmod>2026-10-01</lastmod></url></urlset>`,
+      "https://ejemplo.es/vinos/a-verdejo/": ficha("A Verdejo"),
+      "https://ejemplo.es/vinos/b-verdejo/": ficha("B Verdejo"),
+    };
+    const previas = new Map<string, PaginaPrevia>([
+      ["https://ejemplo.es/vinos/a-verdejo", { modificada: "2026-10-01", vista: "2026-10-20T00:00:00Z", oferta: true }], // caducada
+      ["https://ejemplo.es/vinos/b-verdejo", { modificada: "2026-10-01", vista: "2026-11-05T00:00:00Z", oferta: true }], // reciente
+    ]);
+    const { r, pedidas } = rastreador(rutas, previas);
+    const out = await r.rastrear(sitio("https://ejemplo.es/"));
+    expect(pedidas).toContain("https://ejemplo.es/vinos/a-verdejo/");
+    expect(out.sinCambios).toEqual(["https://ejemplo.es/vinos/b-verdejo/"]);
   });
 
   it("web candidata: si la portada no nombra a la bodega se salta sin pedir nada más", async () => {
