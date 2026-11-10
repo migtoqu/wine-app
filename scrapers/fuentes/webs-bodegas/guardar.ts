@@ -92,6 +92,23 @@ export function entradasOferta(v: VinoSitio, vinoId: string, anadaId: string | n
   return out;
 }
 
+/**
+ * Columnas del vino que aporta esta web. Nunca se envía null: «tipo» y «nombre» son NOT NULL y un
+ * null en el Consolidador significa «la fuente ya no lo da», que podría vaciar un valor bueno de
+ * otra pasada. Un dato que la web no trae simplemente no se aporta.
+ * `denominacionId`: undefined = la decisión de D.O. es dudosa (esta fuente no opina).
+ */
+/** Quita los null/undefined: lo que la web no trae no se aporta (no vacía un valor de otra pasada). */
+export function sinNulos(campos: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(campos).filter(([, x]) => x !== null && x !== undefined));
+}
+
+export function camposVino_(v: Pick<VinoSitio, "tipo" | "crianza" | "nombre">, creado: boolean, denominacionId: string | null | undefined): Record<string, unknown> {
+  const campos: Record<string, unknown> = { tipo: v.tipo, crianza: v.crianza, denominacion_id: denominacionId };
+  if (creado) campos.nombre = v.nombre;
+  return sinNulos(campos);
+}
+
 export class GuardadoWebs {
   private db: ClienteDb;
   private fuenteMadreId: string;
@@ -403,7 +420,9 @@ export class GuardadoWebs {
     ];
     let cambios = false;
     for (const [campos, url] of grupos) {
-      const { escritos } = await this.consolidador.consolidar("bodega", bodegaId, campos, aporte(url ?? null));
+      const aportados = sinNulos(campos);
+      if (Object.keys(aportados).length === 0) continue;
+      const { escritos } = await this.consolidador.consolidar("bodega", bodegaId, aportados, aporte(url ?? null));
       if (escritos.length) cambios = true;
     }
     for (const campo of ["historia", "descripcion"] as const) {
@@ -636,14 +655,10 @@ export class GuardadoWebs {
     const aporte: Aporte = { registroId, fuenteId, tipoFuente: "bodega", url: v.url, observadoEn: ahora };
     let cambios = false;
     // La web oficial es la fuente de más rango para tipo y crianza; el nombre solo se fija al crear.
-    const camposVino: Record<string, unknown> = { tipo: v.tipo, crianza: v.crianza };
-    // La D.O. se consolida en cada pasada (corrige la principal de la bodega puesta en la fase A);
-    // si la decisión es dudosa, esta fuente no opina sobre ella.
-    if (decisionDo.estado !== "revision") camposVino.denominacion_id = den?.id ?? null;
-    if (creado) camposVino.nombre = v.nombre;
+    const camposVino = camposVino_(v, creado, decisionDo.estado !== "revision" ? den?.id ?? null : undefined);
     if ((await this.consolidador.consolidar("vino", vinoId, camposVino, aporte)).escritos.length) cambios = true;
     const camposAnada = { grado: v.grado, meses_crianza: v.barrica_meses, temp_servicio_min: v.temp_min, temp_servicio_max: v.temp_max };
-    if ((await this.consolidador.consolidar("anada", anadaId, camposAnada, aporte)).escritos.length) cambios = true;
+    if ((await this.consolidador.consolidar("anada", anadaId, sinNulos(camposAnada), aporte)).escritos.length) cambios = true;
     const antes = (previo?.datos as { vino?: VinoSitio } | null)?.vino?.variedades;
     if (await this.guardarVariedades(anadaId, v, anadaNueva ? null : antes)) cambios = true;
     if (v.ean) {
@@ -741,10 +756,10 @@ export class GuardadoWebs {
     const { escritos } = await this.consolidador.consolidar(
       "servicio_bodega",
       servicioId,
-      {
+      sinNulos({
         precio_desde: s.precio_desde, duracion_minutos: s.duracion_minutos, idiomas: s.idiomas, url_reserva: s.url_reserva,
         descripcion: s.descripcion, horario: [s.horario, s.temporada].filter(Boolean).join(" · ") || null, activo: true,
-      },
+      }),
       { registroId, fuenteId, tipoFuente: "bodega", url: s.url, observadoEn: ahora },
     );
     if (nuevo) return "nuevo";
