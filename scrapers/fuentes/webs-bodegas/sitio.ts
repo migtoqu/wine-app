@@ -11,6 +11,9 @@ import { claveNombreBodega } from "../../lib/texto.ts";
 import { clasificar, esOtroIdioma, huella, type Clase, type Huella } from "./clasificar.ts";
 import { detectarDenominacion, type DeteccionDo, type ResolutorDenominaciones } from "./denominacion.ts";
 import { ofertaDeJsonLd, ofertaDeWoo, type OfertaWeb } from "./ofertas.ts";
+import { adaptadorPara } from "./adaptadores/index.ts";
+import { dominioBase } from "./dominio.ts";
+import type { AdaptadorSitio } from "./adaptadores/tipos.ts";
 import { candidatasDePagina, elegirImagenBodega, imagenBotella, type CandidataImagen, type ImagenElegida } from "./imagen.ts";
 import {
   bodegaVacia,
@@ -113,6 +116,11 @@ export interface VinoSitio extends VinoWeb {
   imagen: ImagenElegida | null;
   /** Precio, formato, disponibilidad y EAN en la tienda de la bodega (uno por formato o ficha). */
   ofertas: OfertaWeb[];
+  /**
+   * Dominio de un grupo (adaptador con `marcas`): «propia» = marca de la bodega del sitio; «otra» =
+   * de otra bodega del grupo; «dudosa» = sin marca reconocida. Las dos últimas van a revisión.
+   */
+  bodega_marca?: { estado: "propia" | "otra" | "dudosa"; bodega: string | null };
 }
 
 export interface ServicioSitio extends ServicioWeb {
@@ -135,6 +143,8 @@ export interface ResultadoSitio {
   huella: Huella | null;
   /** Extractor usado («wordpress», «wordpress+woocommerce», «sitemap», «generico»…). */
   extractor: string | null;
+  /** Adaptador por sitio usado (ola D). */
+  adaptador: { dominio: string; version: number } | null;
   paginas: PaginaVista[];
   bodega: BodegaSitio | null;
   vinos: VinoSitio[];
@@ -166,6 +176,10 @@ export interface OpcionesSitio {
   /** URL normalizada → fecha de modificación vista la última vez (rastreo incremental). */
   previas?: (dominio: string) => Map<string, PaginaPrevia>;
   ahora?: () => Date;
+  /** false = sin adaptadores por sitio (solo el genérico; para comparar en dry-run). */
+  adaptadores?: boolean;
+  /** Para tests: registro de adaptadores propio. */
+  adaptadorPara?: (dominio: string) => AdaptadorSitio | null;
 }
 
 class PresupuestoAgotado extends Error {}
@@ -191,6 +205,8 @@ interface Contenido {
   /** Oferta del JSON-LD `Product.offers` de la ficha. */
   oferta?: OfertaWeb | null;
   modificada?: string | null;
+  /** Ficha de un adaptador: no se divide como listado y usa su umbral de evidencias. */
+  fichaAdaptador?: { evidenciasMin: number; parcial: Partial<VinoWeb> | null };
 }
 
 interface ProductoWoo {
@@ -282,6 +298,7 @@ export class RastreadorSitio {
       puerta: puertaInicial(entrada, ahora),
       huella: null,
       extractor: null,
+      adaptador: null,
       paginas: [],
       bodega: null,
       vinos: [],
@@ -319,10 +336,13 @@ export class RastreadorSitio {
     const ex = exclusionDe(this.o.exclusiones, entrada.dominio);
     if (ex) return saltar(p, "exclusion_manual", `${ex.motivo} (${ex.fecha})`);
 
-    // 1. Portada (la única petición que puede seguir una redirección a otro dominio).
+    const buscar = this.o.adaptadorPara ?? adaptadorPara;
+    let ad = this.o.adaptadores === false ? null : buscar(entrada.dominio);
+    // 1. Portada (la única petición que puede seguir una redirección a otro dominio). Un adaptador
+    // puede dar otra URL de inicio cuando la raíz redirige sin HTTP (meta refresh, frameset, JS).
     let portada: Respuesta;
     try {
-      portada = await this.http.get(entrada.url, { permitirOtroHost: true });
+      portada = await this.http.get(ad?.portada ?? entrada.url, { permitirOtroHost: true });
     } catch (e) {
       return saltar(p, ...motivoError(e));
     }
@@ -335,7 +355,10 @@ export class RastreadorSitio {
     if (dominioFinal && dominioFinal !== entrada.dominio) {
       const ex2 = exclusionDe(this.o.exclusiones, dominioFinal);
       if (ex2) return saltar(p, "exclusion_manual", `${dominioFinal}: ${ex2.motivo}`);
+      if (!ad && this.o.adaptadores !== false) ad = buscar(dominioFinal);
     }
+    // Un adaptador nunca renderiza en esta ola: si alguno lo pidiera, se ignora y se avisa.
+    if (ad?.renderizar) r.avisos.push("El adaptador pide navegador: no se renderiza (ola D)");
     const antiBot = detectarAntiBot(portada.texto);
     if (antiBot) return saltar(p, "anti_bot", antiBot);
     const tipo = portada.cabeceras?.get("content-type") ?? "text/html";
@@ -396,10 +419,24 @@ export class RastreadorSitio {
         bloques: bloques($home), enlaces: enlacesHome, imagenes: candidatasDePagina($home, portada.url),
       });
     }
-    const ctx = this.contexto(origen, presupuesto, r, esDelSitio, entrada.dominio);
+    const ctx = this.contexto(origen, presupuesto, r, esDelSitio, entrada.dominio, ad);
     const extractor = EXTRACTORES[r.huella.plataforma];
+    if (ad) r.adaptador = { dominio: ad.dominios[0]!, version: ad.version };
     try {
-      r.extractor = await extractor.descubrir(ctx, contenidos, sigueHome ? enlacesHome : []);
+      const usados: string[] = [];
+      let fichas = 0;
+      if (ad) {
+        r.extractor = `adaptador:${ad.dominios[0]}@v${ad.version}`;
+        fichas = await descubrirAdaptador(ctx, contenidos, sigueHome ? enlacesHome : []);
+        usados.push(r.extractor);
+      }
+      // «reemplaza» solo corre la plataforma si el adaptador no encontró fichas (cae al genérico).
+      if (!ad || ad.modo === "completa" || fichas === 0) {
+        if (ad && ad.modo === "reemplaza") r.avisos.push(`Adaptador sin fichas: se usa el extractor genérico`);
+        usados.push(await extractor.descubrir(ctx, contenidos, sigueHome ? enlacesHome : []));
+      }
+      r.extractor = usados.join("+");
+      if (ad?.fichaHtmlWoo) await fichasHtmlWoo(ctx, contenidos);
       // Subdominios del propio dominio enlazados desde la portada (tienda., enoturismo.): mismo trato.
       const subs = subdominiosEnlazados(sigueHome ? enlacesHome : [], host, esDelSitio).slice(0, 2);
       for (const sub of subs) {
@@ -425,6 +462,10 @@ export class RastreadorSitio {
     // 5. Hechos.
     r.bodega = this.hechosBodega(contenidos, enlacesHome);
     r.vinos = this.vinos(contenidos, ahora.getFullYear(), esDelSitio);
+    if (ad?.marcas) for (const v of r.vinos) v.bodega_marca = bodegaDeMarca(v.nombre, ad, entrada);
+    if (ad && r.vinos.length < (ad.minimoVinos ?? 1)) {
+      r.avisos.push(`Adaptador ${ad.dominios[0]}@v${ad.version} por debajo de lo esperado (${r.vinos.length} vinos < ${ad.minimoVinos ?? 1}): revisar selectores`);
+    }
     const conOferta = new Set(r.vinos.flatMap((v) => v.ofertas.filter((o) => o.precio != null).map((o) => normalizarUrl(o.url))));
     r.paginas = contenidos.map((c) => ({
       url: c.url, clase: c.clase, origen: c.origen, titulo: c.titulo || null, modificada: c.modificada ?? null, vista: vistaEn,
@@ -465,6 +506,7 @@ export class RastreadorSitio {
     r: ResultadoSitio,
     esDelSitio: (h: string) => boolean,
     dominio: string,
+    adaptador: AdaptadorSitio | null = null,
   ): ContextoDescubrimiento {
     const hostPrincipal = new URL(origen).host;
     const bloqueados = new Set<string>();
@@ -472,6 +514,7 @@ export class RastreadorSitio {
     const base = this.o.maxPeticiones ?? 40;
     return {
       origen,
+      adaptador,
       huella: r.huella!,
       log: this.o.log,
       avisos: r.avisos,
@@ -559,19 +602,29 @@ export class RastreadorSitio {
     for (const c of contenidos.filter((x) => x.clase === "vino")) {
       if (c.producto) {
         const p = c.producto;
-        const texto = textoDe(bloquesDeFragmento(`${p.short_description ?? ""}\n${p.description ?? ""}`));
+        // Con `fichaHtmlWoo` el texto de la ficha HTML se suma al de la Store API.
+        const texto = [textoDe(bloquesDeFragmento(`${p.short_description ?? ""}\n${p.description ?? ""}`)), textoDe(c.bloques)].filter(Boolean).join("\n");
         const atributos = Object.fromEntries((p.attributes ?? []).map((a) => [a.name, (a.terms ?? []).map((t) => t.name).join(", ")]));
-        const v = extraerVino(decodificarEntidades(p.name), texto, { atributos, hoy, gtin: c.gtin ?? null });
+        const v = { ...extraerVino(decodificarEntidades(p.name), texto, { atributos, hoy, gtin: c.gtin ?? null }), ...(c.fichaAdaptador?.parcial ?? {}) };
         const categoriaVino = (p.categories ?? []).some((x) => /vino|wine|tinto|blanco|rosado/i.test(x.name));
         const img = p.images?.[0];
         const atribTexto = Object.entries(atributos).map(([k, x]) => `${k}: ${x}`).join("\n");
-        if (v.evidencias >= 1 || categoriaVino) {
+        if (v.evidencias >= 1 || categoriaVino || (c.fichaAdaptador && v.evidencias >= c.fichaAdaptador.evidenciasMin)) {
           const oferta = ofertaDeWoo(p, v.ean);
           meter(conDo(v, c, p.permalink, `${texto}\n${atribTexto}`, imagenBotella(img?.src, img?.alt || null, p.permalink, esDelSitio), oferta ? [oferta] : []));
         }
         continue;
       }
       const texto = textoDe(c.bloques);
+      if (c.fichaAdaptador) {
+        // Ficha de un adaptador: una página = un vino, con su umbral de evidencias.
+        const v = { ...extraerVino(c.titulo, texto, { hoy, gtin: c.gtin ?? null }), ...(c.fichaAdaptador.parcial ?? {}) };
+        if (v.evidencias >= c.fichaAdaptador.evidenciasMin && !TITULO_NO_VINO.test(v.nombre)) {
+          const oferta = c.oferta ? { ...c.oferta, ean: c.oferta.ean ?? v.ean } : null;
+          meter(conDo(v, c, c.url, texto, imagenBotella(c.imagenProducto?.url, c.imagenProducto?.alt ?? null, c.url, esDelSitio), oferta ? [oferta] : []));
+        }
+        continue;
+      }
       const secs = secciones(c.bloques).filter((s) => !TITULO_NO_VINO.test(s.titulo.trim()) && esNombreDeVino(s.titulo));
       const vinosSecciones = secs.map((s) => extraerVino(s.titulo, s.texto, { hoy })).filter((v) => v.evidencias >= 2);
       // Página-listado con varias fichas: un vino por sección. Si no, la página es una ficha.
@@ -621,6 +674,8 @@ export class RastreadorSitio {
 
 export interface ContextoDescubrimiento {
   origen: string;
+  /** Adaptador del sitio (ola D), si lo hay. */
+  adaptador: AdaptadorSitio | null;
   huella: Huella;
   log: Log;
   avisos: string[];
@@ -902,8 +957,17 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
     const directivas = [...metaRobots($), ...xRobotsTag(res.cabeceras?.get("x-robots-tag"))];
     const nodos = jsonLd($);
     const tipos = tiposJsonLd(nodos);
-    const t = elegirTitulo(tituloPreferido, nodos, $);
-    const clase = clasePrevia ?? clasificar({ url: res.url, titulo: titulo($), h1: h1($), migas: migas($, nodos), tiposJsonLd: tipos });
+    const ad = ctx.adaptador;
+    const ficha = esFichaAdaptador(ad, res.url) || esFichaAdaptador(ad, url);
+    const sel = ficha ? ad!.selectores ?? {} : {};
+    if (sel.quitar) $(sel.quitar).remove();
+    const nombreSel = sel.nombre ? limpiarEspacios($(sel.nombre).first().text()) : "";
+    const t = nombreSel.length >= 2 ? limpiarTitulo(nombreSel) : elegirTitulo(tituloPreferido, nodos, $);
+    let clase = clasePrevia ?? clasificar({ url: res.url, titulo: titulo($), h1: h1($), migas: migas($, nodos), tiposJsonLd: tipos });
+    // Con `patronFicha`, las fichas son vino aunque el genérico no lo vea, y el resto de páginas
+    // «vino» (listados, legales bajo /vinos/) no dan vinos.
+    if (ficha) clase = "vino";
+    else if (ad?.rutas?.patronFicha && clase === "vino") clase = "otra";
     const sigue = !directivas.includes("nofollow") && !directivas.includes("none");
     // noindex: la página no se extrae (pero puede seguir sus enlaces si no es nofollow).
     const indexable = !directivas.includes("noindex") && !directivas.includes("none");
@@ -912,17 +976,30 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
     // JSON-LD Product en cualquier plataforma (PrestaShop, Magento, Wix, a medida): categoría e imagen.
     const categoriaLd = producto && typeof producto.category === "string" ? [producto.category] : [];
     const imagenLd = producto ? primeraUrl(producto.image) : null;
+    // Contenedor de la ficha del adaptador: su texto en lugar del de <main>.
+    const contenido = sel.contenido ? $(sel.contenido) : null;
+    const bloquesFicha = contenido?.length
+      ? bloques(cargar(`<html><body><main>${contenido.toArray().map((el) => $.html(el)).join("\n")}</main></body></html>`))
+      : null;
+    const bs = indexable ? bloquesFicha ?? bloques($) : [];
+    const imagenSel = sel.imagen ? $(sel.imagen).first() : null;
+    const srcSel = imagenSel?.attr("data-large_image") ?? imagenSel?.attr("data-src") ?? imagenSel?.attr("src");
+    let parcial: Partial<VinoWeb> | null = null;
+    if (ficha && ad?.extraerVino) parcial = ad.extraerVino({ $, url: res.url, texto: textoDe(bs) });
     return {
       url: res.url,
       clase: indexable ? clase : "otra",
       origen: "html",
       titulo: t,
-      bloques: indexable ? bloques($) : [],
+      fichaAdaptador: ficha && indexable ? { evidenciasMin: ad!.evidenciasMin ?? 2, parcial } : undefined,
+      bloques: bs,
       enlaces: sigue ? enlaces($, res.url) : [],
       gtin: gtin == null ? null : String(gtin),
       categorias: [...categoriaLd, ...migas($, nodos)],
       imagenes: indexable && clase === "historia" ? candidatasDePagina($, res.url) : undefined,
-      imagenProducto: clase === "vino" ? (imagenLd ? { url: imagenLd, alt: null } : primeraImagen($, res.url)) : undefined,
+      imagenProducto: clase === "vino"
+        ? srcSel ? urlImagen(srcSel, res.url, imagenSel?.attr("alt")) : imagenLd ? { url: imagenLd, alt: null } : primeraImagen($, res.url)
+        : undefined,
       oferta: producto && clase === "vino" ? ofertaDeJsonLd(producto, res.url, t, gtin == null ? null : String(gtin)) : null,
     };
   } catch (e) {
@@ -931,6 +1008,86 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
     ctx.log.debug(`${url}: ${(e as Error).message}`);
     return null;
   }
+}
+
+function urlImagen(src: string, base: string, alt: string | undefined): { url: string; alt: string | null } | null {
+  try {
+    return { url: new URL(src, base).href, alt: alt?.trim() || null };
+  } catch {
+    return null;
+  }
+}
+
+/** ¿Es una ficha de vino según el adaptador del sitio? */
+function esFichaAdaptador(ad: AdaptadorSitio | null, url: string): boolean {
+  const r = ad?.rutas;
+  return !!r?.patronFicha && r.patronFicha.test(url) && !r.excluir?.test(url);
+}
+
+/**
+ * Descubrimiento del adaptador: fichas de sus sitemaps, de sus listados y de la portada que casan
+ * `patronFicha`. Devuelve cuántas fichas encontró (descargadas o sin cambios).
+ */
+async function descubrirAdaptador(ctx: ContextoDescubrimiento, contenidos: Contenido[], enlacesHome: Enlace[]): Promise<number> {
+  const ad = ctx.adaptador!;
+  const rutas = ad.rutas ?? {};
+  // Clave normalizada → URL tal cual y lastmod del sitemap.
+  const fichas = new Map<string, { url: string; lastmod: string | null }>();
+  const abs = (u: string) => new URL(u, ctx.origen).href;
+  const anotar = (u: string, lastmod: string | null) => {
+    const k = normalizarUrl(u);
+    if (!fichas.has(k) && urlDelSitio(ctx, u) && esFichaAdaptador(ad, u)) fichas.set(k, { url: u, lastmod });
+  };
+  for (const sm of rutas.sitemaps ?? []) {
+    const xml = await xmlDe(ctx, abs(sm));
+    if (!xml) continue;
+    for (const u of urlsDeSitemap(xml)) anotar(u.url, u.lastmod);
+  }
+  for (const l of rutas.listados ?? []) {
+    const c = await paginaHtml(ctx, abs(l), "vino");
+    if (!c) continue;
+    for (const e of c.enlaces) anotar(e.url, null);
+    // El listado se queda como página vista, pero no da vinos (sus fichas sí).
+    if (!esFichaAdaptador(ad, c.url)) contenidos.push({ ...c, clase: "otra" });
+  }
+  for (const e of enlacesHome) anotar(e.url, null);
+  const ya = new Set(contenidos.map((c) => normalizarUrl(c.url)));
+  const lista = [...fichas]
+    .filter(([k]) => !ya.has(k))
+    .map(([, f]) => ({ url: f.url, clase: "vino" as Clase, modificada: f.lastmod }))
+    .slice(0, rutas.maxFichas ?? MAX_POR_CLASE.vino);
+  ctx.ampliar(lista.length);
+  const pendientes = sinCambiar(ctx, lista);
+  for (const e of pendientes) {
+    const c = await paginaHtml(ctx, e.url, "vino");
+    if (c) contenidos.push({ ...c, modificada: e.modificada });
+  }
+  return lista.length;
+}
+
+/** `fichaHtmlWoo`: el HTML de cada producto de la Store API completa su texto (y la imagen y el JSON-LD). */
+async function fichasHtmlWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[]): Promise<void> {
+  const productos = contenidos.filter((c) => c.producto && c.clase === "vino" && c.bloques.length === 0);
+  ctx.ampliar(productos.length);
+  for (const c of productos) {
+    const h = await paginaHtml(ctx, c.url, "vino");
+    if (!h) continue;
+    c.bloques = h.bloques;
+    c.fichaAdaptador = h.fichaAdaptador;
+    c.gtin ??= h.gtin;
+  }
+}
+
+/** Dueña de un vino por su marca en un dominio compartido por un grupo de bodegas. */
+export function bodegaDeMarca(nombre: string, ad: AdaptadorSitio, entrada: EntradaSitio): NonNullable<VinoSitio["bodega_marca"]> {
+  const m = ad.marcas?.find((x) => x.patron.test(nombre));
+  if (!m) return { estado: "dudosa", bodega: null };
+  const clave = claveNombreBodega(m.bodega);
+  const propia = entrada.bodegas.some((b) => {
+    const k = claveNombreBodega(b.nombre);
+    return !!k && !!clave && (k === clave || similitud(k, clave) >= 0.8);
+  });
+  return { estado: propia ? "propia" : "otra", bodega: m.bodega };
 }
 
 /** Sitemap (robots → índices habituales) y enlaces de portada, clasificados y con tope por clase. */
@@ -1063,12 +1220,7 @@ async function sitemap(ctx: ContextoDescubrimiento): Promise<{ url: string; last
   const robots = (await ctx.textoRobots()) ?? "";
   const declarados = [...robots.matchAll(/^\s*sitemap\s*:\s*(\S+)/gim)].map((m) => m[1]!).filter((u) => hostDelSitio(ctx, u));
   const candidatos = declarados.length ? declarados.slice(0, 2) : ["/sitemap_index.xml", "/wp-sitemap.xml", "/sitemap.xml"].map((p) => new URL(p, ctx.origen).href);
-  const urlsDe = (xml: string) =>
-    [...xml.matchAll(/<url>([\s\S]*?)<\/url>/gi)].flatMap((m) => {
-      const loc = m[1]!.match(/<loc>\s*(?:<!\[CDATA\[)?\s*([^<\s\]]+)/i)?.[1];
-      const lastmod = m[1]!.match(/<lastmod>\s*([^<\s]+)\s*<\/lastmod>/i)?.[1] ?? null;
-      return loc ? [{ url: decodificarEntidades(loc), lastmod }] : [];
-    });
+  const urlsDe = urlsDeSitemap;
   for (const url of candidatos) {
     const xml = await xmlDe(ctx, url);
     if (!xml) continue;
@@ -1085,6 +1237,14 @@ async function sitemap(ctx: ContextoDescubrimiento): Promise<{ url: string; last
     return out;
   }
   return [];
+}
+
+function urlsDeSitemap(xml: string): { url: string; lastmod: string | null }[] {
+  return [...xml.matchAll(/<url>([\s\S]*?)<\/url>/gi)].flatMap((m) => {
+    const loc = m[1]!.match(/<loc>\s*(?:<!\[CDATA\[)?\s*([^<\s\]]+)/i)?.[1];
+    const lastmod = m[1]!.match(/<lastmod>\s*([^<\s]+)\s*<\/lastmod>/i)?.[1] ?? null;
+    return loc ? [{ url: decodificarEntidades(loc), lastmod }] : [];
+  });
 }
 
 function hostDelSitio(ctx: ContextoDescubrimiento, u: string): boolean {
@@ -1110,12 +1270,7 @@ async function xmlDe(ctx: ContextoDescubrimiento, url: string): Promise<string |
 // Utilidades
 // ---------------------------------------------------------------------------
 
-/** Dominio registrable aproximado: «tienda.matarromera.es» → «matarromera.es»; «x.com.es» → «x.com.es». */
-export function dominioBase(host: string): string {
-  const partes = host.toLowerCase().replace(/^www\d*\./, "").split(".");
-  const n = /^(com|org|net|gob|edu|nom)$/.test(partes[partes.length - 2] ?? "") && partes.length >= 3 ? 3 : 2;
-  return partes.slice(-n).join(".");
-}
+export { dominioBase };
 
 function primeraUrl(v: unknown): string | null {
   if (typeof v === "string") return v;

@@ -62,6 +62,7 @@ export async function scraperWebsBodegas(ctx: Contexto): Promise<void> {
 
   const rastreador = new RastreadorSitio(nuevoHttp, {
     log, exclusiones, municipios, denominaciones: resolutor, previas: guardado ? (d) => guardado.previas(d) : undefined,
+    adaptadores: ctx.opciones.sinAdaptadores !== "1",
   });
   const resumen = {
     aptas: 0, saltadas: new Map<string, number>(), vinos: 0, hechosHistoria: 0, servicios: 0, sinTiempo: 0, conVinos: 0,
@@ -189,6 +190,7 @@ async function salidaDryRun(r: ResultadoSitio, dos: ReturnType<ResolutorDenomina
     puerta: { ...r.puerta, nota: notaPuerta(r.puerta) },
     huella: r.huella,
     extractor: r.extractor,
+    adaptador: r.adaptador,
     hosts: r.hosts,
     peticiones: r.peticiones,
     segundos: r.segundos,
