@@ -17,6 +17,8 @@ Decisiones de partida (del usuario): **textos** = resumen propio redactado a par
 | 4.2 | **Vinissimus** | ~5.000 vinos y ~1.500 bodegas; precio, graduación, uva | **Apta con condiciones** (§4.2) |
 | 4.3 | Bodeboca, Lavinia, Decántalo, El Corte Inglés | — | **No apta**: bloquean con desafío anti-bot / 403 (§4.3; ECI re-auditado el 2026-11-08) |
 | 4.5 | Carrefour | — | **No apta**: Cloudflare bloquea nuestro UA, incluido el sitemap de vinos (§4.5) |
+| 4.6 | **Vinatis** y **Vinorea** (Ola B, 2026-11-10) | Precio y disponibilidad; D.O., añada, uvas, grado y formato | **Apta**; implementadas en `scrapers/fuentes/tiendas/` (§4.6) |
+| 4.6 | Vila Viniteca, Coalla Gourmet, Mariskal | — | **No aptas**: aviso legal prohíbe extraer datos (Vila Viniteca); robots.txt veta scrapers por nombre (Coalla); no vende vino (Mariskal) (§4.6) |
 | 4.4 | Uvinum / Drinks&Co | — | **No verificada** (error 520 a nuestro UA); baja prioridad (§4.4) |
 | 5.1 | **C.R. DOCa Rioja** (`riojawine.com`) | ~213 bodegas, ~700 vinos, ~370 experiencias con reserva | **Apta con condiciones** (§5.1) |
 | 5.2 | **D.O. Rueda** (2.ª D.O. recomendada) y **D.O. Navarra** | Bodegas con web; Navarra: bodegas, vinos y experiencias estructurados | **Apta con condiciones** (§5.2) |
@@ -365,6 +367,25 @@ Saltarse estos desafíos va contra las reglas del proyecto. Opciones: (1) escrib
 - **Vivino y Wine-Searcher:** `robots.txt` bloquea precios, reseñas y acciones (`/prices/`, `/reviews/`, `/ajax/`…); son agregadores con API propia y términos que se esperan restrictivos; sus reseñas son contenido de usuarios. **No recomendadas**; no se leyeron los términos.
 
 ---
+
+### 4.6 Ola B: tiendas con precio (auditadas el 2026-11-10)
+
+Audit con el UA del proyecto (`curl`), **≥ 12 s entre peticiones al mismo host y ≤ 7 peticiones por sitio**, sin escribir en la BD. Ningún sitio devolvió 403/429 ni desafío anti-bot. Se implementan con el scraper parametrizado por plataforma de `scrapers/fuentes/tiendas/` (configuración en `config.ts`), que reutiliza el núcleo de Vinopremier: EAN primero, luego `Emparejador` (bodega) y `EmparejadorVinos`; **una tienda no crea bodegas**; solo hechos; imágenes enlazadas; precios con `RegistroOfertas`. Ritmo: **10–14 s entre peticiones** y tope de peticiones por ejecución (al alcanzarlo, ejecución parcial y sin dar ofertas por no vistas).
+
+| Tienda | Plataforma | `robots.txt` (para `*`) | Términos | Volumen (foco) | EAN | Veredicto |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Vinatis** (`www.vinatis.es`) | PrestaShop a medida tras Cloudflare | Solo `Sitemap:` (todo permitido); `/robots.txt` redirige a `/robots_es.txt` | `/condiciones-generales` releídas: sin cláusula contra robots ni extracción | Ribera 19, Rioja 63, Bierzo (pocas: catálogo sobre todo francés) | No | **Apta** |
+| **Vinorea** (`www.vinorea.com`) | PrestaShop 1.6 | Por defecto de PrestaShop; **bloquea `/*aviso-legal` y `/*terminos-y-condiciones`** | Aviso legal **leído el 2026-11-08** (no se vuelve a pedir con el bot porque robots lo bloquea): la reproducción requiere consentimiento; sin cláusula contra robots | Ribera 140, Rioja 136, Rueda (24/página, `?p=N`) | No | **Apta** |
+| Vila Viniteca (`www.vilaviniteca.es`) | Magento 2 + Cloudflare | Permisivo | **`/aviso-legal` prohíbe** «divulgar, extraer, reutilizar… cualquiera de los datos o elementos de la web» sin consentimiento previo y por escrito (y enlazar sin autorización) | Ribera 311 | No | **No apta** (prohibición expresa) |
+| Coalla Gourmet (`coallagourmet.com`) | PrestaShop 1.7 | Permisivo para `*`, pero **veta por nombre a Scrapy** y a bots de IA (ClaudeBot, GPTBot, ChatGPT-User, meta-externalagent…) | Términos §4: reserva los contenidos «incluidas bases de datos»; sin cláusula anti-robots | Categorías para las 8 D.O. | Sí (`GTIN13`) | **No apta**: el veto a Scrapy expresa que no quiere scrapers, y el nuestro lo es aunque el UA sea otro |
+| Mariskal (`mariskal.es` → `www.mariskal.com`) | WooCommerce | Permisivo | — | 0 | — | **No apta**: es un fabricante de molduras y material de bellas artes, no vende vino (error del research) |
+| Vinissimus | Propia | Muy permisivo | Siguen sin localizarse | — | No | Pendiente (§4.2) |
+
+**Vinatis.** Cada listado de D.O. (`/comprar-vino-ribera-del-duero`, `/comprar-vino-rioja`, `/comprar-vino-denominacion-bierzo`) incrusta `var product_elastic = {…}` con los productos de la página (35 por página): nombre («El Espino 2021 - Áster - La Rioja Alta»), `manufacturer_name`, color, añada, uvas (`all_grapes`), temperatura de servicio, D.O. (`appellation`), grado, formato, precio (`prices.price`, el mismo que los microdatos de la ficha) y stock. **No se piden fichas** y no se leen las notas de cata del JSON. La paginación se pide con `?page=N` y se comprueba con `page_number` del JSON: si no pagina, se para y la ejecución queda parcial. Tope: 60 peticiones. Vía preferente a futuro: feed de Tradedoubler (research §3.3).
+
+**Vinorea.** Listados `/vino/espana/{ribera-de-duero,rioja,rueda}/` (las únicas D.O. del foco que enlaza) con `?p=N`; fichas `*.html` con microdatos `Product` (nombre, `sku`, precio, disponibilidad, imagen), ficha técnica (`table.table-data-sheet`: tipo, D.O., uva, añada, capacidad, grado) y bodega en `.labodega`. Tope: 700 peticiones (~300–400 fichas hoy).
+
+Programación semanal: Vinatis viernes 02:13 UTC, Vinorea domingo 03:13 UTC (`scrape-tienda-*.yml`). Migración `20261112140000_tiendas_ola_b` (filas en `fuentes` y `tiendas`).
 
 ## 5. Consejos reguladores
 
