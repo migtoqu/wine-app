@@ -1532,6 +1532,7 @@ export type Database = {
           denominacion_nombre: string
           id: string
           imagen_alt: string
+          imagen_tipo: string
           imagen_url: string
           municipio: string
           nombre: string

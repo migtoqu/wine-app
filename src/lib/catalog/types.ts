@@ -64,6 +64,8 @@ export type BodegaListItem = {
   num_vinos: number;
   imagen_url: string | null;
   imagen_alt: string | null;
+  // Qué es la imagen: foto propia de la bodega o del viñedo, o la botella de uno de sus vinos (respaldo).
+  imagen_tipo: "bodega" | "vinedo" | "botella" | null;
   relevancia: number | null;
   total: number;
 };

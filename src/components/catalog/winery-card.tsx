@@ -15,13 +15,14 @@ export function WineryCard({ lang, winery, labels }: Props) {
     .join(", ");
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-card border border-border bg-surface shadow-card transition-colors hover:border-border-strong has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-ring">
+      {/* Sin foto propia, la botella de uno de sus vinos: entera (contain), nunca recortada. */}
       <CatalogImage
         src={winery.imagen_url}
         alt={winery.imagen_alt ?? ""}
         kind="bodega"
         placeholderLabel={labels.placeholderAlt}
         aspect="landscape"
-        fit="cover"
+        fit={winery.imagen_tipo === "botella" ? "contain" : "cover"}
         className="rounded-none"
       />
       <div className="flex flex-col gap-1 p-4">
