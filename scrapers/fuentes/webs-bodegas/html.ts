@@ -65,6 +65,37 @@ export function bloques($: Doc): Bloque[] {
   return out;
 }
 
+const BLOQUES_DIV = `${BLOQUES}, div, section, article, span`;
+
+/**
+ * Bloques de un contenedor de ficha (adaptadores): como `bloques`, pero también los <div>, <section>
+ * y <span> hoja, porque los constructores (Elementor, Divi, CMS a medida) ponen ahí etiqueta y valor
+ * sin párrafos. Un elemento con hijos de bloque se lee por sus hijos.
+ */
+export function bloquesDeContenedor(html: string): Bloque[] {
+  const c = cheerio.load(`<html><body><main>${html}</main></body></html>`);
+  // Las pestañas ocultas (`aria-hidden`) del contenedor son parte de la ficha: no se quitan.
+  c(RUIDO.filter((r) => !/^(header|footer|nav|\.menu|\.sub-menu|\[aria-hidden=true\])$/.test(r)).join(", ")).remove();
+  const out: Bloque[] = [];
+  c("main").find(BLOQUES_DIV).each((_, el) => {
+    const $el = c(el);
+    if ($el.find(BLOQUES_DIV).length > 0 && $el.children().toArray().some((h) => c(h).is(BLOQUES_DIV))) {
+      // Texto suelto junto a hijos de bloque («<div>Grado <div>14%</div></div>»): solo sus nodos de texto.
+      const suelto = limpiarEspacios($el.contents().toArray().filter((n) => n.type === "text").map((n) => c(n).text()).join(" "));
+      if (suelto) out.push({ tipo: "p", texto: suelto });
+      return;
+    }
+    const texto = limpiarEspacios($el.text());
+    if (!texto) return;
+    // Un <span> dentro de un bloque ya leído no se repite.
+    if ((el as { tagName?: string }).tagName === "span" && $el.parent().is(BLOQUES_DIV) && $el.parent().children().length === 1) return;
+    const tag = (el as { tagName?: string }).tagName?.toLowerCase() ?? "p";
+    out.push({ tipo: /^h[1-6]$/.test(tag) ? tag : "p", texto });
+  });
+  // Spans hermanos sueltos producen la misma línea varias veces: fuera los repetidos consecutivos.
+  return out.filter((b, i) => i === 0 || b.texto !== out[i - 1]!.texto);
+}
+
 /** Texto plano de un fragmento HTML (contenido de la API de WordPress). */
 export function bloquesDeFragmento(html: string): Bloque[] {
   // Shortcodes de constructores ([et_pb_text …], [vc_row]) que la API deja sin procesar.

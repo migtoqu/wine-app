@@ -7,6 +7,7 @@ import type { VinoWeb } from "../extraer.ts";
 
 /** Marca → bodega dueña, para dominios que comparte un grupo (Sierra Cantabria, Paganos, Teso la Monja). */
 export interface Marca {
+  /** Se prueba contra el nombre del vino y contra la URL de su ficha. */
   patron: RegExp;
   /** Nombre de la bodega dueña de la marca, tal como está (o estaría) en `bodegas.nombre`. */
   bodega: string;
@@ -18,6 +19,8 @@ export interface FichaAdaptador {
   url: string;
   /** Texto del contenedor de la ficha (o de la página, sin `selectores.contenido`). */
   texto: string;
+  /** Lo que saca el extractor genérico de esa ficha (para corregir o completar campos). */
+  vino: VinoWeb;
 }
 
 export interface AdaptadorSitio {
@@ -43,6 +46,8 @@ export interface AdaptadorSitio {
     patronFicha?: RegExp;
     /** URLs que nunca son fichas (otros idiomas, cajas, legales). */
     excluir?: RegExp;
+    /** URL canónica de una ficha enlazada con rutas relativas encadenadas (null = no es ficha). */
+    canonica?: (url: string) => string | null;
     /** Tope de fichas por ejecución (por defecto 150). */
     maxFichas?: number;
   };
@@ -56,6 +61,10 @@ export interface AdaptadorSitio {
     quitar?: string;
     /** Imagen de la botella. */
     imagen?: string;
+    /** Precio en euros de la ficha (si no hay JSON-LD `Offer`): «36.00€», «12,50 €». */
+    precio?: string;
+    /** Texto con el formato de venta («Caja de 6 botellas de 75 cl.»): unidades y ml de la oferta. */
+    formato?: string;
   };
   /** Marcadores de ficha técnica mínimos en una ficha (por defecto 2, como el genérico). */
   evidenciasMin?: number;
@@ -63,8 +72,12 @@ export interface AdaptadorSitio {
   fichaHtmlWoo?: boolean;
   /** Dominio compartido por varias bodegas: cada vino va a la bodega de su marca o a revisión. */
   marcas?: Marca[];
-  /** Solo si lo declarativo no basta: campos que corrigen lo que saca el genérico de la ficha. */
-  extraerVino?: (ficha: FichaAdaptador) => Partial<VinoWeb> | null;
+  /**
+   * Solo si lo declarativo no basta: campos que corrigen lo que saca el genérico de la ficha.
+   * `bodega`: dueña del vino según la ficha (migas, categoría) en tiendas que venden vinos de
+   * otras bodegas del grupo; se trata como una marca (la del sitio se asigna, el resto a revisión).
+   */
+  extraerVino?: (ficha: FichaAdaptador) => (Partial<VinoWeb> & { bodega?: string | null }) | null;
   /** Renderizado con navegador: no se usa en esta ola (siempre false). */
   renderizar?: false;
   /** Vinos mínimos esperados: si da menos, aviso «adaptador roto» en el resumen del sitio. */

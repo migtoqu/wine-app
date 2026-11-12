@@ -10,7 +10,7 @@ import { similitud } from "../../lib/trigram.ts";
 import { claveNombreBodega } from "../../lib/texto.ts";
 import { clasificar, esOtroIdioma, huella, type Clase, type Huella } from "./clasificar.ts";
 import { detectarDenominacion, type DeteccionDo, type ResolutorDenominaciones } from "./denominacion.ts";
-import { ofertaDeJsonLd, ofertaDeWoo, type OfertaWeb } from "./ofertas.ts";
+import { formatoMl, ofertaDeJsonLd, ofertaDeWoo, unidades, type OfertaWeb } from "./ofertas.ts";
 import { adaptadorPara } from "./adaptadores/index.ts";
 import { dominioBase } from "./dominio.ts";
 import type { AdaptadorSitio } from "./adaptadores/tipos.ts";
@@ -30,6 +30,7 @@ import {
 } from "./extraer.ts";
 import {
   bloques,
+  bloquesDeContenedor,
   bloquesDeFragmento,
   cargar,
   decodificarEntidades,
@@ -206,7 +207,7 @@ interface Contenido {
   oferta?: OfertaWeb | null;
   modificada?: string | null;
   /** Ficha de un adaptador: no se divide como listado y usa su umbral de evidencias. */
-  fichaAdaptador?: { evidenciasMin: number; parcial: Partial<VinoWeb> | null };
+  fichaAdaptador?: { evidenciasMin: number; parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null };
 }
 
 interface ProductoWoo {
@@ -379,7 +380,8 @@ export class RastreadorSitio {
       if (r.verificacion.estado === "no_verificada") return saltar(p, "no_verificada", `la portada no nombra a «${entrada.bodegas[0]?.nombre}»`);
     }
 
-    const enlacesHome = enlaces($home, portada.url);
+    const baseHome = baseDe($home, portada.url);
+    const enlacesHome = enlaces($home, baseHome);
     const sigueHome = !directivasHome.includes("nofollow") && !directivasHome.includes("none");
     // 3. Aviso legal.
     const legales = enlacesAvisoLegal(enlacesHome, host);
@@ -416,7 +418,7 @@ export class RastreadorSitio {
     if (indexable) {
       contenidos.push({
         url: portada.url, clase: "historia", origen: "html", titulo: titulo($home) ?? "",
-        bloques: bloques($home), enlaces: enlacesHome, imagenes: candidatasDePagina($home, portada.url),
+        bloques: bloques($home), enlaces: enlacesHome, imagenes: candidatasDePagina($home, baseHome),
       });
     }
     const ctx = this.contexto(origen, presupuesto, r, esDelSitio, entrada.dominio, ad);
@@ -462,7 +464,8 @@ export class RastreadorSitio {
     // 5. Hechos.
     r.bodega = this.hechosBodega(contenidos, enlacesHome);
     r.vinos = this.vinos(contenidos, ahora.getFullYear(), esDelSitio);
-    if (ad?.marcas) for (const v of r.vinos) v.bodega_marca = bodegaDeMarca(v.nombre, ad, entrada);
+    // Dueña de cada vino en dominios o tiendas de un grupo: por la ficha (extraerVino) o por marca.
+    if (ad) for (const v of r.vinos) if (ad.marcas || v.bodega_marca) v.bodega_marca = bodegaDeMarca(v.nombre, ad, entrada, v.url, v.bodega_marca?.bodega);
     if (ad && r.vinos.length < (ad.minimoVinos ?? 1)) {
       r.avisos.push(`Adaptador ${ad.dominios[0]}@v${ad.version} por debajo de lo esperado (${r.vinos.length} vinos < ${ad.minimoVinos ?? 1}): revisar selectores`);
     }
@@ -605,7 +608,9 @@ export class RastreadorSitio {
         // Con `fichaHtmlWoo` el texto de la ficha HTML se suma al de la Store API.
         const texto = [textoDe(bloquesDeFragmento(`${p.short_description ?? ""}\n${p.description ?? ""}`)), textoDe(c.bloques)].filter(Boolean).join("\n");
         const atributos = Object.fromEntries((p.attributes ?? []).map((a) => [a.name, (a.terms ?? []).map((t) => t.name).join(", ")]));
-        const v = { ...extraerVino(decodificarEntidades(p.name), texto, { atributos, hoy, gtin: c.gtin ?? null }), ...(c.fichaAdaptador?.parcial ?? {}) };
+        const { bodega: dueña, ...parcial } = c.fichaAdaptador?.parcial ?? {};
+        const v: VinoWeb & { bodega_marca?: VinoSitio["bodega_marca"] } = { ...extraerVino(decodificarEntidades(p.name), texto, { atributos, hoy, gtin: c.gtin ?? null }), ...parcial };
+        if (dueña !== undefined) v.bodega_marca = { estado: "dudosa", bodega: dueña };
         const categoriaVino = (p.categories ?? []).some((x) => /vino|wine|tinto|blanco|rosado/i.test(x.name));
         const img = p.images?.[0];
         const atribTexto = Object.entries(atributos).map(([k, x]) => `${k}: ${x}`).join("\n");
@@ -618,7 +623,9 @@ export class RastreadorSitio {
       const texto = textoDe(c.bloques);
       if (c.fichaAdaptador) {
         // Ficha de un adaptador: una página = un vino, con su umbral de evidencias.
-        const v = { ...extraerVino(c.titulo, texto, { hoy, gtin: c.gtin ?? null }), ...(c.fichaAdaptador.parcial ?? {}) };
+        const { bodega: dueña, ...parcial } = c.fichaAdaptador.parcial ?? {};
+        const v: VinoWeb & { bodega_marca?: VinoSitio["bodega_marca"] } = { ...extraerVino(c.titulo, texto, { hoy, gtin: c.gtin ?? null }), ...parcial };
+        if (dueña !== undefined) v.bodega_marca = { estado: "dudosa", bodega: dueña };
         if (v.evidencias >= c.fichaAdaptador.evidenciasMin && !TITULO_NO_VINO.test(v.nombre)) {
           const oferta = c.oferta ? { ...c.oferta, ean: c.oferta.ean ?? v.ean } : null;
           meter(conDo(v, c, c.url, texto, imagenBotella(c.imagenProducto?.url, c.imagenProducto?.alt ?? null, c.url, esDelSitio), oferta ? [oferta] : []));
@@ -961,7 +968,10 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
     const ficha = esFichaAdaptador(ad, res.url) || esFichaAdaptador(ad, url);
     const sel = ficha ? ad!.selectores ?? {} : {};
     if (sel.quitar) $(sel.quitar).remove();
-    const nombreSel = sel.nombre ? limpiarEspacios($(sel.nombre).first().text()) : "";
+    // Guiones blandos (U+00AD) que algunas tiendas meten en los nombres: fuera.
+    const nodoNombre = sel.nombre ? $(sel.nombre).first() : null;
+    nodoNombre?.find("br").replaceWith(" ");
+    const nombreSel = nodoNombre ? limpiarEspacios(nodoNombre.text().replace(/\u00ad/g, "")) : "";
     const t = nombreSel.length >= 2 ? limpiarTitulo(nombreSel) : elegirTitulo(tituloPreferido, nodos, $);
     let clase = clasePrevia ?? clasificar({ url: res.url, titulo: titulo($), h1: h1($), migas: migas($, nodos), tiposJsonLd: tipos });
     // Con `patronFicha`, las fichas son vino aunque el genérico no lo vea, y el resto de páginas
@@ -979,13 +989,18 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
     // Contenedor de la ficha del adaptador: su texto en lugar del de <main>.
     const contenido = sel.contenido ? $(sel.contenido) : null;
     const bloquesFicha = contenido?.length
-      ? bloques(cargar(`<html><body><main>${contenido.toArray().map((el) => $.html(el)).join("\n")}</main></body></html>`))
+      ? bloquesDeContenedor(contenido.toArray().map((el) => $.html(el)).join("\n"))
       : null;
     const bs = indexable ? bloquesFicha ?? bloques($) : [];
     const imagenSel = sel.imagen ? $(sel.imagen).first() : null;
     const srcSel = imagenSel?.attr("data-large_image") ?? imagenSel?.attr("data-src") ?? imagenSel?.attr("src");
-    let parcial: Partial<VinoWeb> | null = null;
-    if (ficha && ad?.extraerVino) parcial = ad.extraerVino({ $, url: res.url, texto: textoDe(bs) });
+    // <base href> (p. ej. «/es/»): las rutas relativas de enlaces e imágenes se resuelven contra él.
+    const base = baseDe($, res.url);
+    let parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null = null;
+    if (ficha && ad?.extraerVino) {
+      const texto = textoDe(bs);
+      parcial = ad.extraerVino({ $, url: res.url, texto, vino: extraerVino(t, texto, { hoy: ctx.ahora.getFullYear() }) });
+    }
     return {
       url: res.url,
       clase: indexable ? clase : "otra",
@@ -993,20 +1008,49 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
       titulo: t,
       fichaAdaptador: ficha && indexable ? { evidenciasMin: ad!.evidenciasMin ?? 2, parcial } : undefined,
       bloques: bs,
-      enlaces: sigue ? enlaces($, res.url) : [],
+      enlaces: sigue ? enlaces($, base) : [],
       gtin: gtin == null ? null : String(gtin),
       categorias: [...categoriaLd, ...migas($, nodos)],
-      imagenes: indexable && clase === "historia" ? candidatasDePagina($, res.url) : undefined,
+      imagenes: indexable && clase === "historia" ? candidatasDePagina($, base) : undefined,
       imagenProducto: clase === "vino"
-        ? srcSel ? urlImagen(srcSel, res.url, imagenSel?.attr("alt")) : imagenLd ? { url: imagenLd, alt: null } : primeraImagen($, res.url)
+        ? srcSel ? urlImagen(srcSel, base, imagenSel?.attr("alt")) : imagenLd ? { url: new URL(imagenLd, base).href, alt: null } : primeraImagen($, base)
         : undefined,
-      oferta: producto && clase === "vino" ? ofertaDeJsonLd(producto, res.url, t, gtin == null ? null : String(gtin)) : null,
+      oferta: producto && clase === "vino"
+        ? ofertaDeJsonLd(producto, res.url, t, gtin == null ? null : String(gtin))
+        : ficha && sel.precio ? ofertaDeSelector($, sel.precio, sel.formato, res.url, t) : null,
     };
   } catch (e) {
     if (e instanceof HostBloqueado) return null;
     if (e instanceof PresupuestoAgotado || e instanceof ParadaFuente) throw e;
     ctx.log.debug(`${url}: ${(e as Error).message}`);
     return null;
+  }
+}
+
+/** Oferta de los selectores de precio y formato de un adaptador (fichas sin JSON-LD `Offer`). */
+export function ofertaDeSelector($: ReturnType<typeof cargar>, selPrecio: string, selFormato: string | undefined, url: string, nombre: string): OfertaWeb | null {
+  const t = limpiarEspacios($(selPrecio).first().text());
+  const m = t.match(/(\d{1,4}(?:[.,]\d{3})*(?:[.,]\d{1,2})?)\s*€|€\s*(\d{1,4}(?:[.,]\d{1,2})?)|^(\d{1,4}(?:[.,]\d{1,2})?)$/);
+  const bruto = m?.[1] ?? m?.[2] ?? m?.[3];
+  if (!bruto) return null;
+  // «1.250,00» y «36.00»: el último separador con dos cifras es el decimal.
+  const precio = Number(bruto.replace(/[.,](?=\d{3}\b)/g, "").replace(",", "."));
+  if (!Number.isFinite(precio) || precio <= 0 || precio > 20_000) return null;
+  const formato = `${nombre} ${selFormato ? limpiarEspacios($(selFormato).first().text()) : ""}`;
+  return {
+    url, precio, precio_regular: null, moneda: "EUR", disponible: null, formato_ml: formatoMl(formato), unidades: unidades(formato),
+    ean: null, sku: null, precio_max: null,
+  };
+}
+
+/** URL contra la que se resuelven las rutas relativas de la página: su <base href> o la propia URL. */
+export function baseDe($: ReturnType<typeof cargar>, url: string): string {
+  const href = $("base[href]").first().attr("href")?.trim();
+  if (!href) return url;
+  try {
+    return new URL(href, url).href;
+  } catch {
+    return url;
   }
 }
 
@@ -1034,7 +1078,9 @@ async function descubrirAdaptador(ctx: ContextoDescubrimiento, contenidos: Conte
   // Clave normalizada → URL tal cual y lastmod del sitemap.
   const fichas = new Map<string, { url: string; lastmod: string | null }>();
   const abs = (u: string) => new URL(u, ctx.origen).href;
-  const anotar = (u: string, lastmod: string | null) => {
+  const anotar = (u0: string, lastmod: string | null) => {
+    const u = rutas.canonica ? rutas.canonica(u0) : u0;
+    if (!u) return;
     const k = normalizarUrl(u);
     if (!fichas.has(k) && urlDelSitio(ctx, u) && esFichaAdaptador(ad, u)) fichas.set(k, { url: u, lastmod });
   };
@@ -1079,9 +1125,12 @@ async function fichasHtmlWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[
 }
 
 /** Dueña de un vino por su marca en un dominio compartido por un grupo de bodegas. */
-export function bodegaDeMarca(nombre: string, ad: AdaptadorSitio, entrada: EntradaSitio): NonNullable<VinoSitio["bodega_marca"]> {
-  const m = ad.marcas?.find((x) => x.patron.test(nombre));
-  if (!m) return { estado: "dudosa", bodega: null };
+export function bodegaDeMarca(
+  nombre: string, ad: AdaptadorSitio, entrada: EntradaSitio, url?: string, deLaFicha?: string | null,
+): NonNullable<VinoSitio["bodega_marca"]> {
+  const dueña = deLaFicha ?? ad.marcas?.find((x) => x.patron.test(nombre) || (!!url && x.patron.test(url)))?.bodega;
+  if (!dueña) return { estado: "dudosa", bodega: null };
+  const m = { bodega: dueña };
   const clave = claveNombreBodega(m.bodega);
   const propia = entrada.bodegas.some((b) => {
     const k = claveNombreBodega(b.nombre);
