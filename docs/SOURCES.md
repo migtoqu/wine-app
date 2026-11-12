@@ -566,3 +566,19 @@ Más `Accept-Language: es-ES,es;q=0.9`. Usar un email de contacto dedicado del p
 - **TDM:** respetar las reservas expresas de minería de textos y datos (p. ej. Lavinia, art. 4 de la Directiva 2019/790) como si fueran `Disallow`.
 - **Auditar los términos cuando se implemente** cada fuente de §4–§6 marcada «pendiente»; este documento no sustituye esa lectura.
 - **Fuentes de la ola 4 con aviso previo recomendado:** C.R. DOCa Rioja y Consorcio Ruta del Vino Ribera (reservan derechos y piden permiso para reproducir; ofrecemos atribución y enlace).
+
+## OpenStreetMap (`osm`, fuente `openstreetmap`, ODbL)
+
+- **Nominatim** (≤ 1 petición/s; el cliente común va a 3–5 s; User-Agent con contacto; caché en `scrapers/.cache/osm/nominatim.json`, conservada en Actions con `actions/cache`) para las bodegas sin coordenadas oficiales: municipio (una consulta por municipio) y calle si la dirección es geocodificable (no carreteras con km ni parajes).
+- **Overpass**: una consulta por ejecución con todos los `craft=winery` / `shop=wine` de España (~2.150 POI). Un POI se empareja si está cerca del punto de la bodega (2–8 km según precisión) y el emparejador común da ≥ 0,9; una vinoteca solo con web o teléfono iguales.
+- Precisión en `registros_fuente.datos.precision`: `exacta` (POI), `portal`, `calle`, `municipio` (centroide, nunca presentado como exacto). Las RPC `mapa_bodegas`, `bodegas_cerca` y `ubicacion_bodega_detalle` la exponen siguiendo `procedencia_campos`.
+- Horario (`opening_hours` de OSM) en `datos.opening_hours`: no hay columna de horario.
+- robots.txt de ambos servicios excluye `/search` y `/api/` para rastreadores web; aquí se usan como API según su política de uso (`fuentes.notas_robots`).
+- Atribución: «© OpenStreetMap contributors» allí donde se muestren sus datos.
+- Dry-run en local: exportar las bodegas a JSON (`id, nombre, direccion, codigo_postal, municipio, provincia, web, telefono, lat, lng`) y `node scrapers/cli.ts osm --dry-run --bodegas bodegas.json`.
+
+## Google Places API (New) (`google-places`, desactivado sin `GOOGLE_PLACES_API_KEY`)
+
+- Crear la key: Google Cloud Console → proyecto nuevo → activar facturación → *APIs & Services* → habilitar **Places API (New)** → *Credentials* → *Create API key* → restringirla a Places API (New). Guardarla como secreto `GOOGLE_PLACES_API_KEY` (no hay workflow programado: solo ejecución manual).
+- Términos: solo se guarda `place_id` (permitido indefinidamente); lat/lng como mucho 30 días (aquí solo en memoria para verificar); valoración, horario, teléfono, web y fotos no se guardan: se piden al mostrarlos (`ClientePlaces.detalles`) con atribución «Google Maps», y no se pueden mezclar en nuestro mapa de OSM. Nunca se rastrea Google Maps.
+- Coste estimado (precios 2026-11, por 1.000): ~900 bodegas × 1 Text Search Pro (5.000 gratis/mes, luego 32 $) = **0 $** al mes; mostrar detalles: Place Details Enterprise (1.000 gratis/mes, luego 20 $) y Photos (1.000 gratis, luego 7 $). Con uso de amigos, previsiblemente dentro del tramo gratuito. Presupuesto por ejecución: `--presupuesto` (100 por defecto).
