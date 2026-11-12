@@ -60,7 +60,8 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [x] Scraper 3: C.R. DOCa Rioja (bodegas, vinos, experiencias)
 - [x] Scraper 4: webs oficiales de bodegas (historia, vinos, enoturismo), con puerta legal por sitio
 - [x] Scraper 5: Ruta del Vino Ribera del Duero (inactiva hasta tener permiso escrito)
-- [ ] Scraper 6: Vinopremier (EAN) — PR #20 en espera: la web dejó de responder durante el dry-run
+- [x] Scraper 6: Vinopremier (EAN) — cron reactivado el 2026-11-12 tras el bloqueo de IP del 08-11 (10–14 s, tope 450)
+- [x] Scrapers 7–12: consejos de Toro, Cigales, Bierzo, Priorat, Rueda y Navarra
 - [x] Carga de semillas: D.O. y variedades de uva españolas
 - [x] Comprobador de enlaces semanal con ocultación tras 2 fallos consecutivos
 
@@ -72,16 +73,16 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 
 **Criterio de salida:** D.O. Ribera del Duero cubierta (~300 bodegas, ~2.000 vinos); los invitados usan la app en móvil sin errores graves.
 
-> Estado (2026-11-08): MVP desplegado. Tras la ola 4 (Rioja + webs de bodegas): 511 bodegas, 1.204 vinos / 1.373 añadas, 508 servicios de enoturismo y 3.312 resúmenes propios; unas 300 fichas en `/admin/revision`. Ribera aún no llega a ~2.000 vinos: faltan Vinopremier y afinar el emparejador (duplicados claros quedan en ~0,85 y van a revisión).
+> Estado (2026-11-12): 864 bodegas, 3.948 vinos / 4.453 añadas, 2.173 servicios de enoturismo y 3.589 imágenes enlazadas. Comparador: 2.033 ofertas de 199 tiendas (Vinoselección, Vinatis y tiendas online de bodegas) sobre 1.783 vinos. Fuentes: 7 consejos reguladores, Vinoselección, Vinopremier, Vinatis, Vinorea (en revisión: listados vacíos desde Actions) y webs oficiales (crawler genérico + adaptadores por bodega en curso). Ruta del Vino inactiva hasta tener permiso escrito.
 >
-> Pendiente del usuario: permiso escrito de la Ruta del Vino (info@riberate.com) y aviso al C.R. Rioja antes de la fase pública.
+> App privada para el usuario y amigos. Antes de una fase pública (no prevista): avisar a los consejos reguladores y a Vinoselección, permiso escrito de la Ruta del Vino (info@riberate.com) y activar la protección de contraseñas filtradas.
 
 ## Fase 2 — Precios, premios y enoturismo (P1)
 
 - [x] Tablas de tiendas, ofertas e historial de precios (§6.2)
 - [x] Bloque "Dónde comprar" en la ficha de vino (75 cl por defecto + selector de formato)
 - [x] Gráfica de historial de precios y mínimo histórico
-- [ ] Más tiendas (objetivo: 3–5) y emparejamiento por EAN
+- [x] Más tiendas (objetivo: 3–5) y emparejamiento por EAN — Vinoselección, Vinopremier, Vinatis, Vinorea + ~200 tiendas de bodega; descartadas por bloqueo o términos: ver SOURCES
 - [x] Cola de duplicados/emparejamiento en admin (`/admin/revision`)
 - [ ] Premios y puntuaciones: tablas (§6.3), scraper de al menos una guía y un concurso
 - [ ] Reseñas externas (extracto + enlace)
