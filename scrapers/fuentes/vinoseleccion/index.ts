@@ -181,6 +181,12 @@ export async function scraperVinoseleccion(ctx: Contexto): Promise<void> {
         continue;
       }
       if (e instanceof ParadaFuente) throw e;
+      if (/HTTP 404/.test((e as Error).message)) {
+        // El listado enlaza a veces fichas ya retiradas: no es un fallo de la ejecución.
+        ctx.contadores.omitidas++;
+        ctx.log.warn(`Ficha retirada (404), omitida: ${tarjeta.url}`);
+        continue;
+      }
       ctx.contadores.errores++;
       ctx.log.error(`${tarjeta.url}: ${(e as Error).message}`);
     }

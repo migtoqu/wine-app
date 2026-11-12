@@ -28,7 +28,7 @@ interface Entrada extends TarjetaTienda {
 /** ¿Queda presupuesto de peticiones? Si no, marca la ejecución como parcial. */
 function quedaPresupuesto(ctx: Contexto, config: ConfigTienda): boolean {
   if (ctx.http.peticiones < config.maxPeticiones) return true;
-  ctx.marcarParcial(`Tope de ${config.maxPeticiones} peticiones alcanzado; se detiene la ejecución`);
+  ctx.marcarParcial(`Tope de ${config.maxPeticiones} peticiones alcanzado; se detiene la ejecución`, { esperado: true });
   return false;
 }
 
