@@ -76,7 +76,7 @@ export async function scraperVinopremier(ctx: Contexto): Promise<void> {
 
   for (const tarjeta of tarjetas) {
     if (ctx.http.peticiones >= MAX_PETICIONES) {
-      ctx.marcarParcial(`Tope de ${MAX_PETICIONES} peticiones alcanzado; se detiene la ejecución`);
+      ctx.marcarParcial(`Tope de ${MAX_PETICIONES} peticiones alcanzado; se detiene la ejecución`, { esperado: true });
       break;
     }
     try {

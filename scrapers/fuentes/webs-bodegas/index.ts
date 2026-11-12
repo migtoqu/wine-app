@@ -168,7 +168,7 @@ export async function scraperWebsBodegas(ctx: Contexto): Promise<void> {
       `${resumen.ofertas} ofertas con precio (${resumen.conTienda} webs con tienda), ${resumen.imagenesBodega} imágenes de bodega, ${resumen.subdominios} webs con subdominios, ${resumen.sinCambios} páginas sin cambios` +
       `${resumen.sinTiempo ? `; ${resumen.sinTiempo} sin tiempo (siguen en la próxima ejecución)` : ""}`,
   );
-  if (resumen.sinTiempo) ctx.marcarParcial(`Presupuesto de ${minutos} min agotado: ${resumen.sinTiempo} sitios pendientes`);
+  if (resumen.sinTiempo) ctx.marcarParcial(`Presupuesto de ${minutos} min agotado: ${resumen.sinTiempo} sitios pendientes`, { esperado: true });
 }
 
 function contarSalto(m: Map<string, number>, motivo: MotivoSalto) {
