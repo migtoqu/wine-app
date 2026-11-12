@@ -41,18 +41,21 @@ const ENLACES: Record<Exclude<ConfigTienda["plataforma"], "vinatis">, string> = 
   // Magento 2 (Luma y derivados): fuera de `.column.main` hay carruseles.
   magento: ".column.main li.product-item a.product-item-link, .products-grid li.product-item a.product-item-link",
   woocommerce: "ul.products li.product a.woocommerce-LoopProduct-link, ul.products li.product a.woocommerce-loop-product__link",
-  // PrestaShop 1.6 (`ul.product_list`) y 1.7+ (`article.product-miniature`).
-  prestashop: "ul.product_list a.product-name, #js-product-list article.product-miniature .product-title a, .products article.product-miniature .product-title a",
+  // PrestaShop 1.6 (`ul.product_list`), 1.7 (`.product-title a`) y 8 con Hummingbird (`a.product-miniature__title`).
+  prestashop:
+    "ul.product_list a.product-name, #js-product-list article.product-miniature .product-title a, .products article.product-miniature .product-title a, " +
+    "#js-product-list article.product-miniature a.product-miniature__title",
 };
 
 /** Mayor página enlazada en el paginador de esta misma categoría. */
 function maxPaginaEnlazada($: cheerio.CheerioAPI, config: ConfigListado, categoria: CategoriaTienda): number | null {
   const ruta = new URL(categoria.ruta, config.base).pathname.replace(/\/+$/, "");
   let max: number | null = null;
-  $("a[href]").each((_, a) => {
+  // Enlaces y, en PrestaShop 8 (Hummingbird), botones del paginador con `data-ps-data`.
+  $("a[href], link[rel='next'][href], [data-ps-data]").each((_, a) => {
     let u: URL;
     try {
-      u = new URL($(a).attr("href")!, config.base);
+      u = new URL($(a).attr("href") ?? $(a).attr("data-ps-data")!, config.base);
     } catch {
       return;
     }
@@ -76,7 +79,7 @@ function totalDe($: cheerio.CheerioAPI): number | null {
     .map((_, n) => Number($(n).text().trim()))
     .get();
   if (numeros.length > 0 && Number.isInteger(numeros[numeros.length - 1])) return numeros[numeros.length - 1]!;
-  const texto = $(".heading-counter, .product-count, .total-products, .woocommerce-result-count").text();
+  const texto = $(".heading-counter, .product-count, .total-products, .products__count, .pagination__number, .woocommerce-result-count").text();
   const m = texto.match(/\bde\s+(\d+)\b/i) ?? texto.match(/\b(\d+)\s+(?:productos?|resultados?|art[ií]culos?)/i);
   return m ? Number(m[1]) : null;
 }
