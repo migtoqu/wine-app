@@ -19,6 +19,14 @@ const fixtureVp = (f: string) => readFileSync(new URL(`../vinopremier/fixtures/$
 
 const RIBERA: CategoriaTienda = { denominacion: "ribera-del-duero", nombre: "Ribera del Duero", ruta: "/categoria/ribera-del-duero/" };
 const WOO: ConfigTienda = { ...VINOREA, slug: "ejemplo", base: "https://tienda.example", plataforma: "woocommerce", paramPagina: undefined, selectorBodega: undefined, categorias: [RIBERA] };
+/** Vinorea antes de migrar a PrestaShop 8 (fixtures del 2026-11-10): PrestaShop 1.6 genérico. */
+const PS16: ConfigTienda = {
+  ...VINOREA,
+  slug: "ps16",
+  paramPagina: "p",
+  selectorBodega: ".labodega",
+  categorias: [{ denominacion: "ribera-del-duero", nombre: "Ribera del Duero", ruta: "/vino/espana/ribera-de-duero/" }],
+};
 const MAGENTO: ConfigTienda = {
   ...VINOREA,
   slug: "magento",
@@ -45,14 +53,24 @@ describe("URLs de listado por plataforma", () => {
     expect(urlListado(MAGENTO, MAGENTO.categorias[0]!, 1)).toBe("https://vinopremier.com/vinos/denominaciones/d-o-ribera-del-duero");
     expect(urlListado(MAGENTO, MAGENTO.categorias[0]!, 3)).toBe("https://vinopremier.com/vinos/denominaciones/d-o-ribera-del-duero?p=3");
     expect(urlListado(WOO, RIBERA, 2)).toBe("https://tienda.example/categoria/ribera-del-duero/page/2/");
-    expect(urlListado(VINOREA, VINOREA.categorias[0]!, 4)).toBe("https://www.vinorea.com/vino/espana/ribera-de-duero/?p=4");
+    expect(urlListado(PS16, PS16.categorias[0]!, 4)).toBe("https://www.vinorea.com/vino/espana/ribera-de-duero/?p=4");
+    expect(urlListado(VINOREA, VINOREA.categorias[0]!, 2)).toBe("https://www.vinorea.com/do/ribera-del-duero/?page=2");
     expect(urlListado(VINATIS, VINATIS.categorias[1]!, 2)).toBe("https://www.vinatis.es/comprar-vino-rioja?page=2");
   });
 });
 
 describe("listados", () => {
-  it("PrestaShop 1.6 (Vinorea): solo la rejilla, paginador de la misma categoría y total", () => {
+  it("PrestaShop 8 / Hummingbird (Vinorea): miniaturas, paginador con botones data-ps-data y total", () => {
     const l = parsearListado(fixture("vinorea-listado-ribera.html"), VINOREA, VINOREA.categorias[0]!);
+    expect(l.tarjetas).toHaveLength(3);
+    expect(l.tarjetas[0]).toEqual({ url: "https://www.vinorea.com/tamiz-roble-vino-tinto-ribera-del-duero.html", nombre: "Tamiz Roble Añada 2025" });
+    expect(l.tarjetas.some((t) => t.url.includes("destacado"))).toBe(false);
+    expect(l.maxPagina).toBe(2);
+    expect(l.total).toBe(63);
+  });
+
+  it("PrestaShop 1.6: solo la rejilla, paginador de la misma categoría y total", () => {
+    const l = parsearListado(fixture("prestashop16-listado.html"), PS16, PS16.categorias[0]!);
     expect(l.tarjetas).toHaveLength(4);
     expect(l.tarjetas.every((t) => t.url.startsWith("https://www.vinorea.com/") && t.url.endsWith(".html"))).toBe(true);
     expect(l.tarjetas.some((t) => t.url.includes("destacado"))).toBe(false);
@@ -121,9 +139,31 @@ describe("listados", () => {
 });
 
 describe("fichas (datos estructurados)", () => {
-  it("PrestaShop 1.6 (Vinorea): microdatos + tabla de atributos + selector de bodega", () => {
+  it("PrestaShop 8 (Vinorea): JSON-LD + ficha técnica `dl.vnr-sheet` con bodega y origen", () => {
+    const url = "https://www.vinorea.com/tamiz-roble-vino-tinto-ribera-del-duero.html";
+    const f = parsearFichaEstructurada(fixture("vinorea-ficha-tamiz-roble.html"), url, VINOREA);
+    expect(f).toMatchObject({
+      nombre: "Tamiz Roble",
+      sku: "RB11",
+      ean: null,
+      precio: 6.95,
+      moneda: "EUR",
+      disponibilidad: "InStock",
+      bodega: "Bodega Teófilo Reyes",
+      tipoTexto: "Tinto",
+      denominacionTexto: "Origen Ribera del Duero",
+      uvasTexto: "Tempranillo",
+      anio: 2025,
+      formatoMl: 750,
+      grado: 14.5,
+      temperaturaTexto: "14-16 °C",
+    });
+    expect(f.imagen).toMatch(/^https:\/\/www\.vinorea\.com\/\d+-/);
+  });
+
+  it("PrestaShop 1.6: microdatos + tabla de atributos + selector de bodega", () => {
     const url = "https://www.vinorea.com/arzuaga-crianza.html";
-    const f = parsearFichaEstructurada(fixture("vinorea-ficha-arzuaga-crianza.html"), url, VINOREA);
+    const f = parsearFichaEstructurada(fixture("prestashop16-ficha.html"), url, PS16);
     expect(f).toMatchObject({
       nombre: "ARZUAGA Crianza",
       sku: "AR0",
@@ -206,9 +246,29 @@ describe("normalizar", () => {
     expect(nombreTienda("TRUS Reserva Magnum")).toBe("TRUS Reserva");
   });
 
-  it("Vinorea: vino, añada, uvas y oferta válida", () => {
+  it("«Origen» fuera del foco se descarta; dentro del foco manda", () => {
+    expect(denominacionDesde("Origen Ribera del Duero")).toEqual({ slug: "ribera-del-duero", nombre: "Ribera del Duero" });
+    expect(denominacionDesde("Origen Castilla y León")).toBe("fuera");
+  });
+
+  it("Vinorea (PrestaShop 8): vino, añada, temperatura y oferta válida", () => {
+    const url = "https://www.vinorea.com/tamiz-roble-vino-tinto-ribera-del-duero.html";
+    const n = normalizarFichaTienda(parsearFichaEstructurada(fixture("vinorea-ficha-tamiz-roble.html"), url, VINOREA), VINOREA.categorias[0]!);
+    expect(n).toMatchObject({
+      idExterno: "tamiz-roble-vino-tinto-ribera-del-duero",
+      denominacion: "ribera-del-duero",
+      descarte: null,
+      vino: { nombre: "Tamiz Roble", tipo: "tinto", crianza: "roble" },
+      anada: { anio: 2025, grado: 14.5, temp_servicio_min: 14, temp_servicio_max: 16 },
+      senales: { bodega: "Bodega Teófilo Reyes", grupo: [], vino: "Tamiz Roble" },
+      datos: { precio: 6.95, formato_ml: 750 },
+    });
+    expect(normalizarOferta(ofertaVinopremier(n, "vino-1", "anada-1", null))).toMatchObject({ fila: { precio: 6.95, disponible: true, url } });
+  });
+
+  it("PrestaShop 1.6: vino, añada, uvas y oferta válida", () => {
     const url = "https://www.vinorea.com/arzuaga-crianza.html";
-    const n = normalizarFichaTienda(parsearFichaEstructurada(fixture("vinorea-ficha-arzuaga-crianza.html"), url, VINOREA), VINOREA.categorias[0]!);
+    const n = normalizarFichaTienda(parsearFichaEstructurada(fixture("prestashop16-ficha.html"), url, PS16), PS16.categorias[0]!);
     expect(n).toMatchObject({
       idExterno: "arzuaga-crianza",
       denominacion: "ribera-del-duero",
@@ -264,8 +324,9 @@ function clienteFalso(paginas: Record<string, string>) {
   return { http, pedidas };
 }
 
-function contexto(http: unknown, limite: number | null = null): Contexto & { motivos: string[] } {
+function contexto(http: unknown, limite: number | null = null): Contexto & { motivos: string[]; inesperados: string[] } {
   const motivos: string[] = [];
+  const inesperados: string[] = [];
   return {
     fuenteSlug: "x",
     dryRun: true,
@@ -279,7 +340,11 @@ function contexto(http: unknown, limite: number | null = null): Contexto & { mot
     salida: [],
     opciones: {},
     motivos,
-    marcarParcial: (m: string) => void motivos.push(m),
+    inesperados,
+    marcarParcial: (m: string, o?: { esperado?: boolean }) => {
+      motivos.push(m);
+      if (!o?.esperado) inesperados.push(m);
+    },
     esParcial: () => motivos.length > 0,
   };
 }
@@ -304,10 +369,10 @@ describe("scraper (dry-run con HTTP falso)", () => {
   it("PrestaShop: respeta el tope de peticiones y marca la ejecución parcial", async () => {
     const config: ConfigTienda = { ...VINOREA, categorias: [VINOREA.categorias[0]!], maxPeticiones: 3, maxPaginas: 1 };
     const listado = fixture("vinorea-listado-ribera.html");
-    const ficha = fixture("vinorea-ficha-arzuaga-crianza.html");
+    const ficha = fixture("vinorea-ficha-tamiz-roble.html");
     const urls = parsearListado(listado, config, config.categorias[0]!).tarjetas.map((t) => t.url);
     const { http, pedidas } = clienteFalso({
-      "https://www.vinorea.com/vino/espana/ribera-de-duero/": listado,
+      "https://www.vinorea.com/do/ribera-del-duero/": listado,
       ...Object.fromEntries(urls.map((u) => [u, ficha])),
     });
     const ctx = contexto(http);
@@ -315,5 +380,23 @@ describe("scraper (dry-run con HTTP falso)", () => {
     expect(pedidas).toHaveLength(3);
     expect(ctx.salida).toHaveLength(2);
     expect(ctx.motivos.some((m) => /Tope de 3 peticiones/.test(m))).toBe(true);
+    // El tope es un corte previsto: no pone la ejecución en rojo (el paginador sí, por maxPaginas: 1).
+    expect(ctx.inesperados.some((m) => /Tope/.test(m))).toBe(false);
+  });
+
+  it("página 1 sin productos (web cambiada, como Vinorea el 2026-11-12): parcial no esperado", async () => {
+    const config: ConfigTienda = { ...VINOREA, categorias: [VINOREA.categorias[0]!, VINOREA.categorias[1]!] };
+    // HTML de la web antigua (PrestaShop 1.6) servido en la ruta nueva: los selectores de la
+    // configuración no encuentran ningún producto.
+    const viejo = fixture("prestashop16-listado.html").replace(/ul class="product_list[^"]*"/, 'ul class="otra-cosa"');
+    const { http } = clienteFalso({
+      "https://www.vinorea.com/do/ribera-del-duero/": viejo,
+      "https://www.vinorea.com/do/rioja/": viejo,
+    });
+    const ctx = contexto(http);
+    await crearScraperTienda(config)(ctx);
+    expect(ctx.salida).toEqual([]);
+    expect(ctx.inesperados).toHaveLength(2);
+    expect(ctx.inesperados[0]).toMatch(/página 1 de Ribera del Duero no tiene productos/);
   });
 });

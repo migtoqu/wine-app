@@ -80,6 +80,8 @@ const ALIAS_VARIEDAD: Record<string, string> = {
   "garnacha negra": "garnacha-tinta",
   "tinta fina": "tempranillo",
   "tinto del pais": "tempranillo",
+  "tinta del pais": "tempranillo",
+  "tinta fina del pais": "tempranillo",
   cabernet: "cabernet-sauvignon",
   albillo: "albillo-mayor",
   carinena: "mazuela",
