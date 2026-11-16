@@ -5,6 +5,7 @@ import { ActiveFilters } from "@/components/catalog/active-filters";
 import { FilterForm } from "@/components/catalog/filter-form";
 import { FiltersDisclosure } from "@/components/catalog/filters-disclosure";
 import { Pagination } from "@/components/catalog/pagination";
+import { MapIcon } from "@/components/catalog/icons";
 import { SearchCombobox } from "@/components/catalog/search-combobox";
 import { searchComboboxLabels } from "@/components/catalog/search-labels";
 import { VinoFilters } from "@/components/catalog/vino-filters";
@@ -54,7 +55,13 @@ export default async function SearchPage({ searchParams }: PageProps<"/[lang]/bu
 
   return (
     <Container className="flex flex-col gap-6 py-8 sm:py-10">
-      <h1 className="text-3xl font-semibold sm:text-4xl">{dict.search.title}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold sm:text-4xl">{dict.search.title}</h1>
+        <NextLink href={localePath(lang, "/mapa")} className={buttonStyles({ variant: "secondary", size: "sm" })}>
+          <MapIcon className="size-4" />
+          {dict.map.seeMap}
+        </NextLink>
+      </div>
       <Suspense fallback={<ResultsSkeleton />}>
         <SearchResults lang={lang} dict={dict} searchParams={searchParams} />
       </Suspense>

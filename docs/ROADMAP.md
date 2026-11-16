@@ -88,9 +88,9 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [ ] Reseñas externas (extracto + enlace)
 - [x] Servicios de enoturismo en la ficha de bodega
 - [x] Scraper de webs de bodegas (enoturismo; fotos pendientes)
-- [ ] Geocodificación de bodegas
-- [ ] Mapa de bodegas (MapLibre + OSM) con clustering
-- [ ] "Cerca de mí" y ubicación de referencia del usuario
+- [x] Geocodificación de bodegas (OpenStreetMap: Nominatim + Overpass, mensual; precisión marcada)
+- [x] Mapa de bodegas (MapLibre + OSM) con clustering (`/mapa`)
+- [ ] "Cerca de mí" y ubicación de referencia del usuario («cerca de mí» hecho en `/mapa`, en el navegador; falta la ubicación de referencia guardada)
 - [ ] Filtros de precio, tienda, puntuación, premios y servicios (precio hecho: filtro y orden en el listado)
 - [ ] Páginas de D.O. y de variedad de uva
 

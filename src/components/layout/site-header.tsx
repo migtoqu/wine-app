@@ -1,6 +1,6 @@
 import NextLink from "next/link";
 import { Suspense } from "react";
-import { SearchIcon } from "@/components/catalog/icons";
+import { MapIcon, SearchIcon } from "@/components/catalog/icons";
 import { localePath, type Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/es";
 import { Container } from "./container";
@@ -36,6 +36,17 @@ export function SiteHeader({ lang, dict }: Props) {
             <SearchIcon className="size-5" />
             <span aria-hidden className="hidden sm:inline">
               {dict.search.nav}
+            </span>
+          </NextLink>
+          <NextLink
+            href={localePath(lang, "/mapa")}
+            aria-label={dict.map.title}
+            // En móvil no cabe: el mapa se enlaza desde Buscar.
+            className="max-sm:hidden inline-flex h-10 min-w-10 items-center justify-center gap-2 rounded-full border border-border bg-surface px-3 text-sm font-semibold text-fg hover:bg-surface-2"
+          >
+            <MapIcon className="size-5" />
+            <span aria-hidden className="hidden sm:inline">
+              {dict.map.nav}
             </span>
           </NextLink>
           <LanguageSwitcher

@@ -46,3 +46,6 @@ next-env.d.ts
 
 # cachés locales de los scrapers (Nominatim…)
 /scrapers/.cache/
+
+# worker de MapLibre copiado en predev/prebuild
+/public/vendor/
