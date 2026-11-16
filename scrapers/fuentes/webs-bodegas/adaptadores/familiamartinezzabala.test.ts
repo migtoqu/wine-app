@@ -14,13 +14,14 @@ describe("Familia Martínez Zabala (Faustino, Campillo)", () => {
       [ficha]: fixture("bodegasfaustino-crianza.html"),
     };
     const r = await rastrearCon(faustino, { web, paginas });
-    expect(r.extractor).toMatch(/^adaptador:bodegasfaustino\.com@v1/);
+    expect(r.extractor).toMatch(/^adaptador:bodegasfaustino\.com@v2/);
     expect(r.vinos).toHaveLength(1);
     expect(r.vinos[0]).toMatchObject({ nombre: "Faustino Crianza", tipo: "tinto", grado: 14, anio: null });
     expect(r.vinos[0]!.variedades.map((v) => v.nombre)).toContain("Tempranillo");
     expect(r.vinos[0]!.denominacion?.denominacion?.slug).toBe("rioja");
     expect(r.vinos[0]!.imagen?.url).toBe("https://www.bodegasfaustino.com/img/web/big.portrait.faustino-crianza-2022.png");
     expect(r.pedidas).not.toContain("https://www.bodegasfaustino.com/es/wines/faustino-crianza");
+    expect(faustino.rutas!.canonica!("http://www.bodegasfaustino.com/es/vinos/faustino-v-rosado")).toBe("https://www.bodegasfaustino.com/es/vino/faustino-v-rosado");
     // Sin adaptador, el h1 «Bodegas Faustino» deja la ficha sin vino.
     const sin = await rastrearCon(faustino, { web, paginas, conAdaptador: false });
     expect(sin.vinos).toHaveLength(0);

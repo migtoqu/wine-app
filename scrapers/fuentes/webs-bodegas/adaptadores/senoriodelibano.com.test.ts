@@ -2,25 +2,17 @@ import { describe, expect, it } from "vitest";
 import adaptador from "./senoriodelibano.com.ts";
 import { fixture, rastrearCon } from "./prueba.ts";
 
-describe("adaptador senoriodelibano.com", () => {
-  const prueba = {
-    web: "https://www.senoriodelibano.com/",
-    paginas: {
-      "https://tienda.senoriodelibano.com/es/vinos/comprar-digma-graciano-6-botellas": fixture("senoriodelibano-digma-graciano-6.html"),
-    },
-  };
+describe("adaptador senoriodelibano.com (v2, tienda rehecha)", () => {
+  const ficha = "https://tienda.senoriodelibano.com/la-roma";
+  const portada = `<html><head><title>Señorío de Líbano</title></head><body><main><p>Bodega en Sajazarra.</p><a href="https://www.senoriodelibano.com/aviso-legal/">Aviso legal</a><a href="https://tienda.senoriodelibano.com/es">Tienda</a></main></body></html>`;
+  const listado = `<html><body><main><a href="/la-roma">La Roma</a><a href="/envios">Envíos</a><a href="/carrito">Carrito</a></main></body></html>`;
+  const paginas = { "https://www.senoriodelibano.com/": portada, "https://tienda.senoriodelibano.com/es": listado, [ficha]: fixture("senoriodelibano-la-roma.html") };
 
-  it("Señorío de Líbano: misma tienda; caja de 6 botellas y grado de .winechar", async () => {
-    const r = await rastrearCon(adaptador, prueba);
-    expect(r.extractor).toMatch(/^adaptador:/);
-    expect(r.vinos).toEqual([
-      expect.objectContaining({"nombre": "Digma Graciano", "tipo": "tinto", "grado": 14}),
-    ]);
-    expect(r.vinos[0]!.ofertas[0]).toMatchObject({ precio: 270, unidades: 6 });
-  });
-
-  it("sin el adaptador, el genérico saca menos vinos de la misma ficha", async () => {
-    const sin = await rastrearCon(adaptador, { ...prueba, conAdaptador: false });
-    expect(sin.vinos.length).toBeLessThan(1);
+  it("ficha en la raíz de la tienda: h1, ficha técnica y oferta JSON-LD de caja de 6", async () => {
+    const r = await rastrearCon(adaptador, { web: "https://www.senoriodelibano.com/", paginas });
+    expect(r.vinos).toEqual([expect.objectContaining({ nombre: "La Roma", tipo: "tinto", grado: 14.5 })]);
+    expect(r.vinos[0]!.denominacion?.denominacion?.slug).toBe("rioja");
+    expect(r.vinos[0]!.ofertas[0]).toMatchObject({ precio: 144, unidades: 6 });
+    expect(r.pedidas).not.toContain("https://tienda.senoriodelibano.com/envios");
   });
 });

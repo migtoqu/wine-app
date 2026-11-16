@@ -10,10 +10,20 @@ import type { AdaptadorSitio } from "./tipos.ts";
 export function adaptadorMartinezZabala(dominio: string, listado: string, excluir: RegExp, minimoVinos: number): AdaptadorSitio {
   return {
     dominios: [dominio],
-    version: 1,
+    version: 2,
     modo: "completa",
     notas: "Ola D, 2026-11-12. h1 = bodega → 0 vinos con el genérico. Revisado a mano con dos fichas.",
-    rutas: { listados: [listado], patronFicha: /\/es\/vino\/[a-z0-9-]+$/, excluir },
+    rutas: {
+      listados: [listado],
+      patronFicha: /^https:\/\/www\.[a-z]+\.com\/es\/vino\/[a-z0-9-]+$/,
+      excluir,
+      // El listado enlaza `vinos/<vino>` (redirige a `/es/vino/<vino>`), `/es/wines/<vino>` (la misma
+      // ficha) y a veces por http: todo a la forma canónica https `/es/vino/<vino>`.
+      canonica: (u) => {
+        const m = u.match(/^https?:\/\/(?:www\.)?([a-z]+\.com)\/es\/(?:vinos?|wines)\/([a-z0-9-]+)$/);
+        return m ? `https://www.${m[1]}/es/vino/${m[2]}` : null;
+      },
+    },
     selectores: { contenido: ".nws .data", nombre: ".nws h2", quitar: ".awards, .video-container, .newbuywine", imagen: '.nws img[src*="big.portrait"]' },
     evidenciasMin: 1,
     extraerVino: (f) => {
