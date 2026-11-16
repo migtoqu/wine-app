@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   anadaKey,
+  parseCataResumen,
   displayHost,
   formatAddress,
   formatAlcohol,
@@ -165,5 +166,18 @@ describe("imageForAnada", () => {
     expect(imageForAnada({ imagenes: [img("vino")], anadas: [a2020, a2019] }, a2019)?.url).toBe("vino");
     expect(imageForAnada({ imagenes: [], anadas: [a2020, a2019] }, a2019)?.url).toBe("2020");
     expect(imageForAnada({ imagenes: [], anadas: [a2019] }, a2019)).toBeNull();
+  });
+});
+
+describe("parseCataResumen", () => {
+  it("separa vista, nariz, boca y maridaje (es y en)", () => {
+    expect(parseCataResumen("Vista: rojo picota. Nariz: frutos negros y tostados. Boca: final largo y fresco. Maridaje: carnes rojas y quesos curados.")).toEqual({
+      vista: "Rojo picota", nariz: "Frutos negros y tostados", boca: "Final largo y fresco", maridaje: "Carnes rojas y quesos curados", resto: null,
+    });
+    expect(parseCataResumen("Palate: long finish. Food pairing: red meat.")).toMatchObject({ boca: "Long finish", maridaje: "Red meat", vista: null });
+  });
+
+  it("un texto sin etiquetas queda en resto", () => {
+    expect(parseCataResumen("Vino muy expresivo.")).toEqual({ vista: null, nariz: null, boca: null, maridaje: null, resto: "Vino muy expresivo." });
   });
 });
