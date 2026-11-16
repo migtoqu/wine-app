@@ -1,10 +1,12 @@
 name: Scraper Vinopremier
 
-# Solo lanzamiento manual. El cron semanal (jueves 04:23 UTC, `23 4 * * 4`) está
-# desactivado: se reactivará cuando vinopremier.com vuelva a responder (bloqueo de IP
-# sospechado el 2026-11-08; ver docs/SOURCES.md §4.1).
-# Nunca se ejecuta en pull requests.
+# Semanal (SCOPE §7.2): jueves 04:23 UTC. Reactivado el 2026-11-12: vinopremier.com
+# vuelve a responder tras el bloqueo de IP sospechado del 2026-11-08 (docs/SOURCES.md §4.1);
+# desde entonces, 10–14 s entre peticiones y tope de 450 por ejecución.
+# Nunca se ejecuta en pull requests: solo cron y lanzamiento manual.
 on:
+  schedule:
+    - cron: "23 4 * * 4"
   workflow_dispatch:
     inputs:
       dry_run:

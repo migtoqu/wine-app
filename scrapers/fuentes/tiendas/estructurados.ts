@@ -178,7 +178,8 @@ export function atributosFicha($: cheerio.CheerioAPI): Map<string, string> {
     const celdas = $(tr).find("th, td");
     if (celdas.length >= 2) poner($(celdas[0]).text(), $(celdas[1]).text());
   });
-  $("dl.data-sheet dt, dl.product-features dt").each((_, dt) => poner($(dt).text(), $(dt).next("dd").text()));
+  // `dl` de ficha técnica (PrestaShop 1.7+, temas propios como `dl.vnr-sheet`, con o sin `div` por par).
+  $("dl dt").each((_, dt) => poner($(dt).text(), $(dt).nextAll("dd").first().text()));
   return pares;
 }
 
@@ -211,12 +212,12 @@ export function parsearFichaEstructurada(html: string, url: string, config: Pick
   if (!nombre) throw new Error(`Ficha sin nombre: ${url}`);
 
   const bodegaSelector = config.selectorBodega ? textoONull($(config.selectorBodega).first().text()) : null;
-  const bodegaAttr = atributo(attrs, "Bodega", "Elaborador", "Productor", "Bodegas");
+  const bodegaAttr = atributo(attrs, "Bodega", "La bodega", "Elaborador", "Productor", "Bodegas");
   const bodega = bodegaSelector ?? bodegaAttr ?? ld.fabricante ?? ld.marca ?? md.marca;
   const grupo = [...new Set([ld.fabricante, ld.marca, md.marca].filter((g): g is string => !!g && g !== bodega))];
 
   const anioAttr = Number(atributo(attrs, "Añada", "Cosecha", "Año"));
-  const gradoAttr = numero((atributo(attrs, "Vol", "Grados", "Graduación", "Grado alcohólico", "Alcohol") ?? "").replace(/%.*$/, "").trim());
+  const gradoAttr = numero((atributo(attrs, "Vol", "Grado", "Grados", "Graduación", "Grado alcohólico", "Alcohol") ?? "").replace(/%.*$/, "").trim());
 
   const desc = $('[itemprop="description"], .product-description, #description, .woocommerce-product-details__short-description, .product.attribute.overview .value')
     .first()
@@ -235,7 +236,10 @@ export function parsearFichaEstructurada(html: string, url: string, config: Pick
     bodega,
     grupo,
     tipoTexto: atributo(attrs, "Tipo", "Tipo de vino", "Color"),
-    denominacionTexto: atributo(attrs, "Denominación Origen", "Denominación de Origen", "Denominación", "D.O.", "DO"),
+    denominacionTexto:
+      atributo(attrs, "Denominación Origen", "Denominación de Origen", "Denominación", "D.O.", "DO") ??
+      // «Origen: Ribera del Duero» (Vinorea): se marca para que una zona fuera del foco se descarte.
+      (atributo(attrs, "Origen") ? `Origen ${atributo(attrs, "Origen")}` : null),
     uvasTexto: atributo(attrs, "Tipo Uva", "Uva", "Uvas", "Variedad", "Variedades"),
     anio: Number.isInteger(anioAttr) && anioAttr >= 1950 && anioAttr <= 2049 ? anioAttr : null,
     formatoMl: formatoTexto(atributo(attrs, "Capacidad", "Formato", "Volumen", "Tamaño")),

@@ -37,8 +37,13 @@ export interface Contexto {
   salida: unknown[];
   /** Opciones propias de una fuente (`--webs`, `--dominio`, `--lote`…), tal como llegan de la CLI. */
   opciones: Record<string, string | undefined>;
-  /** La ejecución terminará como 'parcial' aunque no haya errores de ficha. */
-  marcarParcial(motivo: string): void;
+  /**
+   * La ejecución terminará como 'parcial' aunque no haya errores de ficha.
+   * `esperado`: corte previsto (presupuesto de tiempo, tope de peticiones); la
+   * ejecución sigue siendo 'parcial' en la BD pero el proceso sale con 0 si no
+   * hay errores ni otros motivos, para no marcar en rojo el workflow.
+   */
+  marcarParcial(motivo: string, opciones?: { esperado?: boolean }): void;
   /** ¿Se ha marcado ya como parcial? (p. ej. para no dar por no vistas las ofertas de un listado incompleto). */
   esParcial(): boolean;
 }
@@ -75,6 +80,7 @@ export async function ejecutar(
   const log = new Log({ verbose: opciones.verbose });
   const inicio = new Date();
   const motivosParcial: string[] = [];
+  let motivosInesperados = 0;
   const ctx: Contexto = {
     fuenteSlug,
     dryRun: opciones.dryRun,
@@ -87,7 +93,8 @@ export async function ejecutar(
     rutaBodegas: opciones.rutaBodegas ?? null,
     salida: [],
     opciones: opciones.opciones ?? {},
-    marcarParcial(motivo) {
+    marcarParcial(motivo, opciones) {
+      if (!opciones?.esperado) motivosInesperados++;
       log.warn(motivo);
       motivosParcial.push(motivo);
     },
@@ -186,6 +193,8 @@ export async function ejecutar(
     log.info(`Salida del dry-run: ${ruta}`);
   }
 
-  // parcial también sale con código ≠ 0 para que Actions avise.
+  // parcial también sale con código ≠ 0 para que Actions avise, salvo un corte
+  // esperado (presupuesto/tope) sin errores ni otros motivos.
+  if (estado === "parcial" && ctx.contadores.errores === 0 && motivosInesperados === 0) return 0;
   return estado === "ok" ? 0 : estado === "parcial" ? 2 : 1;
 }

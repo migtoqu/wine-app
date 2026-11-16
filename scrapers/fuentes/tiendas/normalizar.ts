@@ -37,7 +37,7 @@ export function denominacionDesde(texto: string | null): { slug: string; nombre:
   if (d) return { slug: d.slug, nombre: d.nombre };
   // «IGP Castilla y León», «Vino de España»…: el producto está en la categoría pero no es de la D.O.
   // (claveTexto deja «D.O.» como «d o»).
-  return /\b(d ?o|d ?o ?ca|d ?o ?p|denominacion|i ?g ?p|v ?t|vino de la tierra|vdt|vino de espana)\b/.test(t) ? "fuera" : null;
+  return /^origen\b|\b(d ?o|d ?o ?ca|d ?o ?p|denominacion|i ?g ?p|v ?t|vino de la tierra|vdt|vino de espana)\b/.test(t) ? "fuera" : null;
 }
 
 /** «ARZUAGA Crianza» se queda igual; «Vino Tinto X» → «X». Quita añada y formato. */

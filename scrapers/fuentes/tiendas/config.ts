@@ -29,16 +29,17 @@ export const VINOREA: ConfigTienda = {
   nombre: "Vinorea",
   base: "https://www.vinorea.com",
   plataforma: "prestashop",
-  // Vinorea solo enlaza estas D.O. del foco (menú de /vino/espana/, 2026-11-10).
+  // PrestaShop 8 (tema Hummingbird) desde ~2026-11-11: categorías `/do/<d.o.>/` (antes
+  // `/vino/espana/<d.o.>/`, que ahora redirige con 301). Son las D.O. del foco que enlaza su menú.
   categorias: [
-    { denominacion: "ribera-del-duero", nombre: "Ribera del Duero", ruta: "/vino/espana/ribera-de-duero/" },
-    { denominacion: "rioja", nombre: "Rioja", ruta: "/vino/espana/rioja/" },
-    { denominacion: "rueda", nombre: "Rueda", ruta: "/vino/espana/rueda/" },
+    { denominacion: "ribera-del-duero", nombre: "Ribera del Duero", ruta: "/do/ribera-del-duero/" },
+    { denominacion: "rioja", nombre: "Rioja", ruta: "/do/rioja/" },
+    { denominacion: "rueda", nombre: "Rueda", ruta: "/do/rueda/" },
+    { denominacion: "bierzo", nombre: "Bierzo", ruta: "/do/bierzo/" },
   ],
-  // PrestaShop 1.6: `?p=N`, 24 por página.
-  paramPagina: "p",
-  selectorBodega: ".labodega",
-  // ~300–400 fichas + ~20 listados hoy.
+  // `?page=N`, 36 por página. La bodega y la D.O. salen de la ficha técnica (`dl.vnr-sheet`).
+  paramPagina: "page",
+  // ~200 fichas + ~10 listados hoy.
   maxPeticiones: 700,
   maxPaginas: 30,
   pausaMs: PAUSA,

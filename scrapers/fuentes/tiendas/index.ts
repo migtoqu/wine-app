@@ -28,7 +28,7 @@ interface Entrada extends TarjetaTienda {
 /** ¿Queda presupuesto de peticiones? Si no, marca la ejecución como parcial. */
 function quedaPresupuesto(ctx: Contexto, config: ConfigTienda): boolean {
   if (ctx.http.peticiones < config.maxPeticiones) return true;
-  ctx.marcarParcial(`Tope de ${config.maxPeticiones} peticiones alcanzado; se detiene la ejecución`);
+  ctx.marcarParcial(`Tope de ${config.maxPeticiones} peticiones alcanzado; se detiene la ejecución`, { esperado: true });
   return false;
 }
 
@@ -46,7 +46,15 @@ async function listar(ctx: Contexto, config: ConfigTienda): Promise<Entrada[]> {
         ctx.marcarParcial(`${config.nombre}: ?page=${pagina} no pagina en ${categoria.nombre}`);
         break;
       }
+      const pedida = urlListado(config, categoria, pagina);
+      if (res.url !== pedida) ctx.log.warn(`${categoria.nombre}: ${pedida} redirige a ${res.url} (¿cambió la ruta?)`);
       const listado = parsearListado(res.texto, config, categoria);
+      // Página 1 vacía en una categoría configurada: la web cambió o sirve otra cosa. Nunca es un
+      // corte previsto, así que la ejecución sale en rojo (y no da ofertas por no vistas).
+      if (pagina === 1 && listado.tarjetas.length === 0) {
+        ctx.marcarParcial(`${config.nombre}: la página 1 de ${categoria.nombre} no tiene productos (¿cambió la web?)`);
+        break;
+      }
       maxPagina = Math.max(maxPagina, listado.maxPagina ?? 0);
       const fichas = new Map(listado.fichas.map((f) => [f.url, f]));
       const nuevas = listado.tarjetas.filter((t) => !vistas.has(t.url));
