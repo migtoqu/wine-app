@@ -42,7 +42,7 @@ on conflict (slug) do nothing;
 --   origen: 'oficial' (consejo, web, admin…) | 'osm'
 --   precision: 'exacta' para los puntos oficiales; para OSM, la que guardó el scraper.
 create or replace function public.ubicacion_bodega_detalle(p_bodega uuid)
-returns table (origen text, precision text)
+returns table (origen text, "precision" text)
 language sql
 stable
 security definer
@@ -66,7 +66,7 @@ grant execute on function public.ubicacion_bodega_detalle(uuid) to anon, authent
 create or replace function public.mapa_bodegas()
 returns table (
   id uuid, slug text, nombre text, municipio text, provincia text,
-  lat double precision, lng double precision, precision text, origen text
+  lat double precision, lng double precision, "precision" text, origen text
 )
 language sql
 stable
@@ -99,7 +99,7 @@ create or replace function public.bodegas_cerca(
 )
 returns table (
   id uuid, slug text, nombre text, municipio text, provincia text,
-  lat double precision, lng double precision, precision text, origen text, distancia_km double precision
+  lat double precision, lng double precision, "precision" text, origen text, distancia_km double precision
 )
 language sql
 stable
