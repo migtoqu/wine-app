@@ -24,6 +24,7 @@ export async function UserMenu({ lang, labels }: Props) {
   const profile = await getProfile();
   const links = [
     { href: localePath(lang, "/yo"), label: labels.mySpace },
+    { href: localePath(lang, "/yo/cava"), label: labels.cava },
     { href: localePath(lang, "/yo/ajustes"), label: labels.settings },
   ];
   if (profile?.rol === "admin") links.push({ href: localePath(lang, "/admin"), label: labels.admin });
