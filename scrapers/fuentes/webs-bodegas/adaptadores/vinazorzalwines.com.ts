@@ -1,3 +1,4 @@
+import { conMarca } from "./comun.ts";
 import type { AdaptadorSitio } from "./tipos.ts";
 
 /**
@@ -13,6 +14,11 @@ const adaptador: AdaptadorSitio = {
   rutas: { listados: ["/collections/todos-los-vinos"], patronFicha: /\/products\/[a-z0-9-]+$/, excluir: /pack|caja|estuche|regalo|tarjeta/ },
   selectores: { contenido: ".product__info-wrapper", nombre: "h1", imagen: ".product__media img" },
   evidenciasMin: 1,
+  // Varietales con el nombre de la uva («Garnacha», «Chardonnay»): «Viña Zorzal Garnacha».
+  extraerVino: (f) => {
+    const n = conMarca(f.vino.nombre, "Viña Zorzal");
+    return n ? { nombre: n } : null;
+  },
   minimoVinos: 4,
 };
 export default adaptador;

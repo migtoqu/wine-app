@@ -206,6 +206,8 @@ interface Contenido {
   /** Oferta del JSON-LD `Product.offers` de la ficha. */
   oferta?: OfertaWeb | null;
   modificada?: string | null;
+  /** Página «vino» que no es ficha según el adaptador (listado): se siguen sus enlaces, no da vinos. */
+  soloEnlaces?: boolean;
   /** Ficha de un adaptador: no se divide como listado y usa su umbral de evidencias. */
   fichaAdaptador?: { evidenciasMin: number; parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null };
 }
@@ -602,7 +604,7 @@ export class RastreadorSitio {
       if (!previo || v.evidencias > previo.evidencias) out.set(k, { ...v, ofertas, imagen: v.imagen ?? previo?.imagen ?? null });
       else previo.ofertas = ofertas;
     };
-    for (const c of contenidos.filter((x) => x.clase === "vino")) {
+    for (const c of contenidos.filter((x) => x.clase === "vino" && !x.soloEnlaces)) {
       if (c.producto) {
         const p = c.producto;
         // Con `fichaHtmlWoo` el texto de la ficha HTML se suma al de la Store API.
@@ -977,7 +979,7 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
     // Con `patronFicha`, las fichas son vino aunque el genérico no lo vea, y el resto de páginas
     // «vino» (listados, legales bajo /vinos/) no dan vinos.
     if (ficha) clase = "vino";
-    else if (ad?.rutas?.patronFicha && clase === "vino") clase = "otra";
+    const soloEnlaces = !ficha && !!ad?.rutas?.patronFicha && clase === "vino";
     const sigue = !directivas.includes("nofollow") && !directivas.includes("none");
     // noindex: la página no se extrae (pero puede seguir sus enlaces si no es nofollow).
     const indexable = !directivas.includes("noindex") && !directivas.includes("none");
@@ -1007,6 +1009,7 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
       origen: "html",
       titulo: t,
       fichaAdaptador: ficha && indexable ? { evidenciasMin: ad!.evidenciasMin ?? 2, parcial } : undefined,
+      soloEnlaces: soloEnlaces || undefined,
       bloques: bs,
       enlaces: sigue ? enlaces($, base) : [],
       gtin: gtin == null ? null : String(gtin),
@@ -1093,8 +1096,8 @@ async function descubrirAdaptador(ctx: ContextoDescubrimiento, contenidos: Conte
     const c = await paginaHtml(ctx, abs(l), "vino");
     if (!c) continue;
     for (const e of c.enlaces) anotar(e.url, null);
-    // El listado se queda como página vista, pero no da vinos (sus fichas sí).
-    if (!esFichaAdaptador(ad, c.url)) contenidos.push({ ...c, clase: "otra" });
+    // El listado se queda como página vista (y la profundidad 2 sigue sus enlaces), pero no da vinos.
+    if (!esFichaAdaptador(ad, c.url)) contenidos.push({ ...c, clase: "vino", soloEnlaces: true });
   }
   for (const e of enlacesHome) anotar(e.url, null);
   const ya = new Set(contenidos.map((c) => normalizarUrl(c.url)));
@@ -1196,6 +1199,14 @@ async function profundidad2(ctx: ContextoDescubrimiento, contenidos: Contenido[]
       if (!urlDelSitio(ctx, e.url) || ya.has(normalizarUrl(e.url)) || isRaiz(e.url)) continue;
       const ruta = new URL(e.url).pathname;
       const debajo = prefijo.length > 1 && ruta.startsWith(prefijo + "/");
+      if (l.clase === "vino" && ctx.adaptador?.rutas?.patronFicha) {
+        // Con adaptador: desde un listado solo se siguen sus fichas (en su forma canónica).
+        const canonica = ctx.adaptador.rutas.canonica ? ctx.adaptador.rutas.canonica(e.url) : e.url;
+        if (!canonica || !esFichaAdaptador(ctx.adaptador, canonica) || ya.has(normalizarUrl(canonica))) continue;
+        candidatos.push({ url: canonica, clase: "vino" });
+        ya.add(normalizarUrl(canonica));
+        continue;
+      }
       if (l.clase === "vino") {
         const pareceVino = /\b(tinto|blanco|rosado|clarete|crianza|reserva|roble|joven|vendimia|cosecha|verdejo|albillo)\b/i.test(e.texto) && e.texto.length <= 60;
         if (!(debajo || /\/(vinos?|wines?|productos?|producto|product)\//i.test(ruta) || pareceVino)) continue;

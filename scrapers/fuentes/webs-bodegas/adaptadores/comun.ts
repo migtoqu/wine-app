@@ -48,3 +48,13 @@ export function campo(textoFicha: string, etiqueta: RegExp): string | null {
   }
   return null;
 }
+
+/**
+ * Nombre que es solo una uva o un color («Chardonnay», «Garnacha Blanca», «Tinto»): se antepone la
+ * marca de la bodega para que sea un nombre de vino y no se tome por un título genérico.
+ */
+export function conMarca(nombre: string, marca: string): string | null {
+  const n = limpiarEspacios(nombre).toLowerCase();
+  const generico = /^(blanco|tinto|rosado|clarete|ros[eé])$/.test(n) || VARIEDADES.some((v) => v.nombre.toLowerCase() === n || v.formas.includes(n));
+  return generico ? `${marca} ${limpiarEspacios(nombre)}` : null;
+}

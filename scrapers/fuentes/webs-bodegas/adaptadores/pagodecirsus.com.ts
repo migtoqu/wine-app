@@ -1,4 +1,5 @@
 import { limpiarEspacios } from "../../../lib/texto.ts";
+import { conMarca } from "./comun.ts";
 import type { AdaptadorSitio } from "./tipos.ts";
 
 /**
@@ -21,7 +22,10 @@ const adaptador: AdaptadorSitio = {
   evidenciasMin: 2,
   extraerVino: (f) => {
     const migas = f.$(".breadcum li").toArray().map((e) => limpiarEspacios(f.$(e).text()));
-    return { bodega: migas.length >= 4 ? migas[2]! : null };
+    const bodega = migas.length >= 4 ? migas[2]! : null;
+    // «Chardonnay» a secas: con la marca de la bodega de las migas («Pago de Cirsus Chardonnay»).
+    const nombre = bodega ? conMarca(f.vino.nombre, bodega) : null;
+    return { bodega, ...(nombre ? { nombre } : {}) };
   },
   minimoVinos: 5,
 };

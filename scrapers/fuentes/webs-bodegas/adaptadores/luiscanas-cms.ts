@@ -16,7 +16,8 @@ export function adaptadorLuisCanas(dominio: string, minimoVinos: number): Adapta
     evidenciasMin: 2,
     extraerVino: (f) => ({
       grado: f.vino.grado ?? grado(f.texto),
-      tipo: f.vino.tipo ?? tipoPorUvaPrincipal(f.vino.variedades),
+      // La uva principal manda: «… con un pequeño porcentaje de viura» no hace blanco al vino.
+      tipo: /rosado|blanco/i.test(f.vino.nombre) ? f.vino.tipo : tipoPorUvaPrincipal(f.vino.variedades) ?? f.vino.tipo,
     }),
     minimoVinos,
   };
