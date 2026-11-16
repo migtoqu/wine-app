@@ -5,6 +5,7 @@ import { sortAnadas } from "./format";
 import { createPublicClient } from "./public-client";
 import type {
   BodegaFicha,
+  BodegaMapa,
   BodegaListItem,
   CatalogImage,
   DenominacionRef,
@@ -433,5 +434,19 @@ export async function buscarCatalogo(q: string, limite = 5): Promise<SearchSugge
   cacheTag(CATALOG_TAG);
   const { data, error } = await createPublicClient().rpc("buscar_catalogo", { q, limite });
   if (error) throw new Error(`buscar_catalogo: ${error.message}`);
+  return data;
+}
+
+// Todas las bodegas con ubicación para el mapa (~900 puntos, una respuesta).
+// Si la RPC aún no existe (migración sin aplicar), el mapa sale vacío en vez de romper.
+export async function getMapaBodegas(): Promise<BodegaMapa[]> {
+  "use cache";
+  cacheLife("catalogo");
+  cacheTag(CATALOG_TAG, "mapa");
+  const { data, error } = await createPublicClient().rpc("mapa_bodegas");
+  if (error) {
+    if (error.code === "PGRST202") return [];
+    throw new Error(`mapa_bodegas: ${error.message}`);
+  }
   return data;
 }
