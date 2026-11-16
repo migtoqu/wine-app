@@ -102,13 +102,22 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [ ] Listas personalizadas (crear, ordenar, renombrar, borrar)
 - [ ] Compartir lista por enlace revocable (`/lista/[token]`)
 - [ ] Diario de catas con foto (Supabase Storage, privada, comprimida)
-- [ ] Mi cava: inventario, ventana de consumo, descontar botella al catar
+- [x] Mi cava: inventario (`/yo/cava`): cantidad, formato, compra, tienda, ubicación, ventana de consumo, «Abrir una»; vinos del catálogo o fuera de él. Falta descontar al registrar una cata (llegará con el diario)
 - [ ] Recomendaciones por reglas en `/yo`
 - [ ] Sugerir corrección y proponer vino/bodega nuevo
 - [ ] Moderación de sugerencias en admin; el usuario ve su estado
 - [ ] RGPD: exportar mis datos y borrar mi cuenta
 
 **Criterio de salida:** un usuario puede usar la app como su diario y cava de vinos de forma habitual.
+
+### Feedback de uso (2026-11-16)
+
+- [x] Botón Atrás en la cabecera (la PWA instalada no tiene barra del navegador)
+- [x] La portada pedía «Iniciar sesión» aunque ya hubiera sesión (es el `start_url` de la PWA); la cabecera mostraba «Entrar» mientras leía la sesión
+- [x] Lentitud: búsquedas con índices trigram (#41, #44), esqueletos al navegar a fichas, funciones en cdg1 junto a Supabase
+- [ ] Lentitud restante: arranques en frío de Vercel (~1 s la primera visita) y de Supabase Free; medir en móvil con sesión
+- [ ] Bodegas que no aparecen por su marca: el catálogo usa la razón social del consejo (p. ej. «Velvety Wines» = Dominio Lubiano). Renombrar en `/admin` (desde #46 el nombre del admin ya no lo pisan los scrapers) y valorar nombres alternativos en el buscador
+- [ ] Cobertura de D.O.: hoy 8 (Ribera, Rioja, Priorat, Rueda, Bierzo, Toro, Navarra, Cigales); faltan Rías Baixas, Ribeiro, Penedès, Cava, Somontano, Jumilla, La Mancha, Jerez…
 
 ## Fase 4 — Apertura pública
 
