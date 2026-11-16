@@ -184,6 +184,7 @@ const en = {
       hectares: (n: string) => `${n} ha`,
       closed: "Closed",
       gallery: "Images",
+      imageCredit: "Image credit",
       wines: "Its wines",
       winesCount: (n: number) => (n === 1 ? "1 wine" : `${n} wines`),
       noWines: "We don't have any wines from this winery yet.",
