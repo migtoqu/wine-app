@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { Container } from "@/components/layout/container";
 import { WineryMap } from "@/components/map/winery-map";
@@ -31,6 +32,9 @@ export default async function MapPage() {
 }
 
 async function MapData({ lang, dict }: { lang: Locale; dict: Dictionary }) {
+  // Sin entradas por petición, Next prerenderizaría la lectura en el build (donde no hay
+  // Supabase). connection() la deja para la petición; sigue cacheada con 'use cache'.
+  await connection();
   const bodegas = await getMapaBodegas();
   const { intro, ...labels } = dict.map;
   if (bodegas.length === 0) return <EmptyState title={dict.map.empty} />;
