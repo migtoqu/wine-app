@@ -1,10 +1,12 @@
 import NextLink from "next/link";
+import { Suspense } from "react";
 import { SearchCombobox } from "@/components/catalog/search-combobox";
 import { searchComboboxLabels } from "@/components/catalog/search-labels";
 import { Container } from "@/components/layout/container";
-import { Badge, buttonStyles, Card, CardBody } from "@/components/ui";
+import { Badge, buttonStyles, Card, CardBody, Skeleton } from "@/components/ui";
 import { localePath } from "@/i18n/config";
 import { getDictionary, getLocale } from "@/i18n/server";
+import { getCurrentUser } from "@/lib/auth/server";
 
 export default async function Home() {
   const lang = await getLocale();
@@ -29,20 +31,11 @@ export default async function Home() {
             {dict.search.exploreCta}
           </NextLink>
         </div>
-        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <NextLink
-            href={localePath(lang, "/login")}
-            className={buttonStyles({ size: "lg" })}
-          >
-            {landing.ctaLogin}
-          </NextLink>
-          <NextLink
-            href={localePath(lang, "/registro")}
-            className={buttonStyles({ size: "lg", variant: "secondary" })}
-          >
-            {landing.ctaInvite}
-          </NextLink>
-        </div>
+        {/* Botones según la sesión. La PWA abre en «/»: con sesión no debe pedir
+            entrar otra vez. El hueco neutro evita el parpadeo de «Iniciar sesión». */}
+        <Suspense fallback={<Skeleton className="h-12 w-full max-w-md" />}>
+          <HeroActions />
+        </Suspense>
       </section>
 
       <section aria-labelledby="features-title" className="flex flex-col gap-6">
@@ -66,5 +59,28 @@ export default async function Home() {
         </ul>
       </section>
     </Container>
+  );
+}
+
+async function HeroActions() {
+  const [lang, { landing }, user] = await Promise.all([getLocale(), getDictionary(), getCurrentUser()]);
+  const [primary, secondary] = user
+    ? [
+        { href: localePath(lang, "/yo"), label: landing.ctaSpace },
+        { href: localePath(lang, "/buscar"), label: landing.ctaExplore },
+      ]
+    : [
+        { href: localePath(lang, "/login"), label: landing.ctaLogin },
+        { href: localePath(lang, "/registro"), label: landing.ctaInvite },
+      ];
+  return (
+    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+      <NextLink href={primary.href} className={buttonStyles({ size: "lg" })}>
+        {primary.label}
+      </NextLink>
+      <NextLink href={secondary.href} className={buttonStyles({ size: "lg", variant: "secondary" })}>
+        {secondary.label}
+      </NextLink>
+    </div>
   );
 }
