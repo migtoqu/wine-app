@@ -77,3 +77,11 @@ export function CloseIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function BackIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M19 12H5M11 18l-6-6 6-6" />
+    </svg>
+  );
+}

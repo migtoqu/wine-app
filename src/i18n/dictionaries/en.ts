@@ -71,6 +71,7 @@ const en = {
     },
   },
   common: {
+    back: "Back",
     skipToContent: "Skip to content",
     homeLabel: "wine-app, go to home page",
     comingSoon: "Coming soon",
@@ -116,6 +117,8 @@ const en = {
       "Find where to buy each wine and at what price, discover wineries to visit, and keep your favourites, notes and tastings.",
     ctaLogin: "Sign in",
     ctaInvite: "I have an invitation",
+    ctaSpace: "Go to my space",
+    ctaExplore: "Browse the catalogue",
     featuresTitle: "What you'll be able to do",
     features: [
       {

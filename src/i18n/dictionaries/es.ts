@@ -71,6 +71,7 @@ const es = {
     },
   },
   common: {
+    back: "Atrás",
     skipToContent: "Saltar al contenido",
     homeLabel: "wine-app, ir al inicio",
     comingSoon: "Próximamente",
@@ -116,6 +117,8 @@ const es = {
       "Encuentra dónde comprar cada vino y a qué precio, descubre bodegas para visitar y guarda tus favoritos, notas y catas.",
     ctaLogin: "Iniciar sesión",
     ctaInvite: "Tengo una invitación",
+    ctaSpace: "Ir a mi espacio",
+    ctaExplore: "Explorar el catálogo",
     featuresTitle: "Qué podrás hacer",
     features: [
       {
