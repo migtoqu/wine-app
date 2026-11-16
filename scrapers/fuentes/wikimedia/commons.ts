@@ -121,7 +121,7 @@ export function emparejarCategoria(titulo: string, ruta: string[], porClave: Map
 }
 
 /** Archivos de la categoría ordenados por idoneidad como foto de la bodega; fuera logos, botellas, etiquetas, planos… */
-const ARCHIVO_NO = /logo|escudo|coat of arms|etiqueta|label|botell|bottle|copa|glass|wine list|carta|menu|plano|map\b|mapa|diagram|poster|cartel|anuncio|advert|signature|firma|\.(svg|gif|pdf|tiff?|djvu|webm|ogv|ogg|mp3|wav|stl)$/i;
+const ARCHIVO_NO = /logo|escudo|coat of arms|etiqueta|label|botell|bottle|cork|corcho|tap[oó]n|capsula|copa|glass|model\b|maqueta|award|premio|medall|wine list|carta|menu|plano|map\b|mapa|diagram|poster|cartel|anuncio|advert|signature|firma|\.(svg|gif|pdf|tiff?|djvu|webm|ogv|ogg|mp3|wav|stl)$/i;
 const ARCHIVO_SI = /bodega|winery|celler|cellar|fachada|facade|exterior|edificio|building|vi[ñn]edo|vineyard|vinyes|calado|barric|nave|entrada|entrance|view|vista/i;
 
 export function ordenarArchivos(archivos: Categoria[]): Categoria[] {
