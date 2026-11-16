@@ -238,7 +238,9 @@ begin
 end;
 $$;
 
-create or replace function public.listar_bodegas(
+drop function if exists public.listar_bodegas(text, text, integer, integer);
+
+create function public.listar_bodegas(
   q text default null,
   denominacion text default null,
   limite integer default 24,
@@ -247,7 +249,7 @@ create or replace function public.listar_bodegas(
 returns table (
   id uuid, slug text, nombre text, municipio text, provincia text,
   denominacion_nombre text, num_vinos bigint, imagen_url text, imagen_alt text,
-  relevancia real, total bigint
+  imagen_tipo text, relevancia real, total bigint
 )
 language plpgsql
 stable
@@ -298,15 +300,39 @@ begin
       order by bd.principal desc, d.nombre
       limit 1),
     (select count(*) from public.vinos v where v.bodega_id = p.id),
-    img.url, img.alt, p.rel, p.total
+    coalesce(img.url, bot.url), coalesce(img.alt, bot.alt),
+    case when img.url is not null then img.tipo::text when bot.url is not null then 'botella' end,
+    p.rel, p.total
   from pagina p
   left join lateral (
-    select i.url, i.alt
+    select i.url, i.alt, i.tipo
     from public.imagenes i
     where i.bodega_id = p.id and i.estado_enlace <> 'oculto'
     order by i.principal desc, (i.tipo = 'bodega') desc, i.orden
     limit 1
   ) img on true
+  -- Respaldo: botella de un vino de la bodega (del vino o de su añada más reciente).
+  left join lateral (
+    select x.url, x.alt
+    from (
+      select i.url, i.alt, a.anio, i.principal, i.orden
+      from public.vinos v
+      join public.anadas a on a.vino_id = v.id
+      join public.imagenes i on i.anada_id = a.id
+      where v.bodega_id = p.id and i.tipo = 'botella' and i.estado_enlace <> 'oculto'
+      union all
+      select i.url, i.alt, null::smallint, i.principal, i.orden
+      from public.vinos v
+      join public.imagenes i on i.vino_id = v.id
+      where v.bodega_id = p.id and i.tipo = 'botella' and i.estado_enlace <> 'oculto'
+    ) x
+    where img.url is null
+    order by x.anio desc nulls last, x.principal desc, x.orden
+    limit 1
+  ) bot on true
   order by p.rel desc nulls last, public.f_unaccent(p.nombre), p.id;
 end;
 $$;
+
+revoke execute on function public.listar_bodegas(text, text, integer, integer) from public;
+grant execute on function public.listar_bodegas(text, text, integer, integer) to anon, authenticated, service_role;
