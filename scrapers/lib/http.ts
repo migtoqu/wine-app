@@ -42,6 +42,12 @@ export interface OpcionesGet {
    * cambió). Quien llama debe pasar la puerta completa por el host final antes de pedir nada más.
    */
   permitirOtroHost?: boolean;
+  /**
+   * API pública con política de uso propia (Nominatim, Overpass): no se evalúa robots.txt, que
+   * en esos servicios va dirigido a rastreadores web. Quien llama cumple la política de la API
+   * (ritmo, User-Agent, caché) y la documenta en `fuentes.notas_robots`. 403/429 siguen deteniendo.
+   */
+  api?: boolean;
 }
 
 export interface OpcionesCliente {
@@ -108,14 +114,14 @@ export class ClienteHttp {
 
   /** GET de una página HTML respetando robots.txt. */
   async get(url: string, opciones: OpcionesGet = {}): Promise<Respuesta> {
-    await this.comprobarRobots(url);
+    if (!opciones.api) await this.comprobarRobots(url);
     const res = await this.pedir(url);
     if (res.status >= 400) throw new ErrorHttp(url, res.status);
     const final = new URL(res.url);
     if (final.host !== new URL(url).host && !opciones.permitirOtroHost) {
       throw new Error(`${url} redirige a otro dominio (${final.host})`);
     }
-    if (res.url !== url) await this.comprobarRobots(res.url);
+    if (res.url !== url && !opciones.api) await this.comprobarRobots(res.url);
     return res;
   }
 

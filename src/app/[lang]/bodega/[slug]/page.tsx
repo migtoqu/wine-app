@@ -4,6 +4,7 @@ import { Attribution } from "@/components/catalog/attribution";
 import { BodegaWines } from "@/components/catalog/bodega-wines";
 import { CatalogImage } from "@/components/catalog/catalog-image";
 import { FieldSources, SummarySources } from "@/components/catalog/field-sources";
+import { ImageCredit } from "@/components/catalog/image-credit";
 import { ExternalIcon } from "@/components/catalog/icons";
 import { BodegaActions } from "@/components/catalog/personal-actions";
 import { wineCardLabels } from "@/components/catalog/wine-card";
@@ -24,7 +25,7 @@ import { getBodega } from "@/lib/catalog/queries";
 import { cn } from "@/lib/cn";
 
 // Ficha de bodega (§5.5). Igual que la de vino: lectura cacheada, ISR por
-// slug y `params` fuera de <Suspense> para que un slug inexistente dé 404.
+// slug y esqueleto inmediato en loading.tsx (ver vino/[slug]/page.tsx).
 // No lee searchParams: el filtro de sus vinos se aplica en el navegador.
 
 // Ver vino/[slug]/page.tsx: placeholder porque el catálogo no está en build.
@@ -32,8 +33,8 @@ export function generateStaticParams() {
   return [{ slug: "__placeholder__" }];
 }
 
-// La primera visita a cada slug espera a la lectura (para poder responder 404);
-// las siguientes salen de caché. No se valida como navegación instantánea.
+// La primera visita a cada slug espera a la lectura (con el esqueleto de
+// loading.tsx); las siguientes salen de caché. No se valida como navegación instantánea.
 export const instant = false;
 
 type Props = PageProps<"/[lang]/bodega/[slug]">;
@@ -65,6 +66,8 @@ export default async function WineryPage({ params }: Props) {
   const region = bodega.comunidad && bodega.comunidad !== bodega.provincia ? bodega.comunidad : null;
   const social = socialLinks(bodega.redes);
   const [cover, ...gallery] = bodega.imagenes;
+  // Sin foto propia: la botella de uno de sus vinos, entera (contain).
+  const bottle = cover ? null : bodega.vinos.find((v) => v.imagen_url) ?? null;
   const facts = [
     bodega.anio_fundacion !== null && {
       label: winery.founded,
@@ -103,17 +106,20 @@ export default async function WineryPage({ params }: Props) {
     <Container className="flex flex-col gap-12 py-8 sm:py-12">
       <article className="flex flex-col gap-10">
         <header className="flex flex-col gap-6">
-          <CatalogImage
-            key={cover?.url ?? "none"}
-            src={cover?.url}
-            alt={cover?.alt ?? winery.imageAlt(bodega.nombre)}
-            kind="bodega"
-            placeholderLabel={winery.placeholderAlt}
-            aspect="landscape"
-            fit="cover"
-            priority
-            className="max-h-[22rem] w-full sm:aspect-[21/9]"
-          />
+          <div className="flex flex-col gap-1">
+            <CatalogImage
+              key={cover?.url ?? bottle?.imagen_url ?? "none"}
+              src={cover?.url ?? bottle?.imagen_url}
+              alt={cover?.alt ?? (bottle ? bottle.imagen_alt ?? bottle.nombre : winery.imageAlt(bodega.nombre))}
+              kind="bodega"
+              placeholderLabel={winery.placeholderAlt}
+              aspect="landscape"
+              fit={cover ? "cover" : "contain"}
+              priority
+              className="max-h-[22rem] w-full sm:aspect-[21/9]"
+            />
+            <ImageCredit text={cover?.atribucion} label={winery.imageCredit} className="text-right" />
+          </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-col gap-3">
               <h1 className="text-display font-semibold">{bodega.nombre}</h1>
@@ -253,9 +259,7 @@ export default async function WineryPage({ params }: Props) {
                         aspect="landscape"
                         fit="cover"
                       />
-                      {img.atribucion && (
-                        <p className="mt-1 text-xs text-muted">{img.atribucion}</p>
-                      )}
+                      <ImageCredit text={img.atribucion} label={winery.imageCredit} className="mt-1" />
                     </li>
                   ))}
                 </ul>

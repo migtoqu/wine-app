@@ -1,0 +1,82 @@
+{
+ "version": 0.6,
+ "generator": "Overpass API",
+ "elements": [
+  {
+   "type": "node",
+   "id": 2876444340,
+   "lat": 42.2946631,
+   "lon": 3.2358917,
+   "tags": {
+    "addr:street": "Carretera de Cadaqués al Coll de Perafita",
+    "craft": "winery",
+    "name": "Celler Martín Faixó",
+    "opening_hours": "Mo-Su 09:00-17:00",
+    "website": "https://www.martinfaixo.com/ca/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 3586613380,
+   "lat": 42.0441497,
+   "lon": -3.7484296,
+   "tags": {
+    "addr:city": "Villalmanzo",
+    "addr:postcode": "09390",
+    "addr:street": "Autovía del Norte",
+    "craft": "winery",
+    "name": "Bodegas Sierra",
+    "opening_hours": "Mo-Fr 09:00-14:15,16:00-19:00",
+    "phone": "+34947170083",
+    "website": "https://bodegassierra.com/"
+   }
+  },
+  {
+   "type": "node",
+   "id": 366355337,
+   "lat": 41.1260951,
+   "lon": 0.7336449,
+   "tags": {
+    "name": "Cellar el Masroig",
+    "shop": "wine"
+   }
+  },
+  {
+   "type": "way",
+   "id": 34206655,
+   "center": {
+    "lat": 28.4924381,
+    "lon": -17.8475739
+   },
+   "tags": {
+    "addr:city": "Los Canarios - Fuencaliente de La Palma",
+    "addr:housenumber": "10",
+    "addr:postcode": "38740",
+    "addr:street": "Calle Antonio Francisco Hernández Santos",
+    "alt_name": "Llanovid SCL",
+    "building": "yes",
+    "craft": "winery",
+    "name": "Bodegas Teneguia",
+    "opening_hours": "Mo-Fr 09:00-16:00, Sa-Su 10:00-12:30",
+    "operator": "LLanovid S.C.L.",
+    "phone": "+34922442222",
+    "website": "https://www.bodegasteneguia.com",
+    "wikidata": "Q113628329",
+    "wikimedia_commons": "Category:Bodegas Teneguia"
+   }
+  },
+  {
+   "type": "node",
+   "id": 654052559,
+   "lat": 43.2678763,
+   "lon": -1.9679082,
+   "tags": {
+    "addr:city": "Hernani",
+    "addr:housenumber": "6",
+    "addr:place": "Ibaiondo poligonoa",
+    "addr:postcode": "20120",
+    "shop": "wine"
+   }
+  }
+ ]
+}

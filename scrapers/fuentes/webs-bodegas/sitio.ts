@@ -431,10 +431,11 @@ export class RastreadorSitio {
       oferta: conOferta.has(normalizarUrl(c.url)),
     }));
     r.servicios = this.servicios(contenidos, host, entrada.dominio);
-    // Foto de la bodega: páginas de historia (la portada al final).
+    // Foto de la bodega: páginas de historia, luego las de enoturismo y la portada al final.
+    const rangoFoto = (c: Contenido) => (isRaiz(c.url) ? 2 : c.clase === "historia" ? 0 : 1);
     const paginasFoto = contenidos
-      .filter((c) => c.clase === "historia" && c.imagenes?.length)
-      .sort((a, c) => Number(isRaiz(a.url)) - Number(isRaiz(c.url)))
+      .filter((c) => (c.clase === "historia" || c.clase === "enoturismo") && c.imagenes?.length)
+      .sort((a, c) => rangoFoto(a) - rangoFoto(c))
       .map((c) => ({ url: c.url, candidatas: c.imagenes! }));
     r.imagen = elegirImagenBodega(paginasFoto, esDelSitio);
     if (r.imagen && !(await this.robotsPermite(r.imagen.url, esDelSitio))) r.imagen = null;
@@ -819,7 +820,7 @@ async function wpRest(ctx: ContextoDescubrimiento, contenidos: Contenido[], conW
       const $f = cargar(`<html><body><main>${html}</main></body></html>`);
       contenidos.push({
         url: e.item.link, clase: e.clase, origen: "wp", titulo: tituloItem, bloques: bs, enlaces: enlacesDeFragmento(html, e.item.link),
-        imagenes: e.clase === "historia" ? candidatasDePagina($f, e.item.link) : undefined,
+        imagenes: (e.clase === "historia" || e.clase === "enoturismo") ? candidatasDePagina($f, e.item.link) : undefined,
         imagenProducto: e.clase === "vino" ? primeraImagen($f, e.item.link) : undefined,
         modificada: e.modificada,
       });
@@ -921,7 +922,7 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
       enlaces: sigue ? enlaces($, res.url) : [],
       gtin: gtin == null ? null : String(gtin),
       categorias: [...categoriaLd, ...migas($, nodos)],
-      imagenes: indexable && clase === "historia" ? candidatasDePagina($, res.url) : undefined,
+      imagenes: indexable && (clase === "historia" || clase === "enoturismo") ? candidatasDePagina($, res.url) : undefined,
       imagenProducto: clase === "vino" ? (imagenLd ? { url: imagenLd, alt: null } : primeraImagen($, res.url)) : undefined,
       oferta: producto && clase === "vino" ? ofertaDeJsonLd(producto, res.url, t, gtin == null ? null : String(gtin)) : null,
     };

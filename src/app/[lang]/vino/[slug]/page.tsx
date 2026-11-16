@@ -31,8 +31,9 @@ import type { Anada, Oferta, VinoFicha } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 
 // Ficha de vino (§5.4). La lectura está cacheada (perfil "catalogo") y la
-// página se genera en la primera visita a cada slug (ISR). `params` se espera
-// fuera de <Suspense> para que un slug inexistente responda con un 404 real.
+// página se genera en la primera visita a cada slug (ISR). Mientras, loading.tsx
+// muestra el esqueleto al instante; un slug inexistente pinta not-found.tsx
+// dentro de ese límite (con noindex; el código HTTP ya ha salido como 200).
 // Lo que depende de ?anada= (imagen y datos de la añada) va en <Suspense> con
 // la añada por defecto como fallback: el HTML cacheado ya trae la ficha entera.
 
@@ -43,8 +44,8 @@ export function generateStaticParams() {
   return [{ slug: "__placeholder__" }];
 }
 
-// La primera visita a cada slug espera a la lectura (para poder responder 404);
-// las siguientes salen de caché. No se valida como navegación instantánea.
+// La primera visita a cada slug espera a la lectura (con el esqueleto de
+// loading.tsx); las siguientes salen de caché. No se valida como navegación instantánea.
 export const instant = false;
 
 type Props = PageProps<"/[lang]/vino/[slug]">;
@@ -61,14 +62,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function WinePage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const vino = await getVino(slug);
+  // Ficha y ofertas a la vez (las ofertas van por slug, no esperan al id).
+  const [vino, ofertas] = await Promise.all([getVino(slug), getOfertasVino(slug)]);
   if (!vino) notFound();
 
   const lang = await getLocale();
   const dict = await getDictionary();
   const { catalog } = dict;
   const updatedAt = latestDate([vino.updated_at, ...vino.anadas.map((a) => a.updated_at)]);
-  const ofertas = await getOfertasVino(vino.id, vino.slug);
 
   return (
     <Container className="flex flex-col gap-12 py-8 sm:py-12">
@@ -145,7 +146,10 @@ export default async function WinePage({ params, searchParams }: Props) {
         />
       </article>
 
-      <MoreFromWinery lang={lang} vino={vino} dict={dict} />
+      {/* Necesita la bodega de la ficha: va aparte para no retrasar el resto. */}
+      <Suspense fallback={null}>
+        <MoreFromWinery lang={lang} vino={vino} dict={dict} />
+      </Suspense>
     </Container>
   );
 }

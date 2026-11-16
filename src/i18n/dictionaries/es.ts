@@ -185,6 +185,7 @@ const es = {
       hectares: (n: string) => `${n} ha`,
       closed: "Cerrada",
       gallery: "Imágenes",
+      imageCredit: "Crédito de la imagen",
       wines: "Sus vinos",
       winesCount: (n: number) => (n === 1 ? "1 vino" : `${n} vinos`),
       noWines: "Todavía no tenemos vinos de esta bodega.",

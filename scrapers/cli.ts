@@ -10,7 +10,10 @@ import { scraperWebsBodegas, SLUG_FUENTE as SLUG_WEBS_BODEGAS } from "./fuentes/
 import { scraperComprobadorEnlaces, SLUG_FUENTE as SLUG_ENLACES } from "./comprobador-enlaces/index.ts";
 import { SCRAPERS_CONSEJOS } from "./fuentes/consejos/index.ts";
 import { SCRAPERS_TIENDAS } from "./fuentes/tiendas/index.ts";
+import { scraperOsm, SLUG_FUENTE as SLUG_OSM } from "./fuentes/osm/index.ts";
+import { scraperGooglePlaces, SLUG_FUENTE as SLUG_GOOGLE_PLACES } from "./fuentes/google-places/index.ts";
 import { scraperNavarra, SLUG_FUENTE as SLUG_NAVARRA } from "./fuentes/consejos/navarra/index.ts";
+import { scraperWikimedia, SLUG_FUENTE as SLUG_WIKIMEDIA } from "./fuentes/wikimedia/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
 const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
@@ -26,8 +29,14 @@ const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   ...SCRAPERS_CONSEJOS,
   // Navarra: bodegas, vinos y experiencias (guardado compartido con Rioja).
   "consejo-navarra": { slug: SLUG_NAVARRA, scraper: scraperNavarra },
+  // Fotos de bodega con licencia libre (Wikimedia Commons), enlazadas con atribución.
+  wikimedia: { slug: SLUG_WIKIMEDIA, scraper: scraperWikimedia },
   // Tiendas con precio, scraper parametrizado por plataforma (fuentes/tiendas/).
   ...SCRAPERS_TIENDAS,
+  // Geocodificación y POI de OpenStreetMap (Nominatim + Overpass).
+  osm: { slug: SLUG_OSM, scraper: scraperOsm },
+  // Google Places API (New): desactivado si falta GOOGLE_PLACES_API_KEY.
+  "google-places": { slug: SLUG_GOOGLE_PLACES, scraper: scraperGooglePlaces },
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]
@@ -38,7 +47,7 @@ Opciones:
   --dry-run      no toca la BD; escribe el resultado normalizado en scrapers/out/
   --limit N      procesa como mucho N fichas
   --out RUTA     fichero JSON de salida del dry-run
-  --bodegas RUTA (vinoseleccion, ruta-ribera, vinopremier y tienda-*, dry-run) JSON de un dry-run de Ribera con las bodegas para emparejar
+  --bodegas RUTA (vinoseleccion, ruta-ribera, vinopremier, tienda-* y wikimedia, dry-run) JSON de un dry-run de Ribera con las bodegas para emparejar
   --verbose      muestra también los logs de depuración
 
 Webs de bodegas (webs-bodegas):
@@ -47,6 +56,14 @@ Webs de bodegas (webs-bodegas):
   --lote I/N           solo los sitios del lote I de N (reparto estable por hash del dominio)
   --presupuesto-min N  no empieza sitios nuevos pasados N minutos (por defecto 45)
   --descubrir-webs     prueba también la web del dominio del email de las bodegas sin web
+
+OpenStreetMap (osm):
+  --bodegas RUTA       (dry-run) JSON con las bodegas (consulta de exportación en docs/SOURCES.md)
+  --cache RUTA|no      caché de Nominatim (por defecto scrapers/.cache/osm/nominatim.json)
+  --presupuesto-min N  no geocodifica bodegas nuevas pasados N minutos (por defecto 50)
+
+Google Places (google-places), solo con GOOGLE_PLACES_API_KEY:
+  --presupuesto N      máximo de peticiones a la API por ejecución (por defecto 100)
 
 Comprobador de enlaces (enlaces):
   --urls RUTA|URLS     (dry-run) fichero con una URL por línea o URLs separadas por comas
@@ -68,6 +85,8 @@ async function main(): Promise<number> {
       "presupuesto-min": { type: "string" },
       "descubrir-webs": { type: "boolean", default: false },
       urls: { type: "string" },
+      cache: { type: "string" },
+      presupuesto: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -101,6 +120,8 @@ async function main(): Promise<number> {
       presupuestoMin: values["presupuesto-min"],
       descubrirWebs: values["descubrir-webs"] ? "1" : undefined,
       urls: values.urls,
+      cache: values.cache,
+      presupuesto: values.presupuesto,
     },
   });
 }
