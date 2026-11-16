@@ -16,6 +16,7 @@ import { getDictionary, getLocale, type Dictionary } from "@/i18n/server";
 import {
   anadaKey,
   formatAlcohol,
+  parseCataResumen,
   formatPercent,
   formatTempRange,
   imageForAnada,
@@ -273,15 +274,22 @@ function VintageDetails({
   // Textos: el curado por el admin (añada, después vino) o el resumen propio generado a partir de hechos.
   const elaboracion = anada.elaboracion ?? vino.elaboracion;
   const resumenElaboracion = elaboracion ? null : pickResumen(anada.resumenes, ["elaboracion"], lang);
+  // Cata: columnas curadas por el admin; si no hay, el resumen propio (vocabulario cerrado) por partes.
+  const curada = Boolean(anada.cata_vista || anada.cata_nariz || anada.cata_boca || anada.notas_cata);
+  const resumenCata = curada && anada.maridaje ? null : pickResumen(anada.resumenes, ["cata"], lang);
+  const partes = resumenCata ? parseCataResumen(resumenCata.texto) : null;
   const cata = [
-    { label: wine.sight, value: anada.cata_vista },
-    { label: wine.nose, value: anada.cata_nariz },
-    { label: wine.palate, value: anada.cata_boca },
+    { label: wine.sight, value: curada ? anada.cata_vista : partes?.vista ?? null },
+    { label: wine.nose, value: curada ? anada.cata_nariz : partes?.nariz ?? null },
+    { label: wine.palate, value: curada ? anada.cata_boca : partes?.boca ?? null },
   ].filter((c): c is { label: string; value: string } => c.value !== null);
-  const resumenCata = cata.length > 0 || anada.notas_cata ? null : pickResumen(anada.resumenes, ["cata"], lang);
+  const notasCata = curada ? anada.notas_cata : partes?.resto ?? null;
+  const maridaje = anada.maridaje ?? partes?.maridaje ?? null;
+  // La atribución del resumen solo se muestra si de verdad se usa alguna parte.
+  const usaResumenCata = Boolean(resumenCata && ((!curada && (cata.length > 0 || notasCata)) || (!anada.maridaje && partes?.maridaje)));
   const hasDetails =
-    facts.length > 0 || anada.variedades.length > 0 || anada.maridaje || anada.notas_cata ||
-    elaboracion || resumenElaboracion || cata.length > 0 || resumenCata;
+    facts.length > 0 || anada.variedades.length > 0 || maridaje || notasCata ||
+    elaboracion || resumenElaboracion || cata.length > 0;
   const title = anada.anio === null ? wine.noVintageData : wine.vintageData(String(anada.anio));
 
   return (
@@ -357,35 +365,31 @@ function VintageDetails({
           </div>
         )}
 
-        {(cata.length > 0 || anada.notas_cata || resumenCata) && (
+        {(cata.length > 0 || notasCata) && (
           <div className="flex flex-col gap-2">
             <h4 className="text-sm font-semibold">{wine.tastingNotes}</h4>
             {cata.length > 0 && (
               <dl className="grid gap-3 sm:grid-cols-3">
                 {cata.map((c) => (
-                  <div key={c.label} className="flex flex-col gap-1">
+                  <div key={c.label} className="flex flex-col gap-1 rounded-card bg-surface-2 p-3">
                     <dt className="text-sm text-muted">{c.label}</dt>
                     <dd className="whitespace-pre-line">{c.value}</dd>
                   </div>
                 ))}
               </dl>
             )}
-            {anada.notas_cata && <p className="max-w-prose whitespace-pre-line">{anada.notas_cata}</p>}
-            {resumenCata && (
-              <>
-                <p className="max-w-prose">{resumenCata.texto}</p>
-                <SummarySources labels={dict.catalog.attribution} resumen={resumenCata} />
-              </>
-            )}
+            {notasCata && <p className="max-w-prose whitespace-pre-line">{notasCata}</p>}
           </div>
         )}
 
-        {anada.maridaje && (
+        {maridaje && (
           <div className="flex flex-col gap-2">
             <h4 className="text-sm font-semibold">{wine.pairing}</h4>
-            <p className="max-w-prose whitespace-pre-line">{anada.maridaje}</p>
+            <p className="max-w-prose whitespace-pre-line">{maridaje}</p>
           </div>
         )}
+
+        {usaResumenCata && <SummarySources labels={dict.catalog.attribution} resumen={resumenCata!} />}
 
         <FieldSources
           lang={lang}

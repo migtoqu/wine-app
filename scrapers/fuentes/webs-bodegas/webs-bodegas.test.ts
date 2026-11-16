@@ -304,6 +304,31 @@ describe("extracción: enoturismo", () => {
     expect(extraerIdiomas("Nuestros vinos se exportan a Inglaterra")).toEqual([]);
   });
 
+  it("cata en prosa bajo «Notas de cata»: la fase la marca cada trozo", () => {
+    const t = "Notas de cata\nUn vino elegante, de intenso color cereza brillante con reflejos granates. Potente en nariz, con aromas de fruta roja madura, vainillas y tostado fino. Su paladar es intenso y elegante, con taninos maduros y un largo recuerdo.\nMaridaje\nCarnes y quesos semi curados.";
+    expect(extraerCata(t)).toMatchObject({ vista: ["rojo cereza", "limpio y brillante"], nariz: ["frutos rojos", "vainilla", "tostados"], boca: expect.arrayContaining(["elegante"]) });
+    // Solo los encabezados, sin descriptores: nada.
+    expect(extraerCata("Notas de cata: Vista Olfato Gusto Puntuaciones")).toMatchObject({ vista: [], nariz: [], boca: [] });
+  });
+
+  it("más formatos de duración, precio e idioma", () => {
+    expect(extraerDuracion("Duración: 1h 30 min")).toBe(90);
+    expect(extraerDuracion("Visita de 1h30 con cata")).toBe(90);
+    expect(extraerDuracion("Duración aproximada: 1,5 h")).toBe(90);
+    expect(extraerDuracion("Tiene una duración de hora y media")).toBe(90);
+    expect(extraerDuracion("90 minutos aprox.")).toBe(90);
+    expect(extraerDuracion("Duración: 1.20")).toBe(80);
+    expect(extraerDuracion("Abierto a las 12 h")).toBeNull();
+    expect(extraerPrecio("PVP 30,00 € IVA incluido")).toBe(30);
+    expect(extraerPrecio("Visita + cata 15€")).toBe(15);
+    expect(extraerPrecio("Botella de regalo valorada en 18 €. Visita: 20 €")).toBe(20);
+    expect(extraerPrecio("Visita 15 €, gastos de envío 5 €")).toBe(15);
+    expect(extraerIdiomas("Visitas en español e inglés")).toEqual(["es", "en"]);
+    expect(extraerIdiomas("Tours in English and French")).toEqual(["en", "fr"]);
+    expect(extraerIdiomas("Español / Inglés")).toEqual(["es", "en"]);
+    expect(extraerIdiomas("Web disponible en inglés")).toEqual([]);
+  });
+
   it("tipo y título", () => {
     expect(tipoServicio("Cata de vinos maridada")).toBe("cata");
     expect(tipoServicio("Visita y cata")).toBe("visita");

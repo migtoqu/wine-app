@@ -12,6 +12,7 @@ Llenan el catálogo con datos factuales de las fuentes del MVP (ver [`docs/SOURC
 | `ruta-ribera` | `ruta-vino-ribera` | `servicios_bodega`, contacto/fundación de `bodegas` existentes, `registros_fuente` | `scrape-ruta-ribera.yml` (viernes 04:27 UTC) |
 | `rioja` | `cr-rioja` | `bodegas`, `bodega_denominaciones`, `vinos`, `anadas`, `anada_variedades`, `servicios_bodega`, `registros_fuente` | `scrape-rioja.yml` (martes 03:47 UTC, ~90 min) |
 | `webs-bodegas` | `webs-bodegas` (+ una fuente `web-<dominio>` por sitio) | `bodegas` (historia, enoturismo, redes), `vinos`, `anadas`, `anada_variedades`, `codigos_ean`, `servicios_bodega`, `resumenes`, `fuentes`, `registros_fuente` | `scrape-webs-bodegas.yml` (jueves y sábado 02:37 UTC, 4 lotes) |
+| `wikimedia` | `wikimedia-commons` | `imagenes` (fotos de bodega con licencia libre, enlazadas con atribución), `registros_fuente` | `scrape-wikimedia.yml` (día 8 de cada mes, 04:53 UTC) |
 | `enlaces` | `comprobador-enlaces` (no es una fuente de datos) | `comprobaciones_enlace` (y `imagenes.estado_enlace` vía trigger) | `link-check.yml` (domingo 05:17 UTC) |
 
 Vinoselección empareja cada vino con una bodega ya cargada, así que **Ribera debe ejecutarse antes** (por eso va el lunes).

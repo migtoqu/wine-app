@@ -61,6 +61,19 @@ describe("decidirCampo", () => {
     expect(decidirCampo(null, null, [t], AHORA)).toEqual({ escribir: { valor: 14 }, procedencia: proc(t) });
   });
 
+  it("lista u objeto vacíos por defecto (idiomas, redes) sin procedencia no son del admin: se rellenan", () => {
+    const w = cand({ registroId: "w", origen: "bodega", valor: ["es", "en"] });
+    expect(decidirCampo([], null, [w], AHORA)).toEqual({ escribir: { valor: ["es", "en"] }, procedencia: proc(w) });
+    expect(decidirCampo({}, null, [], AHORA)).toEqual({});
+    // Una fuente con lista vacía no compite con otra que trae datos.
+    expect(mejorCandidato([cand({ registroId: "x", origen: "bodega", valor: [] }), cand({ registroId: "t", origen: "tienda", valor: ["fr"] })])?.registroId).toBe("t");
+  });
+
+  it("la fuente deja de dar una lista → se vacía a [] (la columna no admite null)", () => {
+    const w = cand({ registroId: "w", origen: "bodega", valor: ["es"] });
+    expect(decidirCampo(["es"], proc(w), [], AHORA)).toEqual({ escribir: { valor: [] }, procedencia: null });
+  });
+
   it("valor manual sin procedencia (creado a mano) → se respeta y pasa a 'admin'", () => {
     const t = cand({ registroId: "t", origen: "tienda", valor: "otro" });
     const d = decidirCampo("del admin", null, [t], AHORA);

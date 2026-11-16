@@ -56,7 +56,18 @@ export interface DecisionCampo {
   procedencia?: Procedencia | null;
 }
 
-const vacio = (v: unknown) => v === null || v === undefined;
+/**
+ * Sin dato: null, cadena vacía, lista o un objeto vacíos. `idiomas` (text[]) y `redes` (jsonb) nacen
+ * con `{}`/`[]` por defecto; tratarlos como dato hacía que la primera consolidación los tomara por una
+ * edición del admin (que ninguna fuente pisa) y nunca se rellenaban.
+ */
+export const vacio = (v: unknown) =>
+  v === null || v === undefined || v === "" ||
+  (Array.isArray(v) && v.length === 0) ||
+  (typeof v === "object" && !Array.isArray(v) && Object.keys(v as object).length === 0);
+
+/** Valor con el que se vacía una columna: lista u objeto vacíos si la columna lo es (no admiten null). */
+const valorVacio = (actual: unknown) => (Array.isArray(actual) ? [] : actual !== null && typeof actual === "object" ? {} : null);
 
 /** Orden de candidatos: prioridad del origen, después valor más reciente, después id (determinista). */
 export function compararCandidatos(a: Candidato, b: Candidato): number {
@@ -107,7 +118,7 @@ export function decidirCampo(
   }
 
   if (!mejor) {
-    return vacio(actual) ? { procedencia: null } : { escribir: { valor: null }, procedencia: null };
+    return vacio(actual) ? { procedencia: null } : { escribir: { valor: valorVacio(actual) }, procedencia: null };
   }
 
   const nueva = procedenciaDe(mejor);

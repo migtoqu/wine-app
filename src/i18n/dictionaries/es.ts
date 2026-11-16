@@ -215,6 +215,9 @@ const es = {
       languages: "Idiomas",
       schedule: "Horario",
       book: "Reservar",
+      price: "Precio",
+      free: "Gratuita",
+      bookOnWeb: "Reservar en su web",
     },
     attribution: {
       source: "Fuente",

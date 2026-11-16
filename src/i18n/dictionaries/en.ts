@@ -214,6 +214,9 @@ const en = {
       languages: "Languages",
       schedule: "Opening times",
       book: "Book",
+      price: "Price",
+      free: "Free",
+      bookOnWeb: "Book on their website",
     },
     attribution: {
       source: "Source",
