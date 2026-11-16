@@ -24,7 +24,7 @@ import { pickResumen } from "@/lib/catalog/provenance";
 import { getBodega } from "@/lib/catalog/queries";
 
 // Ficha de bodega (§5.5). Igual que la de vino: lectura cacheada, ISR por
-// slug y `params` fuera de <Suspense> para que un slug inexistente dé 404.
+// slug y esqueleto inmediato en loading.tsx (ver vino/[slug]/page.tsx).
 // No lee searchParams: el filtro de sus vinos se aplica en el navegador.
 
 // Ver vino/[slug]/page.tsx: placeholder porque el catálogo no está en build.
@@ -32,8 +32,8 @@ export function generateStaticParams() {
   return [{ slug: "__placeholder__" }];
 }
 
-// La primera visita a cada slug espera a la lectura (para poder responder 404);
-// las siguientes salen de caché. No se valida como navegación instantánea.
+// La primera visita a cada slug espera a la lectura (con el esqueleto de
+// loading.tsx); las siguientes salen de caché. No se valida como navegación instantánea.
 export const instant = false;
 
 type Props = PageProps<"/[lang]/bodega/[slug]">;

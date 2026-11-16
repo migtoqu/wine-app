@@ -79,7 +79,9 @@ async function procedenciaYResumenes(
   const resumenes = new Map<string, Resumen[]>();
   if (ids.length === 0) return { procedencia, resumenes };
   const client = createPublicClient();
-  const [proc, res] = await Promise.all([
+  // `fuentes` es pequeña (decenas de filas) y no hay FK desde resumenes.fuentes
+  // (uuid[]): se lee entera en paralelo en vez de en una tercera ida y vuelta.
+  const [proc, res, fts] = await Promise.all([
     client
       .from("procedencia_campos")
       .select("entidad_id, campo, origen, url, observado_en, fuente:fuentes(nombre, url_base)")
@@ -90,6 +92,7 @@ async function procedenciaYResumenes(
       .select("entidad_id, campo, idioma, texto, fuentes")
       .eq("entidad_tipo", tipo)
       .in("entidad_id", ids),
+    client.from("fuentes").select("id, nombre, url_base"),
   ]);
   if (proc.error) throw new Error(`procedencia(${tipo}): ${proc.error.message}`);
   if (res.error) throw new Error(`resumenes(${tipo}): ${res.error.message}`);
@@ -102,13 +105,8 @@ async function procedenciaYResumenes(
     procedencia.set(p.entidad_id, m);
   }
 
-  const fuenteIds = [...new Set(res.data.flatMap((r) => r.fuentes))];
-  const fuentes = new Map<string, { nombre: string; url_base: string }>();
-  if (fuenteIds.length > 0) {
-    const f = await client.from("fuentes").select("id, nombre, url_base").in("id", fuenteIds);
-    if (f.error) throw new Error(`fuentes: ${f.error.message}`);
-    for (const x of f.data) fuentes.set(x.id, { nombre: x.nombre, url_base: x.url_base });
-  }
+  if (fts.error) throw new Error(`fuentes: ${fts.error.message}`);
+  const fuentes = new Map(fts.data.map((x) => [x.id, { nombre: x.nombre, url_base: x.url_base }]));
   for (const r of res.data) {
     const lista = resumenes.get(r.entidad_id) ?? [];
     lista.push({
@@ -198,10 +196,12 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
 // Ofertas visibles de un vino (comparador de precios) con su historial. Visibles: tienda activa,
 // sin ocultar por el admin ni por el comprobador de enlaces. Misma caché y etiquetas que la
 // ficha: la invalidan los scrapers (revalidateTag) y las acciones del admin.
-export async function getOfertasVino(vinoId: string, slug: string): Promise<Oferta[]> {
+// Va por slug (no por id) para poder leerse a la vez que getVino.
+export async function getOfertasVino(slug: string): Promise<Oferta[]> {
   "use cache";
   cacheLife("catalogo");
   cacheTag(CATALOG_TAG, `vino:${slug}`, OFERTAS_TAG);
+  if (!isValidSlug(slug)) return [];
 
   const { data, error } = await createPublicClient()
     .from("ofertas")
@@ -209,9 +209,10 @@ export async function getOfertasVino(vinoId: string, slug: string): Promise<Ofer
       `id, url, precio, formato_ml, disponible, visto_por_ultima_vez, anada_id,
        anada:anadas(anio),
        tienda:tiendas!inner(slug, nombre, web, logo_url, info_envio, afiliacion_plantilla, activa),
-       historial_precios(precio, desde, hasta)`,
+       historial_precios(precio, desde, hasta),
+       vino:vinos!inner(slug)`,
     )
-    .eq("vino_id", vinoId)
+    .eq("vino.slug", slug)
     .eq("oculta_admin", false)
     .neq("estado_enlace", "oculto")
     .eq("tienda.activa", true);
@@ -282,6 +283,9 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
   cacheTag(CATALOG_TAG, `bodega:${slug}`);
   if (!isValidSlug(slug)) return null;
 
+  // Los vinos solo dependen del slug: se piden a la vez que la ficha.
+  const vinosP = vinosDeBodega(slug);
+  vinosP.catch(() => {}); // si la ficha falla antes, que no quede un rechazo sin tratar
   const { data, error } = await createPublicClient()
     .from("bodegas")
     .select(
@@ -351,7 +355,7 @@ export async function getBodega(slug: string): Promise<BodegaFicha | null> {
     fuente: data.fuente,
     denominaciones,
     imagenes: visibleImages(data.imagenes, "bodega"),
-    vinos: await vinosDeBodega(data.slug),
+    vinos: await vinosP,
   };
 }
 
