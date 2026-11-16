@@ -33,12 +33,17 @@ export default async function YoPage({ searchParams }: PageProps<"/[lang]/yo">) 
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <h1 className="text-3xl font-semibold tracking-tight">{settings.spaceTitle}</h1>
-          <NextLink
-            href={localePath(lang, "/yo/ajustes")}
-            className={buttonStyles({ variant: "secondary", size: "sm" })}
-          >
-            {auth.menu.settings}
-          </NextLink>
+          <div className="flex flex-wrap gap-2">
+            <NextLink href={localePath(lang, "/yo/cava")} className={buttonStyles({ size: "sm" })}>
+              {auth.menu.cava}
+            </NextLink>
+            <NextLink
+              href={localePath(lang, "/yo/ajustes")}
+              className={buttonStyles({ variant: "secondary", size: "sm" })}
+            >
+              {auth.menu.settings}
+            </NextLink>
+          </div>
         </div>
         <Suspense fallback={<Skeleton className="h-6 w-40" />}>
           <Greeting />

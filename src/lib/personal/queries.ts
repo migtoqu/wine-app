@@ -98,3 +98,56 @@ export async function getNotasRecientes(limit = 20): Promise<NotaItem[]> {
   if (error) throw new Error(`getNotasRecientes: ${error.message}`);
   return data;
 }
+
+// --- Mi cava -----------------------------------------------------------------
+
+export type CavaLote = {
+  id: string;
+  vino_id: string | null;
+  anada_id: string | null;
+  nombre: string;
+  bodega_nombre: string | null;
+  anio: number | null;
+  cantidad: number;
+  formato_ml: number;
+  precio_compra: number | null;
+  fecha_compra: string | null;
+  tienda: string | null;
+  ubicacion: string | null;
+  beber_desde: number | null;
+  beber_hasta: number | null;
+  notas: string | null;
+  updated_at: string;
+  vino: { slug: string } | null;
+};
+
+const CAVA_COLUMNS = `id, vino_id, anada_id, nombre, bodega_nombre, anio, cantidad, formato_ml,
+  precio_compra, fecha_compra, tienda, ubicacion, beber_desde, beber_hasta, notas, updated_at,
+  vino:vinos(slug)`;
+
+export async function getCava(): Promise<CavaLote[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("cava")
+    .select(CAVA_COLUMNS)
+    .order("updated_at", { ascending: false })
+    .limit(1000);
+  if (error) throw new Error(`getCava: ${error.message}`);
+  return data;
+}
+
+export async function getCavaLote(id: string): Promise<CavaLote | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("cava").select(CAVA_COLUMNS).eq("id", id).maybeSingle();
+  if (error) throw new Error(`getCavaLote: ${error.message}`);
+  return data;
+}
+
+// Botellas que el usuario ya tiene de un vino (para la ficha).
+export async function getCavaDeVino(vinoId: string): Promise<number | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.from("cava").select("cantidad").eq("vino_id", vinoId);
+  return (data ?? []).reduce((sum, l) => sum + l.cantidad, 0);
+}
