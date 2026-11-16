@@ -116,7 +116,7 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [x] La portada pedía «Iniciar sesión» aunque ya hubiera sesión (es el `start_url` de la PWA); la cabecera mostraba «Entrar» mientras leía la sesión
 - [x] Lentitud: búsquedas con índices trigram (#41, #44), esqueletos al navegar a fichas, funciones en cdg1 junto a Supabase
 - [ ] Lentitud restante: arranques en frío de Vercel (~1 s la primera visita) y de Supabase Free; medir en móvil con sesión
-- [ ] Bodegas que no aparecen por su marca: el catálogo usa la razón social del consejo (p. ej. «Velvety Wines» = Dominio Lubiano). Renombrar en `/admin` (desde #46 el nombre del admin ya no lo pisan los scrapers) y valorar nombres alternativos en el buscador
+- [ ] Bodegas que no aparecen por su marca: el catálogo usa la razón social del consejo (p. ej. «Velvety Wines» = Dominio Lubiano). Renombrar en `/admin` (desde #47 el nombre del admin ya no lo pisan los scrapers) y valorar nombres alternativos en el buscador
 - [ ] Cobertura de D.O.: hoy 8 (Ribera, Rioja, Priorat, Rueda, Bierzo, Toro, Navarra, Cigales); faltan Rías Baixas, Ribeiro, Penedès, Cava, Somontano, Jumilla, La Mancha, Jerez…
 
 ## Fase 4 — Apertura pública
