@@ -56,6 +56,7 @@ Webs de bodegas (webs-bodegas):
   --lote I/N           solo los sitios del lote I de N (reparto estable por hash del dominio)
   --presupuesto-min N  no empieza sitios nuevos pasados N minutos (por defecto 45)
   --descubrir-webs     prueba también la web del dominio del email de las bodegas sin web
+  --sin-adaptadores    solo el extractor genérico (para comparar con los adaptadores por sitio)
 
 OpenStreetMap (osm):
   --bodegas RUTA       (dry-run) JSON con las bodegas (consulta de exportación en docs/SOURCES.md)
@@ -84,6 +85,7 @@ async function main(): Promise<number> {
       lote: { type: "string" },
       "presupuesto-min": { type: "string" },
       "descubrir-webs": { type: "boolean", default: false },
+      "sin-adaptadores": { type: "boolean", default: false },
       urls: { type: "string" },
       cache: { type: "string" },
       presupuesto: { type: "string" },
@@ -119,6 +121,7 @@ async function main(): Promise<number> {
       lote: values.lote,
       presupuestoMin: values["presupuesto-min"],
       descubrirWebs: values["descubrir-webs"] ? "1" : undefined,
+      sinAdaptadores: values["sin-adaptadores"] ? "1" : undefined,
       urls: values.urls,
       cache: values.cache,
       presupuesto: values.presupuesto,

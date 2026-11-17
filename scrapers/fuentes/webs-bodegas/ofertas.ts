@@ -106,14 +106,16 @@ export function ofertaDeJsonLd(producto: Record<string, unknown>, url: string, n
   const precio = num(o.price) ?? num(o.lowPrice);
   if (precio == null || precio <= 0) return null;
   const disp = typeof o.availability === "string" ? o.availability : null;
+  // El formato puede ir en el nombre de la oferta («Caja 6 botellas»), no en el del producto.
+  const formato = typeof o.name === "string" ? `${nombre} ${o.name}` : nombre;
   return {
     url,
     precio,
     precio_regular: null,
     moneda: typeof o.priceCurrency === "string" ? o.priceCurrency : null,
     disponible: disp ? /InStock|LimitedAvailability|PreOrder/i.test(disp) : null,
-    formato_ml: formatoMl(nombre),
-    unidades: unidades(nombre),
+    formato_ml: formatoMl(formato),
+    unidades: unidades(formato),
     ean,
     sku: typeof producto.sku === "string" ? producto.sku : null,
     precio_max: num(o.highPrice),

@@ -374,7 +374,7 @@ export class GuardadoWebs {
     const paginas = [...r.paginas, ...(this.paginasPrevias.get(fuente.id) ?? []).filter((p) => sinCambios.has(normalizarUrl(p.url)))];
     this.paginasPrevias.set(fuente.id, paginas);
     const datosSitio = {
-      dominio: r.entrada.dominio, puerta: r.puerta, huella: r.huella, extractor: r.extractor, paginas, hosts: r.hosts,
+      dominio: r.entrada.dominio, puerta: r.puerta, huella: r.huella, extractor: r.extractor, adaptador: r.adaptador, paginas, hosts: r.hosts,
       sin_cambios: r.sinCambios.length, avisos: r.avisos, bodega: r.bodega, peticiones: r.peticiones,
       imagen: r.imagen ? { ...r.imagen, senales_ia: r.puerta.senales_ia } : null,
       bodegas: r.entrada.bodegas.map((b) => ({ id: b.id, nombre: b.nombre })),
@@ -620,6 +620,13 @@ export class GuardadoWebs {
       }
       if (!v.tipo) {
         await this.guardarRegistro({ ...base, datos: { vino: v, emparejamiento: { motivo: "tipo_desconocido" } }, entidadTipo: null, entidadId: null, estado: "revision", confianza: 0 });
+        return "revision";
+      }
+      // Dominio de un grupo: un vino de otra bodega del grupo, o sin marca reconocida, no se asigna
+      // a la bodega del sitio; lo decide el admin.
+      if (v.bodega_marca && v.bodega_marca.estado !== "propia") {
+        const motivo = v.bodega_marca.estado === "otra" ? "bodega_del_grupo" : "marca_desconocida";
+        await this.guardarRegistro({ ...base, datos: { vino: v, emparejamiento: { motivo, bodega: v.bodega_marca.bodega } }, entidadTipo: null, entidadId: null, estado: "revision", confianza: 0 });
         return "revision";
       }
       const m = this.vinos.emparejar(
