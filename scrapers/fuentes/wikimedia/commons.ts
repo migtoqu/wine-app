@@ -164,13 +164,20 @@ function sinSeguimiento(url: string | undefined): string | null {
 
 export function parsearArchivo(html: string, titulo: string): FichaArchivo {
   const $ = cheerio.load(html);
+  // Las plantillas (p. ej. {{Creator}}) incrustan <style>: su CSS no debe acabar en el autor.
+  $("style, script").remove();
   const licencias = $(".licensetpl_short").map((_, el) => limpiarEspacios($(el).text())).get().filter(Boolean);
   const licencia = licencias.find(licenciaLibre) ?? licencias[0] ?? null;
   const idx = licencia ? licencias.indexOf(licencia) : -1;
   const urlLicencia = idx >= 0 ? sinSeguimiento($(".licensetpl_link").eq(idx).text().trim() || undefined) : null;
   // Atribución pedida por el autor (si la hay) o el campo «Autor» del resumen.
   const atr = limpiarEspacios($(".licensetpl_attr").first().text());
-  const aut = limpiarEspacios($("#fileinfotpl_aut").first().next("td").text().replace(/\((talk|discusión|contribs?)[^)]*\)/gi, ""));
+  const celdaAutor = $("#fileinfotpl_aut").first().next("td");
+  // Con {{Creator}} el nombre está en #creator; el resto de la tabla son fechas y notas.
+  const creador = celdaAutor.find("#creator").first();
+  const aut = limpiarEspacios(
+    (creador.length ? creador : celdaAutor).text().replace(/\((talk|discusión|contribs?)[^)]*\)/gi, ""),
+  );
   const autor = (atr || aut || "").slice(0, 120) || null;
   const info = $(".fileInfo").first().text();
   const dim = info.match(/([\d,.\s]+)\s*[×x]\s*([\d,.\s]+)\s*(pixels|píxeles)/i);
