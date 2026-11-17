@@ -64,6 +64,8 @@ export type BodegaListItem = {
   num_vinos: number;
   imagen_url: string | null;
   imagen_alt: string | null;
+  // Qué es la imagen: foto propia de la bodega o del viñedo, o la botella de uno de sus vinos (respaldo).
+  imagen_tipo: "bodega" | "vinedo" | "botella" | null;
   relevancia: number | null;
   total: number;
 };
@@ -85,7 +87,23 @@ export type FilterOption = {
   num: number;
 };
 
+// Punto del mapa de bodegas (RPC mapa_bodegas, migración 20261112180000).
+//   precision: 'exacta' (oficial o POI de OSM), 'portal', 'calle' o 'municipio' (centroide).
+export type PrecisionUbicacion = "exacta" | "portal" | "calle" | "municipio";
+export type BodegaMapa = {
+  id: string;
+  slug: string;
+  nombre: string;
+  municipio: string | null;
+  provincia: string | null;
+  lat: number;
+  lng: number;
+  precision: PrecisionUbicacion;
+  origen: "oficial" | "osm";
+};
+
 type CatalogFunctions = {
+  mapa_bodegas: { Args: never; Returns: BodegaMapa[] };
   buscar_catalogo: {
     Args: { q: string; limite?: number };
     Returns: SearchSuggestion[];

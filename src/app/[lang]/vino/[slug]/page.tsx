@@ -16,6 +16,7 @@ import { getDictionary, getLocale, type Dictionary } from "@/i18n/server";
 import {
   anadaKey,
   formatAlcohol,
+  parseCataResumen,
   formatPercent,
   formatTempRange,
   imageForAnada,
@@ -30,8 +31,9 @@ import type { Anada, Oferta, VinoFicha } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 
 // Ficha de vino (§5.4). La lectura está cacheada (perfil "catalogo") y la
-// página se genera en la primera visita a cada slug (ISR). `params` se espera
-// fuera de <Suspense> para que un slug inexistente responda con un 404 real.
+// página se genera en la primera visita a cada slug (ISR). Mientras, loading.tsx
+// muestra el esqueleto al instante; un slug inexistente pinta not-found.tsx
+// dentro de ese límite (con noindex; el código HTTP ya ha salido como 200).
 // Lo que depende de ?anada= (imagen y datos de la añada) va en <Suspense> con
 // la añada por defecto como fallback: el HTML cacheado ya trae la ficha entera.
 
@@ -42,8 +44,8 @@ export function generateStaticParams() {
   return [{ slug: "__placeholder__" }];
 }
 
-// La primera visita a cada slug espera a la lectura (para poder responder 404);
-// las siguientes salen de caché. No se valida como navegación instantánea.
+// La primera visita a cada slug espera a la lectura (con el esqueleto de
+// loading.tsx); las siguientes salen de caché. No se valida como navegación instantánea.
 export const instant = false;
 
 type Props = PageProps<"/[lang]/vino/[slug]">;
@@ -60,14 +62,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function WinePage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const vino = await getVino(slug);
+  // Ficha y ofertas a la vez (las ofertas van por slug, no esperan al id).
+  const [vino, ofertas] = await Promise.all([getVino(slug), getOfertasVino(slug)]);
   if (!vino) notFound();
 
   const lang = await getLocale();
   const dict = await getDictionary();
   const { catalog } = dict;
   const updatedAt = latestDate([vino.updated_at, ...vino.anadas.map((a) => a.updated_at)]);
-  const ofertas = await getOfertasVino(vino.id, vino.slug);
 
   return (
     <Container className="flex flex-col gap-12 py-8 sm:py-12">
@@ -144,7 +146,10 @@ export default async function WinePage({ params, searchParams }: Props) {
         />
       </article>
 
-      <MoreFromWinery lang={lang} vino={vino} dict={dict} />
+      {/* Necesita la bodega de la ficha: va aparte para no retrasar el resto. */}
+      <Suspense fallback={null}>
+        <MoreFromWinery lang={lang} vino={vino} dict={dict} />
+      </Suspense>
     </Container>
   );
 }
@@ -269,15 +274,22 @@ function VintageDetails({
   // Textos: el curado por el admin (añada, después vino) o el resumen propio generado a partir de hechos.
   const elaboracion = anada.elaboracion ?? vino.elaboracion;
   const resumenElaboracion = elaboracion ? null : pickResumen(anada.resumenes, ["elaboracion"], lang);
+  // Cata: columnas curadas por el admin; si no hay, el resumen propio (vocabulario cerrado) por partes.
+  const curada = Boolean(anada.cata_vista || anada.cata_nariz || anada.cata_boca || anada.notas_cata);
+  const resumenCata = curada && anada.maridaje ? null : pickResumen(anada.resumenes, ["cata"], lang);
+  const partes = resumenCata ? parseCataResumen(resumenCata.texto) : null;
   const cata = [
-    { label: wine.sight, value: anada.cata_vista },
-    { label: wine.nose, value: anada.cata_nariz },
-    { label: wine.palate, value: anada.cata_boca },
+    { label: wine.sight, value: curada ? anada.cata_vista : partes?.vista ?? null },
+    { label: wine.nose, value: curada ? anada.cata_nariz : partes?.nariz ?? null },
+    { label: wine.palate, value: curada ? anada.cata_boca : partes?.boca ?? null },
   ].filter((c): c is { label: string; value: string } => c.value !== null);
-  const resumenCata = cata.length > 0 || anada.notas_cata ? null : pickResumen(anada.resumenes, ["cata"], lang);
+  const notasCata = curada ? anada.notas_cata : partes?.resto ?? null;
+  const maridaje = anada.maridaje ?? partes?.maridaje ?? null;
+  // La atribución del resumen solo se muestra si de verdad se usa alguna parte.
+  const usaResumenCata = Boolean(resumenCata && ((!curada && (cata.length > 0 || notasCata)) || (!anada.maridaje && partes?.maridaje)));
   const hasDetails =
-    facts.length > 0 || anada.variedades.length > 0 || anada.maridaje || anada.notas_cata ||
-    elaboracion || resumenElaboracion || cata.length > 0 || resumenCata;
+    facts.length > 0 || anada.variedades.length > 0 || maridaje || notasCata ||
+    elaboracion || resumenElaboracion || cata.length > 0;
   const title = anada.anio === null ? wine.noVintageData : wine.vintageData(String(anada.anio));
 
   return (
@@ -353,35 +365,31 @@ function VintageDetails({
           </div>
         )}
 
-        {(cata.length > 0 || anada.notas_cata || resumenCata) && (
+        {(cata.length > 0 || notasCata) && (
           <div className="flex flex-col gap-2">
             <h4 className="text-sm font-semibold">{wine.tastingNotes}</h4>
             {cata.length > 0 && (
               <dl className="grid gap-3 sm:grid-cols-3">
                 {cata.map((c) => (
-                  <div key={c.label} className="flex flex-col gap-1">
+                  <div key={c.label} className="flex flex-col gap-1 rounded-card bg-surface-2 p-3">
                     <dt className="text-sm text-muted">{c.label}</dt>
                     <dd className="whitespace-pre-line">{c.value}</dd>
                   </div>
                 ))}
               </dl>
             )}
-            {anada.notas_cata && <p className="max-w-prose whitespace-pre-line">{anada.notas_cata}</p>}
-            {resumenCata && (
-              <>
-                <p className="max-w-prose">{resumenCata.texto}</p>
-                <SummarySources labels={dict.catalog.attribution} resumen={resumenCata} />
-              </>
-            )}
+            {notasCata && <p className="max-w-prose whitespace-pre-line">{notasCata}</p>}
           </div>
         )}
 
-        {anada.maridaje && (
+        {maridaje && (
           <div className="flex flex-col gap-2">
             <h4 className="text-sm font-semibold">{wine.pairing}</h4>
-            <p className="max-w-prose whitespace-pre-line">{anada.maridaje}</p>
+            <p className="max-w-prose whitespace-pre-line">{maridaje}</p>
           </div>
         )}
+
+        {usaResumenCata && <SummarySources labels={dict.catalog.attribution} resumen={resumenCata!} />}
 
         <FieldSources
           lang={lang}

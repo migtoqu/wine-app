@@ -31,3 +31,10 @@ export function formatDate(
     ...options,
   }).format(new Date(date));
 }
+
+// Año en curso en España (para ventanas de consumo). Solo en código dinámico.
+export function currentYear(): number {
+  return Number(
+    new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, year: "numeric" }).format(new Date()),
+  );
+}

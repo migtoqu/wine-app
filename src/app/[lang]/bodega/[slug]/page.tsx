@@ -4,6 +4,7 @@ import { Attribution } from "@/components/catalog/attribution";
 import { BodegaWines } from "@/components/catalog/bodega-wines";
 import { CatalogImage } from "@/components/catalog/catalog-image";
 import { FieldSources, SummarySources } from "@/components/catalog/field-sources";
+import { ImageCredit } from "@/components/catalog/image-credit";
 import { ExternalIcon } from "@/components/catalog/icons";
 import { BodegaActions } from "@/components/catalog/personal-actions";
 import { wineCardLabels } from "@/components/catalog/wine-card";
@@ -21,9 +22,10 @@ import {
 } from "@/lib/catalog/format";
 import { pickResumen } from "@/lib/catalog/provenance";
 import { getBodega } from "@/lib/catalog/queries";
+import { cn } from "@/lib/cn";
 
 // Ficha de bodega (§5.5). Igual que la de vino: lectura cacheada, ISR por
-// slug y `params` fuera de <Suspense> para que un slug inexistente dé 404.
+// slug y esqueleto inmediato en loading.tsx (ver vino/[slug]/page.tsx).
 // No lee searchParams: el filtro de sus vinos se aplica en el navegador.
 
 // Ver vino/[slug]/page.tsx: placeholder porque el catálogo no está en build.
@@ -31,8 +33,8 @@ export function generateStaticParams() {
   return [{ slug: "__placeholder__" }];
 }
 
-// La primera visita a cada slug espera a la lectura (para poder responder 404);
-// las siguientes salen de caché. No se valida como navegación instantánea.
+// La primera visita a cada slug espera a la lectura (con el esqueleto de
+// loading.tsx); las siguientes salen de caché. No se valida como navegación instantánea.
 export const instant = false;
 
 type Props = PageProps<"/[lang]/bodega/[slug]">;
@@ -64,6 +66,8 @@ export default async function WineryPage({ params }: Props) {
   const region = bodega.comunidad && bodega.comunidad !== bodega.provincia ? bodega.comunidad : null;
   const social = socialLinks(bodega.redes);
   const [cover, ...gallery] = bodega.imagenes;
+  // Sin foto propia: la botella de uno de sus vinos, entera (contain).
+  const bottle = cover ? null : bodega.vinos.find((v) => v.imagen_url) ?? null;
   const facts = [
     bodega.anio_fundacion !== null && {
       label: winery.founded,
@@ -89,6 +93,11 @@ export default async function WineryPage({ params }: Props) {
       conValor={(c) => (bodega as Record<string, unknown>)[c] != null}
     />
   );
+  // Las experiencias con más datos (precio, duración, idiomas, qué incluye) primero.
+  const riqueza = (sv: (typeof bodega.servicios)[number]) =>
+    Number(sv.precio_desde !== null) + Number(sv.duracion_minutos !== null) + Number(sv.idiomas.length > 0) +
+    Number(Boolean(sv.descripcion)) + Number(Boolean(sv.url_reserva));
+  const servicios = [...bodega.servicios].sort((a, b) => riqueza(b) - riqueza(a));
   const price = (n: number) =>
     formatNumber(lang, n, { style: "currency", currency: "EUR", maximumFractionDigits: Number.isInteger(n) ? 0 : 2 });
   const externalLink = "inline-flex items-center gap-1 font-medium text-primary underline decoration-1 underline-offset-4 hover:decoration-2";
@@ -97,17 +106,20 @@ export default async function WineryPage({ params }: Props) {
     <Container className="flex flex-col gap-12 py-8 sm:py-12">
       <article className="flex flex-col gap-10">
         <header className="flex flex-col gap-6">
-          <CatalogImage
-            key={cover?.url ?? "none"}
-            src={cover?.url}
-            alt={cover?.alt ?? winery.imageAlt(bodega.nombre)}
-            kind="bodega"
-            placeholderLabel={winery.placeholderAlt}
-            aspect="landscape"
-            fit="cover"
-            priority
-            className="max-h-[22rem] w-full sm:aspect-[21/9]"
-          />
+          <div className="flex flex-col gap-1">
+            <CatalogImage
+              key={cover?.url ?? bottle?.imagen_url ?? "none"}
+              src={cover?.url ?? bottle?.imagen_url}
+              alt={cover?.alt ?? (bottle ? bottle.imagen_alt ?? bottle.nombre : winery.imageAlt(bodega.nombre))}
+              kind="bodega"
+              placeholderLabel={winery.placeholderAlt}
+              aspect="landscape"
+              fit={cover ? "cover" : "contain"}
+              priority
+              className="max-h-[22rem] w-full sm:aspect-[21/9]"
+            />
+            <ImageCredit text={cover?.atribucion} label={winery.imageCredit} className="text-right" />
+          </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div className="flex flex-col gap-3">
               <h1 className="text-display font-semibold">{bodega.nombre}</h1>
@@ -190,28 +202,37 @@ export default async function WineryPage({ params }: Props) {
               )}
               {bodega.servicios.length > 0 && (
                 <ul className="grid gap-3 sm:grid-cols-2">
-                  {bodega.servicios.map((sv) => {
-                    const meta = [
-                      sv.precio_desde !== null ? winery.priceFrom(price(sv.precio_desde)) : null,
-                      formatDuration(sv.duracion_minutos),
-                      formatLanguages(lang, sv.idiomas),
-                    ].filter(Boolean);
+                  {servicios.map((sv) => {
+                    const datos = [
+                      sv.precio_desde !== null && {
+                        label: winery.price,
+                        value: sv.precio_desde === 0 ? winery.free : winery.priceFrom(price(sv.precio_desde)),
+                      },
+                      sv.duracion_minutos !== null && { label: winery.duration, value: formatDuration(sv.duracion_minutos) },
+                      sv.idiomas.length > 0 && { label: winery.languages, value: formatLanguages(lang, sv.idiomas) },
+                      sv.horario && { label: winery.schedule, value: sv.horario },
+                    ].filter((d): d is { label: string; value: string } => Boolean(d && d.value));
+                    const reserva = sv.url_reserva ?? bodega.enoturismo_web;
                     return (
-                      <li key={sv.id} className="flex flex-col gap-2 rounded-card border border-border bg-surface p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone="accent">{winery.serviceTypes[sv.tipo]}</Badge>
+                      <li key={sv.id} className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
+                        <div className="flex flex-col gap-2">
+                          <Badge tone="accent" className="self-start">{winery.serviceTypes[sv.tipo]}</Badge>
                           <h3 className="font-sans text-base font-semibold">{sv.titulo}</h3>
                         </div>
                         {sv.descripcion && <p className="text-sm text-muted">{sv.descripcion}</p>}
-                        {meta.length > 0 && <p className="text-sm">{meta.join(" · ")}</p>}
-                        {sv.horario && (
-                          <p className="text-sm text-muted">
-                            {winery.schedule}: {sv.horario}
-                          </p>
+                        {datos.length > 0 && (
+                          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                            {datos.map((d) => (
+                              <div key={d.label} className={cn("flex flex-col", d.label === winery.schedule && "col-span-2")}>
+                                <dt className="text-muted">{d.label}</dt>
+                                <dd className="font-medium">{d.value}</dd>
+                              </div>
+                            ))}
+                          </dl>
                         )}
-                        {sv.url_reserva && (
-                          <a href={sv.url_reserva} target="_blank" rel="noopener noreferrer" className={externalLink}>
-                            {winery.book}
+                        {reserva && (
+                          <a href={reserva} target="_blank" rel="noopener noreferrer" className={cn(externalLink, "mt-auto")}>
+                            {sv.url_reserva ? winery.book : winery.bookOnWeb}
                             <ExternalIcon className="size-4" />
                           </a>
                         )}
@@ -238,9 +259,7 @@ export default async function WineryPage({ params }: Props) {
                         aspect="landscape"
                         fit="cover"
                       />
-                      {img.atribucion && (
-                        <p className="mt-1 text-xs text-muted">{img.atribucion}</p>
-                      )}
+                      <ImageCredit text={img.atribucion} label={winery.imageCredit} className="mt-1" />
                     </li>
                   ))}
                 </ul>

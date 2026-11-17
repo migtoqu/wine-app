@@ -61,6 +61,6 @@ function redirectKeepingCookies(request: NextRequest, from: NextResponse, target
 export const config = {
   matcher: [
     // Todo salvo internos de Next, API/auth, ficheros de metadata y estáticos.
-    "/((?!_next/static|_next/image|api/|auth/|manifest.webmanifest|robots.txt|sitemap.xml|favicon.ico|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
+    "/((?!_next/static|_next/image|api/|auth/|manifest.webmanifest|robots.txt|sitemap.xml|favicon.ico|icons/|vendor/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
   ],
 };

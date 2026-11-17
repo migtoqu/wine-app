@@ -20,6 +20,15 @@ export function SearchIcon({ className }: IconProps) {
   );
 }
 
+export function MapIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="m9 4-6 2.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z" />
+      <path d="M9 4v13.5M15 6.5V20" />
+    </svg>
+  );
+}
+
 export function StarIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
@@ -65,6 +74,14 @@ export function CloseIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className}>
       <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
+export function BackIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M19 12H5M11 18l-6-6 6-6" />
     </svg>
   );
 }

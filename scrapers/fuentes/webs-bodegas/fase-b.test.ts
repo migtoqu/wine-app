@@ -11,7 +11,7 @@ import { esNombreDeVino as esVino, nombreVino } from "./extraer.ts";
 import { idiomaDeTexto, limpiarTitulo } from "./html.ts";
 import { esNombreDeVino, extraerServicio } from "./extraer.ts";
 import { cargar } from "./html.ts";
-import { candidatasDePagina, elegirImagenBodega, esFoto, imagenBotella } from "./imagen.ts";
+import { candidatasDePagina, elegirImagenBodega, esFoto, hostPermitido, imagenBotella, normalizarUrlImagen } from "./imagen.ts";
 import { formatoMl, ofertaDeJsonLd, ofertaDeWoo, unidades } from "./ofertas.ts";
 import { dominioBase, RastreadorSitio, verificarNombre, type EntradaSitio, type PaginaPrevia } from "./sitio.ts";
 
@@ -94,6 +94,33 @@ describe("imágenes", () => {
     const sinOg = html.replace(/<meta property="og:image"[^>]+>/, "");
     const c = candidatasDePagina(cargar(sinOg), "https://x.es/historia/");
     expect(elegirImagenBodega([{ url: "https://x.es/historia/", candidatas: c }], delSitio)).toMatchObject({ url: "https://x.es/wp-content/uploads/sala-barricas.jpg", tipo: "bodega" });
+  });
+
+  it("la clase wp-custom-logo del body no convierte todas las imágenes en logos; héroes y fondos cuentan", () => {
+    const wp = `<html><body class="home wp-custom-logo logo"><header class="site-header"><div class="site-logo"><a><img src="/wp-content/uploads/marca-bodega.png" width="900"></a></div>
+      <div class="hero"><img src="/wp-content/uploads/hero-300x200.jpg" srcset="/wp-content/uploads/hero-300x200.jpg 300w, /wp-content/uploads/hero.jpg 1920w" width="300" height="200"></div></header>
+      <section style="background-image: url('/wp-content/uploads/fondo-vinedos.jpg')"></section>
+      <main><img src="/wp-content/uploads/crianza-2021-botella.jpg" width="1200" height="1200"></main></body></html>`;
+    const c = candidatasDePagina(cargar(wp), "https://x.es/");
+    expect(c.map((x) => x.url)).not.toContain("https://x.es/wp-content/uploads/marca-bodega.png");
+    expect(c.find((x) => x.url.endsWith("/hero.jpg"))).toMatchObject({ ancho: 1920, alto: 1280, cabecera: true });
+    expect(elegirImagenBodega([{ url: "https://x.es/", candidatas: c }], delSitio)).toMatchObject({ url: "https://x.es/wp-content/uploads/fondo-vinedos.jpg", tipo: "vinedo" });
+    // Sin el fondo: el héroe de la cabecera (grande y apaisado); nunca la botella.
+    const sinFondo = candidatasDePagina(cargar(wp.replace(/<section[^>]*><\/section>/, "")), "https://x.es/");
+    expect(elegirImagenBodega([{ url: "https://x.es/", candidatas: sinFondo }], delSitio)).toMatchObject({ url: "https://x.es/wp-content/uploads/hero.jpg" });
+  });
+
+  it("URLs de imagen arregladas o descartadas: Shopify {width}, miniatura de Wix, dummy, páginas", () => {
+    expect(normalizarUrlImagen("//tienda.x.es/cdn/shop/files/Bodega_{width}x.jpg?v=1", "https://x.es/")).toBe("https://tienda.x.es/cdn/shop/files/Bodega_1600x.jpg?v=1");
+    expect(normalizarUrlImagen("https://static.wixstatic.com/media/99_ab~mv2.jpg/v1/fill/w_147,h_95,blur_2/99_ab~mv2.jpg", "https://x.es/")).toBe("https://static.wixstatic.com/media/99_ab~mv2.jpg");
+    const foto = (url: string) => esFoto({ url, alt: null, origen: "contenido", ancho: null });
+    expect(foto("https://x.es/wp-content/plugins/revslider/sr6/assets/assets/dummy.png")).toBe(false);
+    expect(foto("https://x.es/grupo-la-rioja-alta/")).toBe(false);
+    expect(foto("https://x.es/img/bodega")).toBe(false);
+    expect(foto("https://irp.cdn-website.com/x/opt/LOGO+01-270w.png")).toBe(false);
+    expect(foto("https://x.es/img/bodega-1.jpg")).toBe(true);
+    expect(hostPermitido("https://sp-ao.shortpixel.ai/client/to_webp,w_900/https://x.es/wp-content/uploads/a.jpg", delSitio)).toBe(true);
+    expect(hostPermitido("https://i0.wp.com/otra.com/a.jpg", delSitio)).toBe(false);
   });
 
   it("imágenes de terceros fuera; la CDN de la plataforma vale", () => {

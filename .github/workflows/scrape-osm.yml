@@ -1,0 +1,51 @@
+name: Scraper OpenStreetMap (geocodificación y POI)
+
+# Mensual, en franja libre: día 1 a las 04:53 UTC. Nominatim (≤ 1 petición/s, caché entre
+# ejecuciones con actions/cache) + una consulta Overpass. Solo toca bodegas sin coordenadas
+# oficiales (y web/teléfono donde falten). Nunca se ejecuta en pull requests.
+# El dry-run se hace en local con --bodegas (necesita el JSON de bodegas; ver docs/SOURCES.md).
+on:
+  schedule:
+    - cron: "53 4 1 * *"
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Máximo de bodegas a procesar (vacío = todas)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-osm
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Restaurar caché de Nominatim
+        uses: actions/cache@v4
+        with:
+          path: scrapers/.cache/osm
+          key: osm-nominatim-${{ github.run_id }}
+          restore-keys: osm-nominatim-
+
+      - name: Ejecutar scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          args=(osm --presupuesto-min 50)
+          if [ -n "$LIMIT" ]; then args+=(--limit "$LIMIT"); fi
+          node scrapers/cli.ts "${args[@]}"

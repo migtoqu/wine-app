@@ -1,8 +1,10 @@
+import NextLink from "next/link";
 import { Suspense } from "react";
+import { buttonStyles } from "@/components/ui";
 import { localePath, type Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/server";
 import { loginPathWithNext } from "@/lib/auth/routes";
-import { getBodegaPersonal, getVinoPersonal } from "@/lib/personal/queries";
+import { getBodegaPersonal, getCavaDeVino, getVinoPersonal } from "@/lib/personal/queries";
 import { NoteEditor, UserActions, UserActionsFallback } from "./user-actions";
 
 // Server Components que leen el estado del usuario (favorito y notas). Las
@@ -21,7 +23,14 @@ export function VinoActions({
   const labels = dict.catalog.userActions;
   return (
     <Suspense fallback={<UserActionsFallback labels={labels} />}>
-      <VinoActionsInner lang={lang} labels={labels} vinoId={vinoId} slug={slug} anadaIds={anadaIds} />
+      <VinoActionsInner
+        lang={lang}
+        labels={labels}
+        cava={dict.cava}
+        vinoId={vinoId}
+        slug={slug}
+        anadaIds={anadaIds}
+      />
     </Suspense>
   );
 }
@@ -29,17 +38,19 @@ export function VinoActions({
 async function VinoActionsInner({
   lang,
   labels,
+  cava,
   vinoId,
   slug,
   anadaIds,
 }: {
   lang: Locale;
   labels: Dictionary["catalog"]["userActions"];
+  cava: Dictionary["cava"];
   vinoId: string;
   slug: string;
   anadaIds: string[];
 }) {
-  const state = await getVinoPersonal(vinoId, anadaIds);
+  const [state, enCava] = await Promise.all([getVinoPersonal(vinoId, anadaIds), getCavaDeVino(vinoId)]);
   return (
     <UserActions
       tipo="vino"
@@ -50,7 +61,18 @@ async function VinoActionsInner({
       signedIn={state.signedIn}
       loginHref={loginPathWithNext(lang, localePath(lang, `/vino/${slug}`))}
       labels={labels}
-    />
+    >
+      {state.signedIn && (
+        <NextLink
+          href={`${localePath(lang, "/yo/cava/nueva")}?vino=${encodeURIComponent(slug)}`}
+          className={buttonStyles({ variant: "secondary", size: "sm" })}
+          title={enCava ? cava.inCava(enCava) : undefined}
+        >
+          {cava.addToCava}
+          {enCava ? ` (${enCava})` : ""}
+        </NextLink>
+      )}
+    </UserActions>
   );
 }
 

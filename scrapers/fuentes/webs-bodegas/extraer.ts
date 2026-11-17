@@ -451,8 +451,49 @@ export function extraerCata(texto: string): { vista: string[]; nariz: string[]; 
     const dic = m.fase === "vista" ? CATA_VISTA : m.fase === "nariz" ? CATA_NARIZ : m.fase === "boca" ? CATA_BOCA : MARIDAJE;
     for (const d of descriptores(seccion, dic)) if (!out[m.fase].includes(d)) out[m.fase].push(d);
   }
+  // Cata en prosa bajo «Notas de cata» («de intenso color cereza…, en nariz aromas de…, su paladar es…»):
+  // sin etiquetas al principio de frase, la fase la marca la palabra clave de cada trozo.
+  if (!out.vista.length && !out.nariz.length && !out.boca.length) {
+    const prosa = cataEnProsa(texto);
+    for (const f of ["vista", "nariz", "boca"] as const) out[f] = prosa[f];
+  }
   for (const k of Object.keys(out) as (keyof typeof out)[]) out[k] = out[k].slice(0, 6);
   return out;
+}
+
+const PISTA_FASE: [Exclude<(typeof ETIQUETAS)[number]["fase"], "maridaje">, RegExp][] = [
+  ["vista", /\b(color|colou?r|capa|ribete|reflejos|tonos|tonalidad|aspecto|lagrima|brillo|limpio y brillante)\b/],
+  ["nariz", /\b(nariz|aromas?|aromatic[oa]|olfat\w*|bouquet|nose)\b/],
+  ["boca", /\b(boca|paladar|gusto|retrogusto|postgusto|taninos?|final|palate|en boca)\b/],
+];
+const BLOQUE_CATA = /\b(notas? de cata|nota de cata|cata\s*:|tasting notes?)\b\s*:?/i;
+const FIN_BLOQUE = /\n\s*(maridaje|premios?|elaboraci|ficha|vinificaci|crianza|temperatura|servicio|puntuaci|descripci|comprar|anadir|añadir)/i;
+
+/** Fases de una cata escrita como prosa dentro de un bloque «Notas de cata». */
+export function cataEnProsa(texto: string): { vista: string[]; nariz: string[]; boca: string[] } {
+  const out = { vista: [] as string[], nariz: [] as string[], boca: [] as string[] };
+  const m = texto.match(BLOQUE_CATA);
+  if (!m) return out;
+  let bloque = texto.slice(m.index! + m[0].length, m.index! + m[0].length + 1200);
+  const corte = bloque.slice(1).search(FIN_BLOQUE);
+  if (corte >= 0) bloque = bloque.slice(0, corte + 1);
+  const frases = bloque.split(/[.;\n]+/).map((f) => f.trim()).filter(Boolean);
+  const dic = { vista: CATA_VISTA, nariz: CATA_NARIZ, boca: CATA_BOCA };
+  let previa: keyof typeof out | null = null;
+  for (const frase of frases) {
+    const trozos = frase.split(/,\s+|\s+y\s+(?=(?:en|su|un|una|con)\s)/);
+    const fases = trozos.map((t) => PISTA_FASE.find(([, re]) => re.test(plano(t)))?.[0] ?? null);
+    for (let i = 0; i < trozos.length; i++) {
+      // Un trozo sin pista toma la fase del siguiente con pista en la misma frase («Suave, redondo… en paladar»)
+      // o, si no hay, la del anterior.
+      const fase = fases[i] ?? fases.slice(i + 1).find((f) => f) ?? fases.slice(0, i).reverse().find((f) => f) ?? previa;
+      if (!fase) continue;
+      for (const d of descriptores(trozos[i]!, dic[fase])) if (!out[fase].includes(d)) out[fase].push(d);
+    }
+    previa = fases.filter(Boolean).at(-1) ?? previa;
+  }
+  // Una sola fase suelta no es una cata (p. ej. «color» en una frase de marketing).
+  return [out.vista, out.nariz, out.boca].filter((x) => x.length).length >= 2 ? out : { vista: [], nariz: [], boca: [] };
 }
 
 /** Hechos de un vino a partir de su título, el texto de su ficha y, si hay, JSON-LD/atributos. */
@@ -546,39 +587,76 @@ export function tituloServicio(titulo: string, tipo: TipoServicio): string {
   return t;
 }
 
+const CONTEXTO_PRECIO = /persona|pers\b|pax|p\.p\.|adulto|precio|pvp|desde|tarifa|entrada|ticket|por visita|\/ ?pers|iva|cada uno|importe|coste|cuesta|reserva|visita|cata|experiencia|tour/;
+const NO_PRECIO = /envio|gastos|pedido|compra minima|botella|caja|descuento|ahorra|tarjeta regalo|cheque regalo|bono regalo/;
+
 export function extraerPrecio(texto: string): number | null {
   if (/\b(gratuit[ao]s?|gratis|sin coste|free of charge)\b/i.test(texto) && !/\d\s*€/.test(texto)) return 0;
   const precios: number[] = [];
   const re = /(?:€\s*(\d{1,3}(?:[.,]\d{1,2})?)|(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:€|euros?\b|eur\b))/gi;
   for (const m of texto.matchAll(re)) {
     const i = m.index!;
-    const contexto = plano(texto.slice(Math.max(0, i - 50), i + m[0].length + 40));
-    if (!/persona|pax|p\.p\.|adulto|precio|desde|tarifa|entrada|por visita|\/ ?pers/.test(contexto)) continue;
-    if (/envio|gastos|pedido|compra minima/.test(contexto)) continue;
+    const antes = plano(texto.slice(Math.max(0, i - 60), i));
+    const despues = plano(texto.slice(i + m[0].length, i + m[0].length + 40));
+    const contexto = `${antes} ${plano(m[0])} ${despues}`;
+    if (!CONTEXTO_PRECIO.test(contexto)) continue;
+    // Lo que va pegado al importe manda: «6 € de gastos de envío», «botella 18 €».
+    const ini = Math.max(texto.lastIndexOf(".", i - 1), texto.lastIndexOf("\n", i - 1), texto.lastIndexOf(";", i - 1), i - 60);
+    const fin = i + m[0].length;
+    const clausula = `${texto.slice(Math.max(ini + 1, texto.lastIndexOf(",", i - 1) + 1), i)} ${texto.slice(fin, fin + 30).split(/[.;,\n]/)[0]}`;
+    if (NO_PRECIO.test(plano(clausula))) continue;
     const n = numero(m[1] ?? m[2]!);
     if (n >= 3 && n <= 500) precios.push(n);
   }
   return precios.length ? Math.min(...precios) : null;
 }
 
-const PALABRAS_NUM: Record<string, number> = { una: 1, un: 1, dos: 2, tres: 3, cuatro: 4 };
+const PALABRAS_NUM: Record<string, number> = { una: 1, un: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5 };
+const CONTEXTO_DURACION = /duracion|dura\b|duran|aproximad|aprox|tiempo|de unos|de unas|alrededor de|en torno a|visita de|cata de|experiencia de|tour de|ruta de|actividad de|recorrido de/;
 
+/**
+ * Duración en minutos: «dura 2 horas», «Duración: 1h 30 min», «1h30», «1,5 h», «hora y media»,
+ * «90 minutos aprox.», «Duración: 1.20» (formato h.mm). Nunca horarios («de 10:00 h a 14:00 h»).
+ */
 export function extraerDuracion(texto: string): number | null {
   const p = plano(texto);
-  for (const m of p.matchAll(/(duracion|dura|aproximad\w*|tiempo estimado|de unos|de unas)[^.\n]{0,25}?(\d{1,2}(?:[.,]5)?|una|un|dos|tres|cuatro)\s*(?:h\b|horas?|hora)(?:\s*(?:y\s*)?(\d{1,2})\s*(?:min|minutos)|\s+y\s+media)?|(duracion|dura|aproximad\w*|de unos)[^.\n]{0,25}?(\d{2,3})\s*(?:min|minutos)\b/g)) {
+  if (/\b(duracion|dura)\b[^.\n]{0,20}\bhora y media\b|\bhora y media de (visita|cata|duracion|recorrido)/.test(p)) return 90;
+  if (/\b(duracion|dura)\b[^.\n]{0,20}\bmedia hora\b/.test(p)) return 30;
+  const fm = p.match(/\bduracion\s*:?\s*(\d)[.:](\d{2})\b(?!\s*(?:h\b|horas?))/);
+  if (fm) {
+    const min = Number(fm[1]) * 60 + Number(fm[2]);
+    if (Number(fm[2]) < 60 && min >= 15 && min <= 600) return min;
+  }
+  const re = /(\d{1,2}(?:[.,]5)?|una|un|dos|tres|cuatro|cinco)\s*(?:h(?=\d|\b)|hrs?\b|horas?\b|hours?\b)(?:\s*(?:y\s*)?(\d{1,2})\s*(?:min\w*|')?|\s+y\s+media)?|\b(\d{2,3})\s*(?:min\b|mins\b|minutos\b|minutes\b|')/g;
+  for (const m of p.matchAll(re)) {
+    const i = m.index!;
+    const antes = p.slice(Math.max(0, i - 40), i);
+    const despues = p.slice(i + m[0].length, i + m[0].length + 25);
+    // Horarios: «de 10:00 h a 14:00», «a las 12 h», «10 h».
+    if (/(\d[:.]\d{2}\s*$)|\b(a las|de las|desde las|hasta las|horario|abierto|apertura|cierre)\b[^.]{0,15}$/.test(antes) || /^\s*(a|-)\s*\d/.test(despues) || /\d[:.]$/.test(antes)) continue;
+    if (!CONTEXTO_DURACION.test(antes) && !/^\s*(de duracion|aprox|aproximad|de visita|de cata|de recorrido)/.test(despues)) continue;
     let min: number;
-    if (m[5]) min = Number(m[5]);
+    if (m[3]) min = Number(m[3]);
     else {
-      const h = PALABRAS_NUM[m[2]!] ?? numero(m[2]!);
-      min = h * 60 + (m[3] ? Number(m[3]) : /y media/.test(m[0]) ? 30 : 0);
+      const h = PALABRAS_NUM[m[1]!] ?? numero(m[1]!);
+      min = h * 60 + (m[2] ? Number(m[2]) : /y media/.test(m[0]) ? 30 : 0);
     }
     if (min >= 15 && min <= 600) return Math.round(min);
   }
   return null;
 }
 
+const NOMBRES_IDIOMA = Object.keys(IDIOMAS).join("|");
+/** Frase que habla del idioma de la visita (no de mercados de exportación ni de la web). */
+const FRASE_IDIOMA = new RegExp(
+  `idioma|language|disponible(s)? en|visitas? (guiadas? )?en|guiad[ao]s? en|realiza(n|mos)? en|tours? in|en (${NOMBRES_IDIOMA})( (y|e|o|,) ?(${NOMBRES_IDIOMA}))+|in (${NOMBRES_IDIOMA})( (and|or|,) ?(${NOMBRES_IDIOMA}))+|^(${NOMBRES_IDIOMA})( ?(\\/|,|y|e|-) ?(${NOMBRES_IDIOMA}))+$`,
+);
+
 export function extraerIdiomas(texto: string): string[] {
-  const frases = plano(texto).split(/[.\n]/).filter((f) => /idioma|disponible(s)? en|visitas? en|guiad[ao]s? en|en (espanol|castellano|ingles)|language|tours? in/.test(f));
+  const frases = plano(texto)
+    .split(/[.\n;|]/)
+    .map((f) => f.trim())
+    .filter((f) => FRASE_IDIOMA.test(f) && !/export|mercados?|paises|web|pagina|traduc/.test(f));
   const out: string[] = [];
   for (const f of frases) {
     for (const [palabra, iso] of Object.entries(IDIOMAS)) {

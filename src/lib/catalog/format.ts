@@ -186,3 +186,38 @@ export function formatLanguages(lang: string, codes: string[]): string | null {
   }
   return codes.map((c) => names?.of(c) ?? c).join(", ");
 }
+
+export type CataResumen = {
+  vista: string | null;
+  nariz: string | null;
+  boca: string | null;
+  maridaje: string | null;
+  // Frases que no siguen el patrón «Etiqueta: …» (se muestran tal cual).
+  resto: string | null;
+};
+
+const CATA_ETIQUETAS: Record<string, keyof Omit<CataResumen, "resto">> = {
+  vista: "vista", appearance: "vista",
+  nariz: "nariz", nose: "nariz",
+  boca: "boca", palate: "boca",
+  maridaje: "maridaje", "food pairing": "maridaje",
+};
+
+// El resumen propio de cata llega como «Vista: rojo picota. Nariz: frutos negros y tostados.
+// Maridaje: carnes rojas.» (plantillas del scraper, es/en): se separa por partes para la ficha.
+export function parseCataResumen(texto: string): CataResumen {
+  const out: CataResumen = { vista: null, nariz: null, boca: null, maridaje: null, resto: null };
+  const resto: string[] = [];
+  const re = /(Vista|Nariz|Boca|Maridaje|Appearance|Nose|Palate|Food pairing):\s*([^]*?)(?=\s+(?:Vista|Nariz|Boca|Maridaje|Appearance|Nose|Palate|Food pairing):|$)/g;
+  let ultimo = 0;
+  for (const m of texto.matchAll(re)) {
+    if (m.index! > ultimo) resto.push(texto.slice(ultimo, m.index).trim());
+    const clave = CATA_ETIQUETAS[m[1]!.toLowerCase()]!;
+    const valor = m[2]!.trim().replace(/\.$/, "");
+    if (valor) out[clave] = valor.charAt(0).toUpperCase() + valor.slice(1);
+    ultimo = m.index! + m[0].length;
+  }
+  if (ultimo < texto.length) resto.push(texto.slice(ultimo).trim());
+  out.resto = resto.filter(Boolean).join(" ") || null;
+  return out;
+}

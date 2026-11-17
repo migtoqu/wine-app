@@ -43,3 +43,9 @@ next-env.d.ts
 
 # salida local de los scrapers (--dry-run)
 /scrapers/out/
+
+# cachés locales de los scrapers (Nominatim…)
+/scrapers/.cache/
+
+# worker de MapLibre copiado en predev/prebuild
+/public/vendor/

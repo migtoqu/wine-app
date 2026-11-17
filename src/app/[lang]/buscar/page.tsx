@@ -5,6 +5,7 @@ import { ActiveFilters } from "@/components/catalog/active-filters";
 import { FilterForm } from "@/components/catalog/filter-form";
 import { FiltersDisclosure } from "@/components/catalog/filters-disclosure";
 import { Pagination } from "@/components/catalog/pagination";
+import { MapIcon } from "@/components/catalog/icons";
 import { SearchCombobox } from "@/components/catalog/search-combobox";
 import { searchComboboxLabels } from "@/components/catalog/search-labels";
 import { VinoFilters } from "@/components/catalog/vino-filters";
@@ -30,7 +31,9 @@ import {
   getOpcionesFiltro,
   listarBodegas,
   listarVinos,
+  type Paged,
 } from "@/lib/catalog/queries";
+import type { BodegaListItem, FilterOption, VinoListItem } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 
 // Buscador global y listado de vinos con filtros (§5.3). Todo el estado va en
@@ -52,7 +55,13 @@ export default async function SearchPage({ searchParams }: PageProps<"/[lang]/bu
 
   return (
     <Container className="flex flex-col gap-6 py-8 sm:py-10">
-      <h1 className="text-3xl font-semibold sm:text-4xl">{dict.search.title}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold sm:text-4xl">{dict.search.title}</h1>
+        <NextLink href={localePath(lang, "/mapa")} className={buttonStyles({ variant: "secondary", size: "sm" })}>
+          <MapIcon className="size-4" />
+          {dict.map.seeMap}
+        </NextLink>
+      </div>
       <Suspense fallback={<ResultsSkeleton />}>
         <SearchResults lang={lang} dict={dict} searchParams={searchParams} />
       </Suspense>
@@ -99,7 +108,15 @@ async function SearchResults({
     />
   );
 
-  if (await catalogoVacio()) {
+  // Recuentos, resultados y opciones de filtro a la vez (antes iban en serie).
+  const [counts, results, options] = await Promise.all([
+    contarResultados(filters),
+    filters.ver === "bodegas" ? listarBodegas(filters) : listarVinos(filters),
+    filters.ver === "bodegas" ? null : getOpcionesFiltro(),
+  ]);
+
+  // Solo sin resultados en ninguna pestaña hace falta distinguir "catálogo vacío".
+  if (counts.vinos + counts.bodegas === 0 && (await catalogoVacio())) {
     return (
       <>
         {combobox}
@@ -111,7 +128,6 @@ async function SearchResults({
     );
   }
 
-  const counts = await contarResultados(filters);
   const tabs = [
     { ver: "vinos" as const, label: dict.search.tabWines, count: counts.vinos },
     { ver: "bodegas" as const, label: dict.search.tabWineries, count: counts.bodegas },
@@ -147,9 +163,23 @@ async function SearchResults({
         </ul>
       </nav>
       {filters.ver === "bodegas" ? (
-        <WineryResults lang={lang} dict={dict} filters={filters} hrefWith={hrefWith} />
+        <WineryResults
+          lang={lang}
+          dict={dict}
+          filters={filters}
+          hrefWith={hrefWith}
+          results={results as Paged<BodegaListItem>}
+        />
       ) : (
-        <WineResults lang={lang} dict={dict} filters={filters} hrefWith={hrefWith} base={base} />
+        <WineResults
+          lang={lang}
+          dict={dict}
+          filters={filters}
+          hrefWith={hrefWith}
+          base={base}
+          results={results as Paged<VinoListItem>}
+          options={options!}
+        />
       )}
     </>
   );
@@ -162,12 +192,16 @@ type ResultsProps = {
   hrefWith: (overrides: Partial<SearchFilters>) => string;
 };
 
-async function WineResults({ lang, dict, filters, hrefWith, base }: ResultsProps & { base: string }) {
+function WineResults({
+  lang,
+  dict,
+  filters,
+  hrefWith,
+  base,
+  results: { items, total },
+  options,
+}: ResultsProps & { base: string; results: Paged<VinoListItem>; options: FilterOption[] }) {
   const { search } = dict;
-  const [options, { items, total }] = await Promise.all([
-    getOpcionesFiltro(),
-    listarVinos(filters),
-  ]);
   const active = countActiveFilters(filters);
   const pages = totalPages(total);
   const labels = wineCardLabels(dict);
@@ -259,9 +293,14 @@ async function WineResults({ lang, dict, filters, hrefWith, base }: ResultsProps
   );
 }
 
-async function WineryResults({ lang, dict, filters, hrefWith }: ResultsProps) {
+function WineryResults({
+  lang,
+  dict,
+  filters,
+  hrefWith,
+  results: { items, total },
+}: ResultsProps & { results: Paged<BodegaListItem> }) {
   const { search, catalog } = dict;
-  const { items, total } = await listarBodegas(filters);
   const pages = totalPages(total);
 
   return (
