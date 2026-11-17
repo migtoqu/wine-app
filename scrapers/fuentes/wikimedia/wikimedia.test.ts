@@ -19,6 +19,13 @@ describe("wikimedia commons", () => {
     expect(atribucion(f)).toMatch(/^Zarateman · CC0 · Wikimedia Commons · https:\/\/commons\.wikimedia\.org\/wiki\/File:/);
   });
 
+  it("el autor de {{Creator}} sale sin el CSS ni la tabla de la plantilla", () => {
+    const html = `<table><tr><td id="fileinfotpl_aut">Author</td><td><style>.mw-parser-output .commons-creator-table{background-color:#f0f0ff}</style><table class="commons-creator-table"><tr><th><span id="creator"><bdi>Jon Ander Pérez</bdi></span></th></tr><tr><td>Fecha de nacimiento 1970</td></tr></table></td></tr></table><span class="licensetpl_short">CC BY 4.0</span>`;
+    const f = parsearArchivo(html, "File:x.jpg");
+    expect(f.autor).toBe("Jon Ander Pérez");
+    expect(atribucion(f)).not.toMatch(/mw-parser-output|\{/);
+  });
+
   it("licencias no libres o sin autor, fuera", () => {
     const f = parsearArchivo(archivo.replace(">CC0<", ">GFDL<"), "File:x.jpg");
     expect(archivoValido(f)).toMatch(/licencia no libre/);
