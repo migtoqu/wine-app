@@ -19,8 +19,10 @@ const es = {
     editTitle: "Editar botellas",
     empty: "Aún no has añadido botellas.",
     emptyHint: "Busca un vino y pulsa «Añadir a mi cava» en su ficha, o añade uno que no esté en el catálogo.",
-    total: (botellas: string, valor: string | null) =>
-      valor ? `${botellas} botellas · ${valor} de compra` : `${botellas} botellas`,
+    total: (n: number, botellas: string, valor: string | null) => {
+      const texto = `${botellas} ${n === 1 ? "botella" : "botellas"}`;
+      return valor ? `${texto} · ${valor} de compra` : texto;
+    },
     finished: "Ya bebidas",
     finishedHint: "Lotes a 0. Súmales botellas si vuelves a comprar o bórralos.",
     bottles: (n: number) => (n === 1 ? "1 botella" : `${n} botellas`),

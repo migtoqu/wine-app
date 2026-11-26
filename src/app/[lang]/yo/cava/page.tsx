@@ -69,7 +69,7 @@ async function CavaList() {
   return (
     <div className="flex flex-col gap-10">
       <p className="text-lg font-semibold">
-        {cava.total(formatNumber(lang, totals.botellas), totals.valor > 0 ? formatPrice(lang, totals.valor) : null)}
+        {cava.total(totals.botellas, formatNumber(lang, totals.botellas), totals.valor > 0 ? formatPrice(lang, totals.valor) : null)}
       </p>
       {enCasa.length > 0 && (
         <ul className="flex flex-col gap-4">
