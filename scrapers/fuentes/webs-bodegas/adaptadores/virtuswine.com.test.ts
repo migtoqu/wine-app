@@ -30,8 +30,8 @@ describe("adaptador virtuswine.com", () => {
     expect(r.vinos.map((v) => [v.nombre, v.anio]).sort()).toEqual([["El Sueco", 2021], ["Virtus", 2019]]);
   });
 
-  it("sin el adaptador, la entrada SEO sale como vino", async () => {
+  it("sin el adaptador, el genérico también descarta la entrada SEO (titular editorial)", async () => {
     const sin = await rastrearCon(adaptador, { ...prueba, conAdaptador: false });
-    expect(sin.vinos.some((v) => /aldeyuso/i.test(v.nombre))).toBe(true);
+    expect(sin.vinos.some((v) => /aldeyuso/i.test(v.nombre))).toBe(false);
   });
 });

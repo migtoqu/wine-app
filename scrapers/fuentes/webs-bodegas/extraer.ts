@@ -222,8 +222,31 @@ export const ES_SERVICIO = /\b(visitas?|catas?|experiencias?|entradas?|tour|enot
 /** Estilos y regiones extranjeras: en la tienda de una bodega española son reventa. */
 const EXTRANJERO = /\b(tawny|late bottled|ruby port|oporto|porto|port wine|champagne|prosecco|bordeaux|bourgogne|burgundy|chianti|barolo|brunello|chablis|sancerre|riesling kabinett|malbec mendoza|whisk(?:e)?y|ginebra|ron|vodka|brandy|cognac)\b/i;
 
+/** Denominaciones y regiones de fuera de España (reventa en la tienda de una bodega). */
+const EXTRANJERO_DO = /\b(joseph perrier|igt|aoc|doc|docg|sicilia|toscana|piemonte|paraje altamira|santa maria valley|napa valley|sonoma)\b/i;
+
+/**
+ * Titulares que no son el nombre de un vino: entradas de blog, noticias de premios, listados,
+ * tiendas, visitas y menús («Cómo conservar el vino en casa…», «96 puntos para Elías Mora…»,
+ * «Descubre los Vinos de Bodega X», «Nuestra Tienda», «Sabores del Ebro… (80 €/persona»).
+ * Se mira el título original, antes de limpiarlo: «Verdejo: qué es…» limpio sería «Verdejo».
+ */
+export function esTitularEditorial(titulo: string): boolean {
+  const t = limpiarEspacios(titulo).replace(/^[\s▷►»→•·|\-–]+/, "");
+  if (/[?¿!¡]/.test(t)) return true;
+  if (/^(?:c[oó]mo|qu[eé]\s+(?:es|son|significa|hacer|vino|tipo)|por\s+qu[eé]|cu[aá]nto|cu[aá]l|d[oó]nde|cu[aá]ndo|descubre\s+(?:los|las|nuestr)|descubre\s+(?!el\s+vino\b)|descubriendo|explora(?:ndo)?|conoce|bienvenid|nuestr[oa]s?\s+(?:tienda|proceso|tradici[oó]n|historia|vinos?|bodega|nuevo|viñedos?)|(?:la\s+)?tienda\b|blog\b|los\s+mejores|el\s+mejor|lo\s+mejor|mejor(?:es)?\s+vinos?|tus?\s|sin\s+reservas|todo\s+(?:sobre|empieza)|elige|hechos\s+con|concours|concurso|tipos\s+de|el\s+vino\b|la\s+vendimia\b|el\s+cultivo|temperatura|men[uú]\b|brinda|(?:dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s+(?:vinos|mitos|consejos|claves|razones))/i.test(t)) return true;
+  if (/\b(?:\d{2,3}\s+puntos|\d{2}\s*ptos|puntuaciones|premios?\s+al|premiad[oa]|galard[oó]n|p[oó]dium|reconoce|reconocid[oa]s?|gu[ií]a\s+de\s+compra|consejos|mitos|libro|historia\s+de|picnic|almuerzo|€\s*\/\s*persona|por\s+persona|qu[eé]\s+es|en\s+casa)\b/i.test(t)) return true;
+  // Frases largas: ningún vino se llama con doce palabras (los hay de diez: «Para Muestra, un Botón…»).
+  return t.split(/\s+/).filter((w) => /\p{L}{2}/u.test(w)).length >= 12;
+}
+
 export function esNombreDeVino(nombre: string): boolean {
-  if (EXTRANJERO.test(nombre)) return false;
+  if (EXTRANJERO.test(nombre) || EXTRANJERO_DO.test(nombre)) return false;
+  // Sin «\b» al final: en «Barón» la «ó» cuenta como frontera y «\bbar\b» casaría.
+  if (/(?:^|[\s(«"'])(?:tienda|blog|magazine|destilados?|wine\s+bar|bar|restaurante)(?=$|[\s,.:;)»"'])/i.test(nombre)) return false;
+  // Categorías y páginas de D.O.: «Tintos de Rioja», «vino de Toro», «del Priorat».
+  if (/^(?:tintos|blancos|rosados|espumosos|vinos)\s+de\b/i.test(nombre)) return false;
+  if (/^(?:vinos?\s+)?del?\s+(?:toro|rioja|rueda|ribera|priorat|bierzo|navarra|cigales|castilla)\b/i.test(nombre)) return false;
   // Plantillas de ficha y etiquetado que algunas webs ponen como título.
   if (/\b(fichas?\s+(?:de\s+)?(?:productos?|t[eé]cnicas?)|nutricional(?:es)?|etiquetado|ingredientes|declaraci[oó]n|al[eé]rgenos|sheets?|nutritional|nutrition facts)\b/i.test(nombre)) return false;
   if (/^\s*(fichas?|productos?|t[eé]cnicas?|detalles?|technical|data)\s*$/i.test(nombre)) return false;
@@ -257,7 +280,50 @@ export function limpiarPlantilla(nombre: string): string {
   return limpiarEspacios(s.replace(/[\s\-–|·,:+(]+$/g, ""));
 }
 
+/** Restos de títulos SEO que quedan al final del nombre: «, y», « de», «: de», « en de». */
+const COLGANTE = /[\s,:;.\-–]+(?:y|e|o|de|del|en|con|a|al|para|la|el|los|las)$/i;
+
+/**
+ * Limpia el título de una ficha: precio («• precio 7,20€»), cantidad («12 x …», «(6 bot»), nombre
+ * de la web tras un separador («. Vinos de Bodegas Izadi», «| Bodegas Ilurce»), tipo como sufijo
+ * («– Vino tinto»), frases añadidas tras « , » o tras «: » y «. » con varias palabras, comillas y
+ * palabras sueltas al final. «Descubre el vino X de Celler Y» → «X».
+ */
+export function limpiarTituloSeo(titulo: string): string {
+  let s = limpiarEspacios(titulo)
+    .replace(/^[\s▷►»→•·|]+/, "")
+    .replace(/^descubre\s+(?:el|nuestro)\s+vino\s+(.+?)\s+de\s+(?:celler|cellers|bodegas?|viñedos)\b.*$/i, "$1")
+    .replace(/^compra(?:r)?\s+(?:vino\s+)?/i, "")
+    .replace(/^\d{1,2}\s*x\s+/i, "")
+    .replace(/\s*[•·|–-]?\s*precio\s*:?\s*\d+(?:[.,]\d{1,2})?\s*€.*$/i, "")
+    .replace(/\s*\(\s*\d{1,2}\s*(?:b|bot\.?|botellas?|uds?\.?|unidades)\b\.?\)?\s*$/i, "")
+    .replace(/\s*[.|–-]\s*(?:los\s+)?vinos?\s+de\s+(?:bodegas?|celler)\s+.*$/i, "")
+    .replace(/\s*[|]\s*(?:bodegas?|celler|viñedos)\b.*$/i, "")
+    .replace(/\s*\.\s*(?:bodegas?|celler)\s+\p{Lu}.*$/u, "")
+    .replace(/\s+[–-]\s+vino\s+(?:tinto|blanco|rosado|dulce|espumoso|de\s+autor)(?:\s+\p{L}+)?\s*$/iu, "")
+    .replace(/\s*[.]\s*vino\s+(?:tinto|blanco|rosado)\b.*$/i, "")
+    .replace(/[.\s]*nueva\s+añada\s*$/i, "")
+    .replace(/\s*[,–-]\s*(?:el\s+)?mejor\s+.*$/i, "")
+    // « , » de concatenación SEO: fuera si sigue una frase («, verdejo de Rueda», «, y», «, Vino de La
+    // Rioja»); si sigue un nombre («Muedra , Gran Reserva»), se une.
+    .replace(/\s+,\s+(?=\p{Ll}|(?:[Vv]ino|[Tt]into|[Bb]lanco|[Rr]osado)\b)(?:.*)$/u, "")
+    .replace(/\s+,\s+/g, " ")
+    // «X: el vino que…», «X: No es “otro vino”», «X : Viura y Garnacha»: fuera la frase. «Alvia: Livius
+    // Rosado Gran Reserva» es marca y vino: se une.
+    .replace(/\s*:\s+(?=(?:\S+\s+)*(?:el|la|los|las|un|una|no|es|y|de|del|en|con|nuestr[oa]s?)\s)(?:\S+\s+){1,}\S+$/iu, "")
+    .replace(/\s*:\s+(?=\p{Ll})(?:\S+\s+){2,}\S+$/u, "")
+    .replace(/^(\p{L}[\p{L}\d'’.-]*):\s+/u, "$1 ")
+    // Frase tras un punto («CUBANEGRA. Primer reserva de…»), pero no el de una sigla («D.O. Toro»).
+    .replace(/(?<!(?:^|[\s.])\p{L})\.\s+\p{L}+(?:\s+\S+){3,}$/u, "")
+    .replace(/\s+bodegas?\s+(?:rioja|ribera|toro|rueda)$/i, "")
+    .replace(/^(?:vino\s+)?de\s+autor\s+[–-]\s+/i, "")
+    .replace(/["“”«»]/g, "");
+  for (let i = 0; i < 3; i++) s = s.replace(COLGANTE, "");
+  return limpiarEspacios(s);
+}
+
 export function nombreVino(titulo: string): string {
+  if (esTitularEditorial(titulo)) return "";
   let s = limpiarPlantilla(limpiarEspacios(titulo))
     // Producto duplicado en WooCommerce: «El Sueco 2021 (copia)», «… - copia».
     .replace(/[\s\-–(]*\bcopia\b\)?\s*$/i, "")
@@ -273,7 +339,7 @@ export function nombreVino(titulo: string): string {
     .replace(/[\s\-–|·,.:()]+$/g, "")
     .replace(/^[\s\-–|·,.:()]+/g, "")
     .replace(/\(\s*\)/g, "");
-  s = limpiarEspacios(s);
+  s = limpiarTituloSeo(s);
   if (!/\p{Lu}/u.test(s)) s = s.replace(/(^|\s)(\p{Ll})/gu, (_m, a: string, c: string) => a + c.toUpperCase());
   if (!/\p{Ll}/u.test(s)) {
     s = s.toLowerCase().replace(/(^|[\s-])(\p{Ll})/gu, (_m, a: string, c: string) => a + c.toUpperCase());
