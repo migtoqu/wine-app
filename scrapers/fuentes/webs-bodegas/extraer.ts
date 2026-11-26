@@ -259,8 +259,11 @@ export function limpiarPlantilla(nombre: string): string {
 
 export function nombreVino(titulo: string): string {
   let s = limpiarPlantilla(limpiarEspacios(titulo))
+    // Producto duplicado en WooCommerce: «El Sueco 2021 (copia)», «… - copia».
+    .replace(/[\s\-–(]*\bcopia\b\)?\s*$/i, "")
     .replace(/\bD\.?\s?O\.?(?:\s?Ca\.?)?\s+Ribera\s+del\s+Duero\b/gi, "")
-    .replace(/\bRibera\s+del\s+Duero\b/gi, "")
+    .replace(/(?:\bde\s+la\s+)?\bRibera\s+del\s+Duero\b/gi, "")
+    .replace(/\p{Extended_Pictographic}\uFE0F?/gu, "")
     .replace(/\b(?:19[5-9]\d|20[0-4]\d)\b/g, "")
     .replace(FORMATOS, "")
     .replace(/^\s*(?:vinos?|wines?|comprar)\s+/i, "")
