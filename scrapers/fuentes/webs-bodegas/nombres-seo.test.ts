@@ -94,11 +94,12 @@ describe("nombres con restos de SEO", () => {
     ["Tinto Rioja VALENCISO 25 Aniversario: No es “otro vino”", "Tinto Rioja VALENCISO 25 Aniversario"],
     ["Crianza Edición Limitada: Selecto y Finito", "Crianza Edición Limitada"],
     ["Vall Por", "Vall Por"],
+    ["Vinos-Paydos", "Paydos"],
   ])("sin regresiones: %s → %s", (t, n) => {
     expect(nombreVino(t)).toBe(n);
   });
 
-  it.each(["Tintos de Rioja", "vino de Toro", "del Priorat", "Bar en Ollauri", "Concours Mondial de Bruxelles", "Todo empieza en el campo", "Elige Tus Favoritos"])("no es un vino: %s", (n) => {
+  it.each(["Tintos de Rioja", "vino de Toro", "del Priorat", "Bar en Ollauri", "Concours Mondial de Bruxelles", "Todo empieza en el campo", "Elige Tus Favoritos", "Hechos Con Cariño", "Vino-rioja", "Blancos", "Sanz – Bodegueros desde 1870", "Taller de vendimia en familia", "Tokaj Aszú 5 Puttonyos (Vino Dulce"])("no es un vino: %s", (n) => {
     expect(esNombreDeVino(nombreVino(n) || n) && !!nombreVino(n)).toBe(false);
   });
 });

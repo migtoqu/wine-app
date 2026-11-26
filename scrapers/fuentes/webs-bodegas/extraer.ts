@@ -223,7 +223,7 @@ export const ES_SERVICIO = /\b(visitas?|catas?|experiencias?|entradas?|tour|enot
 const EXTRANJERO = /\b(tawny|late bottled|ruby port|oporto|porto|port wine|champagne|prosecco|bordeaux|bourgogne|burgundy|chianti|barolo|brunello|chablis|sancerre|riesling kabinett|malbec mendoza|whisk(?:e)?y|ginebra|ron|vodka|brandy|cognac)\b/i;
 
 /** Denominaciones y regiones de fuera de España (reventa en la tienda de una bodega). */
-const EXTRANJERO_DO = /\b(joseph perrier|igt|aoc|doc|docg|sicilia|toscana|piemonte|paraje altamira|santa maria valley|napa valley|sonoma)\b/i;
+const EXTRANJERO_DO = /\b(joseph perrier|tokaj|puttonyos|igt|aoc|doc|docg|sicilia|toscana|piemonte|paraje altamira|santa maria valley|napa valley|sonoma)\b/i;
 
 /**
  * Titulares que no son el nombre de un vino: entradas de blog, noticias de premios, listados,
@@ -245,7 +245,9 @@ export function esNombreDeVino(nombre: string): boolean {
   // Sin «\b» al final: en «Barón» la «ó» cuenta como frontera y «\bbar\b» casaría.
   if (/(?:^|[\s(«"'])(?:tienda|blog|magazine|destilados?|wine\s+bar|bar|restaurante)(?=$|[\s,.:;)»"'])/i.test(nombre)) return false;
   // Categorías y páginas de D.O.: «Tintos de Rioja», «vino de Toro», «del Priorat».
-  if (/^(?:tintos|blancos|rosados|espumosos|vinos)\s+de\b/i.test(nombre)) return false;
+  if (/^(?:tintos|blancos|rosados|espumosos|vinos)(?:\s+de\b|$)/i.test(nombre)) return false;
+  // Slugs («Vino-rioja»), lemas («Sanz – Bodegueros desde 1870») y actividades («Taller de vendimia»).
+  if (/^(?:vinos?-)?(?:toro|rioja|rueda|ribera|priorat|bierzo|navarra|cigales)$/i.test(nombre) || /\bdesde\s+1[89]\d\d\b/i.test(nombre) || /^taller(?:es)?\b/i.test(nombre)) return false;
   if (/^(?:vinos?\s+)?del?\s+(?:toro|rioja|rueda|ribera|priorat|bierzo|navarra|cigales|castilla)\b/i.test(nombre)) return false;
   // Plantillas de ficha y etiquetado que algunas webs ponen como título.
   if (/\b(fichas?\s+(?:de\s+)?(?:productos?|t[eé]cnicas?)|nutricional(?:es)?|etiquetado|ingredientes|declaraci[oó]n|al[eé]rgenos|sheets?|nutritional|nutrition facts)\b/i.test(nombre)) return false;
@@ -294,6 +296,8 @@ export function limpiarTituloSeo(titulo: string): string {
     .replace(/^[\s▷►»→•·|]+/, "")
     .replace(/^descubre\s+(?:el|nuestro)\s+vino\s+(.+?)\s+de\s+(?:celler|cellers|bodegas?|viñedos)\b.*$/i, "$1")
     .replace(/^compra(?:r)?\s+(?:vino\s+)?/i, "")
+    // Slug como título: «Vinos-Paydos» → «Paydos».
+    .replace(/^vinos?-(?=\p{L}{3})/iu, "")
     .replace(/^\d{1,2}\s*x\s+/i, "")
     .replace(/\s*[•·|–-]?\s*precio\s*:?\s*\d+(?:[.,]\d{1,2})?\s*€.*$/i, "")
     .replace(/\s*\(\s*\d{1,2}\s*(?:b|bot\.?|botellas?|uds?\.?|unidades)\b\.?\)?\s*$/i, "")
