@@ -2,6 +2,7 @@
 // (sin Supabase ni Next) para poder testearlo. Los límites son los mismos que
 // las restricciones de la tabla (20261116180000_mi_cava.sql).
 
+import type { Dictionary } from "@/i18n/dictionaries/es";
 import { isUuid } from "./validation";
 
 export const CAVA_FORMATOS = [187, 375, 500, 750, 1500, 3000] as const;
@@ -158,4 +159,17 @@ export function cavaTotals(lotes: { cantidad: number; precio_compra: number | nu
     }),
     { botellas: 0, valor: 0 },
   );
+}
+
+// Textos del formulario de la cava. El formulario es un Client Component y el
+// diccionario completo incluye funciones (total, bottles…), que React no puede
+// pasar del servidor al cliente: se le envían solo los textos que usa.
+export type CavaFormLabels = Pick<
+  Dictionary["cava"],
+  "fromCatalog" | "catalogHint" | "fields" | "formatos" | "save" | "cancel" | "errors"
+>;
+
+export function cavaFormLabels(cava: Dictionary["cava"]): CavaFormLabels {
+  const { fromCatalog, catalogHint, fields, formatos, save, cancel, errors } = cava;
+  return { fromCatalog, catalogHint, fields, formatos, save, cancel, errors };
 }

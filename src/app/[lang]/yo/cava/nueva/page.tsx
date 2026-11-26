@@ -7,6 +7,7 @@ import { Card, CardBody } from "@/components/ui";
 import { localePath } from "@/i18n/config";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { requireUser } from "@/lib/auth/server";
+import { cavaFormLabels } from "@/lib/personal/cava";
 import { getVino } from "@/lib/catalog/queries";
 
 // Alta de un lote. Con ?vino=slug (botón «Añadir a mi cava» de la ficha) queda
@@ -54,7 +55,7 @@ async function NuevaForm({ searchParams }: Pick<PageProps<"/[lang]/yo/cava/nueva
   return (
     <CavaForm
       lang={lang}
-      labels={cava}
+      labels={cavaFormLabels(cava)}
       vino={vino}
       values={{
         vino_id: vino?.id ?? null,

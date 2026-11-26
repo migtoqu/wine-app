@@ -5,11 +5,10 @@ import { useActionState, useId } from "react";
 import { FormAlert } from "@/components/auth/form-parts";
 import { Button, buttonStyles, Input } from "@/components/ui";
 import { localePath, type Locale } from "@/i18n/config";
-import type { Dictionary } from "@/i18n/dictionaries/es";
-import { CAVA_FORMATOS, type CavaField } from "@/lib/personal/cava";
+import { CAVA_FORMATOS, type CavaField, type CavaFormLabels } from "@/lib/personal/cava";
 import { saveCavaLote, type CavaFormState } from "@/lib/personal/cava-actions";
 
-type Labels = Dictionary["cava"];
+type Labels = CavaFormLabels;
 
 export type CavaFormValues = {
   id?: string;
