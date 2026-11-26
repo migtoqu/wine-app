@@ -1,6 +1,6 @@
 // Mi cava: validación del formulario y utilidades de presentación. Módulo puro
 // (sin Supabase ni Next) para poder testearlo. Los límites son los mismos que
-// las restricciones de la tabla (20261116180000_mi_cava.sql).
+// las restricciones de la tabla (20261116180000_mi_cava.sql y 20261126214633_cava_fotos.sql).
 
 import type { Dictionary } from "@/i18n/dictionaries/es";
 import { isUuid } from "./validation";
@@ -19,9 +19,10 @@ export type CavaField =
   | "ubicacion"
   | "beber_desde"
   | "beber_hasta"
-  | "notas";
+  | "notas"
+  | "foto";
 
-export type CavaErrorKey = "required" | "tooLong" | "number" | "range" | "date" | "window";
+export type CavaErrorKey = "required" | "tooLong" | "number" | "range" | "date" | "window" | "photo";
 
 export type CavaInput = {
   vino_id: string | null;
@@ -133,6 +134,23 @@ export function validateCava(form: FormData): Result {
   };
 }
 
+// Foto de la botella. El navegador ya la reduce a JPEG; aquí solo se comprueba
+// tipo y tamaño (los mismos que admite el bucket `cava-fotos`).
+export const CAVA_FOTO_MAX_BYTES = 2 * 1024 * 1024;
+export const CAVA_FOTO_TIPOS = ["image/jpeg", "image/png", "image/webp"] as const;
+
+export type FotoInput = { ok: true; file: File | null; quitar: boolean } | { ok: false; error: CavaErrorKey };
+
+export function parseFoto(form: FormData): FotoInput {
+  const quitar = form.get("foto_quitar") === "1";
+  const value = form.get("foto");
+  if (!(value instanceof File) || value.size === 0) return { ok: true, file: null, quitar };
+  if (!(CAVA_FOTO_TIPOS as readonly string[]).includes(value.type) || value.size > CAVA_FOTO_MAX_BYTES) {
+    return { ok: false, error: "photo" };
+  }
+  return { ok: true, file: value, quitar: false };
+}
+
 function isIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
@@ -167,9 +185,11 @@ export function cavaTotals(lotes: { cantidad: number; precio_compra: number | nu
 export type CavaFormLabels = Pick<
   Dictionary["cava"],
   "fromCatalog" | "catalogHint" | "fields" | "formatos" | "save" | "cancel" | "errors"
->;
+> & { photo: Omit<Dictionary["cava"]["photo"], "alt"> };
 
 export function cavaFormLabels(cava: Dictionary["cava"]): CavaFormLabels {
   const { fromCatalog, catalogHint, fields, formatos, save, cancel, errors } = cava;
-  return { fromCatalog, catalogHint, fields, formatos, save, cancel, errors };
+  const { label, add, change, remove, preview, processing, unreadable } = cava.photo;
+  const photo = { label, add, change, remove, preview, processing, unreadable };
+  return { fromCatalog, catalogHint, fields, formatos, save, cancel, errors, photo };
 }

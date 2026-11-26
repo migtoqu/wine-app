@@ -117,13 +117,31 @@ export type CavaLote = {
   beber_desde: number | null;
   beber_hasta: number | null;
   notas: string | null;
+  foto_path: string | null;
+  foto_url: string | null;
   updated_at: string;
   vino: { slug: string } | null;
 };
 
 const CAVA_COLUMNS = `id, vino_id, anada_id, nombre, bodega_nombre, anio, cantidad, formato_ml,
-  precio_compra, fecha_compra, tienda, ubicacion, beber_desde, beber_hasta, notas, updated_at,
+  precio_compra, fecha_compra, tienda, ubicacion, beber_desde, beber_hasta, notas, foto_path, updated_at,
   vino:vinos(slug)`;
+
+export const CAVA_FOTOS_BUCKET = "cava-fotos";
+
+// URLs firmadas (1 h) de las fotos de los lotes; el bucket es privado.
+async function withFotos(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lotes: Omit<CavaLote, "foto_url">[],
+): Promise<CavaLote[]> {
+  const paths = lotes.flatMap((l) => (l.foto_path ? [l.foto_path] : []));
+  const urls = new Map<string, string>();
+  if (paths.length > 0) {
+    const { data } = await supabase.storage.from(CAVA_FOTOS_BUCKET).createSignedUrls(paths, 3600);
+    for (const s of data ?? []) if (s.path && s.signedUrl) urls.set(s.path, s.signedUrl);
+  }
+  return lotes.map((l) => ({ ...l, foto_url: l.foto_path ? (urls.get(l.foto_path) ?? null) : null }));
+}
 
 export async function getCava(): Promise<CavaLote[]> {
   const supabase = await createClient();
@@ -133,14 +151,14 @@ export async function getCava(): Promise<CavaLote[]> {
     .order("updated_at", { ascending: false })
     .limit(1000);
   if (error) throw new Error(`getCava: ${error.message}`);
-  return data;
+  return withFotos(supabase, data);
 }
 
 export async function getCavaLote(id: string): Promise<CavaLote | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("cava").select(CAVA_COLUMNS).eq("id", id).maybeSingle();
   if (error) throw new Error(`getCavaLote: ${error.message}`);
-  return data;
+  return data ? (await withFotos(supabase, [data]))[0] : null;
 }
 
 // Botellas que el usuario ya tiene de un vino (para la ficha).

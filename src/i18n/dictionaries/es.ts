@@ -70,6 +70,17 @@ const es = {
       date: "Fecha no válida.",
       window: "Debe ser igual o posterior a «beber desde».",
       generic: "No se ha podido guardar. Inténtalo de nuevo.",
+      photo: "La foto debe ser JPG, PNG o WebP y pesar menos de 2 MB.",
+    },
+    photo: {
+      label: "Foto de la botella",
+      add: "Añadir foto",
+      change: "Cambiar foto",
+      remove: "Quitar foto",
+      alt: (vino: string) => `Botella de ${vino}`,
+      preview: "Vista previa de la foto",
+      processing: "Preparando la foto…",
+      unreadable: "No se ha podido leer la imagen. Prueba con otra foto.",
     },
   },
   common: {

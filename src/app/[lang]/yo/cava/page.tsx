@@ -119,11 +119,23 @@ function LoteItem({ lang, dict, lote, year }: { lang: Locale; dict: Dictionary; 
   return (
     <li className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex flex-col">
-          <h3 className="font-semibold">
-            {lote.vino ? <Link href={localePath(lang, `/vino/${lote.vino.slug}`)}>{title}</Link> : title}
-          </h3>
-          {lote.bodega_nombre && <p className="text-sm text-muted">{lote.bodega_nombre}</p>}
+        <div className="flex min-w-0 items-start gap-3">
+          {lote.foto_url && (
+            // URL firmada de Storage (caduca en 1 h): <img> nativo, no next/image.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={lote.foto_url}
+              alt={cava.photo.alt(lote.nombre)}
+              loading="lazy"
+              className="h-20 w-14 shrink-0 rounded-control border border-border object-cover"
+            />
+          )}
+          <div className="flex flex-col">
+            <h3 className="font-semibold">
+              {lote.vino ? <Link href={localePath(lang, `/vino/${lote.vino.slug}`)}>{title}</Link> : title}
+            </h3>
+            {lote.bodega_nombre && <p className="text-sm text-muted">{lote.bodega_nombre}</p>}
+          </div>
         </div>
         {windowText && lote.cantidad > 0 && <Badge tone={windowTone[status]}>{windowText}</Badge>}
       </div>
