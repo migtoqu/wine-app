@@ -2,7 +2,7 @@
 
 > Investigación del 2026-11-08, sin código en `scrapers/`. Objetivo del usuario: **más bodegas y más vendedores con precio** para el comparador (Fase 2 del [ROADMAP](../ROADMAP.md)). Complementa [SOURCES.md](../SOURCES.md), que sigue siendo la referencia de cada fuente ya auditada.
 >
-> Método: búsqueda de herramientas en GitHub/npm/PyPI y en directorios de skills y MCP; consulta **de solo lectura** a Supabase (`registros_fuente`, `id_externo = 'sitio'`); auditoría ligera de 20 sitios con el UA del proyecto (`wine-app-bot/0.1 … contacto: migueltoquerob@gmail.com`), **≤ 5 peticiones por sitio y ≥ 12 s entre ellas**, sin escribir en la BD. Las licencias y el mantenimiento se tomaron de las fichas de npm/PyPI/GitHub a esta fecha: confirmarlos al instalar. No es asesoramiento jurídico.
+> Método: búsqueda de herramientas en GitHub/npm/PyPI y en directorios de skills y MCP; consulta **de solo lectura** a Supabase (`registros_fuente`, `id_externo = 'sitio'`); auditoría ligera de 20 sitios con el UA del proyecto (`wine-app-bot/0.1 … contacto: …`), **≤ 5 peticiones por sitio y ≥ 12 s entre ellas**, sin escribir en la BD. Las licencias y el mantenimiento se tomaron de las fichas de npm/PyPI/GitHub a esta fecha: confirmarlos al instalar. No es asesoramiento jurídico.
 
 ## Resumen
 
