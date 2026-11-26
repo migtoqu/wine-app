@@ -59,9 +59,12 @@ const DIA = 86_400_000;
  * Serie del precio mínimo entre tiendas, un punto por día con cambios (yyyy-mm-dd UTC), desde el
  * primer tramo hasta `hoy`. En cada día cuenta el precio vigente de cada oferta al final del día.
  */
-export function serieMinimo(ofertas: Oferta[], hoy: Date = new Date()): PuntoPrecio[] {
+export function serieMinimo(ofertas: Oferta[], hoy?: Date): PuntoPrecio[] {
   const tramos = ofertas.flatMap((o) => o.historial);
   if (tramos.length === 0) return [];
+  // La hora actual solo se lee si hace falta: sin ofertas la ficha se prerenderiza y
+  // Cache Components no admite new Date() ahí.
+  hoy ??= new Date();
   const dia = (t: string | number | Date) => Math.floor(new Date(t).getTime() / DIA);
   const inicio = Math.min(...tramos.map((t) => dia(t.desde)));
   const fin = Math.max(dia(hoy), ...tramos.map((t) => dia(t.desde)));

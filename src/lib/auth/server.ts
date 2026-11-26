@@ -1,5 +1,6 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
 import { cache } from "react";
 import type { Locale } from "@/i18n/config";
 import { getLocale } from "@/i18n/server";
@@ -17,7 +18,10 @@ export type Profile = Pick<
 >;
 
 // getClaims() verifica el JWT (firma y caducidad); una vez por petición.
+// Comprobar la caducidad usa Date.now(): connection() lo deja para el momento
+// de la petición en vez de para el prerenderizado (Cache Components).
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
+  await connection();
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims.sub) return null;

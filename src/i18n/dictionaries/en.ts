@@ -19,8 +19,10 @@ const en = {
     editTitle: "Edit bottles",
     empty: "You haven't added any bottles yet.",
     emptyHint: "Find a wine and tap “Add to my cellar” on its page, or add one that isn't in the catalogue.",
-    total: (botellas: string, valor: string | null) =>
-      valor ? `${botellas} bottles · ${valor} spent` : `${botellas} bottles`,
+    total: (n: number, botellas: string, valor: string | null) => {
+      const texto = `${botellas} ${n === 1 ? "bottle" : "bottles"}`;
+      return valor ? `${texto} · ${valor} spent` : texto;
+    },
     finished: "Already drunk",
     finishedHint: "Lots at 0. Add bottles if you buy again, or delete them.",
     bottles: (n: number) => (n === 1 ? "1 bottle" : `${n} bottles`),
