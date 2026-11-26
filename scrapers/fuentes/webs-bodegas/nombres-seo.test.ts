@@ -27,6 +27,8 @@ describe("titulares que no son vinos", () => {
     "“Bodega Cuatro Rayas, 1935-. Una historia de cooperación y éxito”",
     "El vino ecológico de",
     "▷ Nuestros vinos Ilurce |Bodegas y Viñedos Ilurce",
+    "Buenos vinos tintos calidad precio",
+    "Protos verdejo precio",
   ])("%s", (t) => {
     expect(esTitularEditorial(t)).toBe(true);
     expect(nombreVino(t)).toBe("");
@@ -95,6 +97,8 @@ describe("nombres con restos de SEO", () => {
     ["Crianza Edición Limitada: Selecto y Finito", "Crianza Edición Limitada"],
     ["Vall Por", "Vall Por"],
     ["Vinos-Paydos", "Paydos"],
+    ["6 x URBINA GRAN RESERVA 2004 BODEGA RIOJA BODEGA RIOJA", "Urbina Gran Reserva"],
+    ["Piérola Crianza | Vino Rioja Alavesa Tempranillo", "Piérola Crianza"],
   ])("sin regresiones: %s → %s", (t, n) => {
     expect(nombreVino(t)).toBe(n);
   });

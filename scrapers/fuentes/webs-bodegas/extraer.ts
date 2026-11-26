@@ -235,7 +235,7 @@ export function esTitularEditorial(titulo: string): boolean {
   const t = limpiarEspacios(titulo).replace(/^[\s▷►»→•·|\-–]+/, "");
   if (/[?¿!¡]/.test(t)) return true;
   if (/^(?:c[oó]mo|qu[eé]\s+(?:es|son|significa|hacer|vino|tipo)|por\s+qu[eé]|cu[aá]nto|cu[aá]l|d[oó]nde|cu[aá]ndo|descubre\s+(?:los|las|nuestr)|descubre\s+(?!el\s+vino\b)|descubriendo|explora(?:ndo)?|conoce|bienvenid|nuestr[oa]s?\s+(?:tienda|proceso|tradici[oó]n|historia|vinos?|bodega|nuevo|viñedos?)|(?:la\s+)?tienda\b|blog\b|los\s+mejores|el\s+mejor|lo\s+mejor|mejor(?:es)?\s+vinos?|tus?\s|sin\s+reservas|todo\s+(?:sobre|empieza)|elige|hechos\s+con|concours|concurso|tipos\s+de|el\s+vino\b|la\s+vendimia\b|el\s+cultivo|temperatura|men[uú]\b|brinda|(?:dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\s+(?:vinos|mitos|consejos|claves|razones))/i.test(t)) return true;
-  if (/\b(?:\d{2,3}\s+puntos|\d{2}\s*ptos|puntuaciones|premios?\s+al|premiad[oa]|galard[oó]n|p[oó]dium|reconoce|reconocid[oa]s?|gu[ií]a\s+de\s+compra|consejos|mitos|libro|historia\s+de|picnic|almuerzo|€\s*\/\s*persona|por\s+persona|qu[eé]\s+es|en\s+casa)\b/i.test(t)) return true;
+  if (/\b(?:\d{2,3}\s+puntos|\d{2}\s*ptos|puntuaciones|premios?\s+al|premiad[oa]|galard[oó]n|p[oó]dium|reconoce|reconocid[oa]s?|gu[ií]a\s+de\s+compra|consejos|mitos|libro|historia\s+de|picnic|almuerzo|calidad[\s-]+precio|precio$|€\s*\/\s*persona|por\s+persona|qu[eé]\s+es|en\s+casa)\b/i.test(t)) return true;
   // Frases largas: ningún vino se llama con doce palabras (los hay de diez: «Para Muestra, un Botón…»).
   return t.split(/\s+/).filter((w) => /\p{L}{2}/u.test(w)).length >= 12;
 }
@@ -302,7 +302,7 @@ export function limpiarTituloSeo(titulo: string): string {
     .replace(/\s*[•·|–-]?\s*precio\s*:?\s*\d+(?:[.,]\d{1,2})?\s*€.*$/i, "")
     .replace(/\s*\(\s*\d{1,2}\s*(?:b|bot\.?|botellas?|uds?\.?|unidades)\b\.?\)?\s*$/i, "")
     .replace(/\s*[.|–-]\s*(?:los\s+)?vinos?\s+de\s+(?:bodegas?|celler)\s+.*$/i, "")
-    .replace(/\s*[|]\s*(?:bodegas?|celler|viñedos)\b.*$/i, "")
+    .replace(/\s*[|]\s*(?:bodegas?|celler|viñedos|vinos?)\b.*$/i, "")
     .replace(/\s*\.\s*(?:bodegas?|celler)\s+\p{Lu}.*$/u, "")
     .replace(/\s+[–-]\s+vino\s+(?:tinto|blanco|rosado|dulce|espumoso|de\s+autor)(?:\s+\p{L}+)?\s*$/iu, "")
     .replace(/\s*[.]\s*vino\s+(?:tinto|blanco|rosado)\b.*$/i, "")
@@ -319,7 +319,7 @@ export function limpiarTituloSeo(titulo: string): string {
     .replace(/^(\p{L}[\p{L}\d'’.-]*):\s+/u, "$1 ")
     // Frase tras un punto («CUBANEGRA. Primer reserva de…»), pero no el de una sigla («D.O. Toro»).
     .replace(/(?<!(?:^|[\s.])\p{L})\.\s+\p{L}+(?:\s+\S+){3,}$/u, "")
-    .replace(/\s+bodegas?\s+(?:rioja|ribera|toro|rueda)$/i, "")
+    .replace(/(?:\s+bodegas?\s+(?:rioja|ribera|toro|rueda))+$/i, "")
     .replace(/^(?:vino\s+)?de\s+autor\s+[–-]\s+/i, "")
     .replace(/["“”«»]/g, "");
   for (let i = 0; i < 3; i++) s = s.replace(COLGANTE, "");
