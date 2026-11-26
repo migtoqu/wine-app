@@ -474,7 +474,7 @@ export class RastreadorSitio {
 
     // 5. Hechos.
     r.bodega = this.hechosBodega(contenidos, enlacesHome);
-    r.vinos = this.vinos(contenidos, ahora.getFullYear(), esDelSitio);
+    r.vinos = this.vinos(contenidos, ahora.getFullYear(), esDelSitio, ad);
     // Dueña de cada vino en dominios o tiendas de un grupo: por la ficha (extraerVino) o por marca.
     if (ad) for (const v of r.vinos) if (ad.marcas || v.bodega_marca) v.bodega_marca = bodegaDeMarca(v.nombre, ad, entrada, v.url, v.bodega_marca?.bodega);
     if (ad && r.vinos.length < (ad.minimoVinos ?? 1)) {
@@ -594,7 +594,7 @@ export class RastreadorSitio {
     return b;
   }
 
-  private vinos(contenidos: Contenido[], hoy: number, esDelSitio: (h: string) => boolean): VinoSitio[] {
+  private vinos(contenidos: Contenido[], hoy: number, esDelSitio: (h: string) => boolean, ad: AdaptadorSitio | null = null): VinoSitio[] {
     const r = this.o.denominaciones;
     const conDo = (v: VinoWeb, c: Contenido, url: string, texto: string, imagen: ImagenElegida | null, ofertas: OfertaWeb[] = []): VinoSitio => ({
       ...v,
@@ -625,7 +625,9 @@ export class RastreadorSitio {
         if (v.evidencias >= min) meter(conDo(v, { ...c, titulo: f.titulo }, c.url, texto, imagenBotella(f.imagen?.url, f.imagen?.alt ?? null, c.url, esDelSitio)));
       }
     }
-    for (const c of contenidos.filter((x) => x.clase === "vino" && !x.soloEnlaces && !x.fichasAdaptador)) {
+    // Con `patronFicha`, solo sus fichas dan vinos, vengan del HTML, de la API REST o de la tienda.
+    const esFicha = (c: Contenido) => !ad?.rutas?.patronFicha || esFichaAdaptador(ad, c.url);
+    for (const c of contenidos.filter((x) => x.clase === "vino" && !x.soloEnlaces && !x.fichasAdaptador && esFicha(x))) {
       if (c.producto) {
         const p = c.producto;
         // Con `fichaHtmlWoo` el texto de la ficha HTML se suma al de la Store API.
@@ -663,6 +665,9 @@ export class RastreadorSitio {
         for (const v of vinosSecciones) meter(conDo(v, c, c.url, textoDe2.get(secs.find((s) => nombreDeSeccion(s.titulo) === v.nombre)?.titulo ?? "") ?? "", null));
         continue;
       }
+      // La portada nunca es la ficha de un vino para el genérico: su título es el de la web o el de
+      // la plantilla («Laon Wine House», «Tienda de Vinos …»). Solo un adaptador saca vinos de ella.
+      if (isRaiz(c.url)) continue;
       const v = extraerVino(c.titulo, texto, { hoy, gtin: c.gtin ?? null });
       if (v.evidencias >= 2 && !TITULO_NO_VINO.test(v.nombre) && !esListado(c.url, c.titulo)) {
         const oferta = c.oferta ? { ...c.oferta, ean: c.oferta.ean ?? v.ean } : null;
@@ -807,7 +812,7 @@ async function tiendaWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[]): 
   }
   if (productos.length === 0) return false;
   for (const p of productos) {
-    if (!p.permalink || esOtroIdioma(p.permalink)) continue;
+    if (!p.permalink || esOtroIdioma(p.permalink) || ctx.adaptador?.rutas?.excluir?.test(p.permalink)) continue;
     try {
       if (!ctx.esDelSitio(new URL(p.permalink, ctx.origen).host)) continue;
     } catch {

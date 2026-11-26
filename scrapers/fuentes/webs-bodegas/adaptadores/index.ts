@@ -23,10 +23,11 @@ import sierracantabria from "./sierracantabria.com.ts";
 import sinforianobodegas from "./sinforianobodegas.com.ts";
 import tomaspostigo from "./tomaspostigo.es.ts";
 import vinazorzalwines from "./vinazorzalwines.com.ts";
+import virtuswine from "./virtuswine.com.ts";
 import type { AdaptadorSitio } from "./tipos.ts";
 
 export const ADAPTADORES: AdaptadorSitio[] = [
-  ajv, alegrevalganon, arrocal, bodegamartinezyebra, bodegasLozano, bodegasanmiguelsc, bodegascampillo, bodegasdiezgomez, bodegasfaustino, bodegasgarciadeolano, dominiodecair, dominiolubiano, luiscanas, milenico, obac, pagodecirsus, ribasdelcua, senoriodelibano, sierracantabria, sinforianobodegas, tomaspostigo, vinazorzalwines,
+  ajv, alegrevalganon, arrocal, bodegamartinezyebra, bodegasLozano, bodegasanmiguelsc, bodegascampillo, bodegasdiezgomez, bodegasfaustino, bodegasgarciadeolano, dominiodecair, dominiolubiano, luiscanas, milenico, obac, pagodecirsus, ribasdelcua, senoriodelibano, sierracantabria, sinforianobodegas, tomaspostigo, vinazorzalwines, virtuswine,
 ];
 
 const porDominio = new Map(ADAPTADORES.flatMap((a) => a.dominios.map((d) => [d, a] as const)));
