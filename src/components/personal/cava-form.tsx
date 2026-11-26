@@ -7,6 +7,7 @@ import { Button, buttonStyles, Input } from "@/components/ui";
 import { localePath, type Locale } from "@/i18n/config";
 import { CAVA_FORMATOS, type CavaField, type CavaFormLabels } from "@/lib/personal/cava";
 import { saveCavaLote, type CavaFormState } from "@/lib/personal/cava-actions";
+import { CavaPhotoField } from "./cava-photo-field";
 
 type Labels = CavaFormLabels;
 
@@ -26,6 +27,7 @@ export type CavaFormValues = {
   beber_desde: number | null;
   beber_hasta: number | null;
   notas: string | null;
+  foto_url?: string | null;
 };
 
 // Vino del catálogo al que se enlaza el lote: nombre y bodega fijos y la añada
@@ -90,6 +92,8 @@ export function CavaForm({
           />
         </>
       )}
+
+      <CavaPhotoField labels={labels.photo} initialUrl={values.foto_url ?? null} error={err("foto")} />
 
       <div className="grid gap-5 sm:grid-cols-2">
         {vino && vino.anadas.some((a) => a.anio !== null) ? (

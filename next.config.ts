@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
     // revalidateTag("catalogo").
     catalogo: { stale: 300, revalidate: 86_400, expire: 604_800 },
   },
+  experimental: {
+    // Fotos de Mi cava: el navegador las reduce (≈1200 px) y el bucket admite
+    // hasta 2 MB; se deja margen para el resto del formulario.
+    serverActions: { bodySizeLimit: "3mb" },
+  },
   turbopack: {
     rules: {
       "*.css": {

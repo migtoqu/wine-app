@@ -261,6 +261,7 @@ export type Database = {
           cantidad: number
           created_at: string
           fecha_compra: string | null
+          foto_path: string | null
           formato_ml: number
           id: string
           nombre: string
@@ -281,6 +282,7 @@ export type Database = {
           cantidad?: number
           created_at?: string
           fecha_compra?: string | null
+          foto_path?: string | null
           formato_ml?: number
           id?: string
           nombre: string
@@ -301,6 +303,7 @@ export type Database = {
           cantidad?: number
           created_at?: string
           fecha_compra?: string | null
+          foto_path?: string | null
           formato_ml?: number
           id?: string
           nombre?: string

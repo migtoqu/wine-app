@@ -70,6 +70,17 @@ const en = {
       date: "Invalid date.",
       window: "Must be the same as or later than “drink from”.",
       generic: "Couldn't save. Please try again.",
+      photo: "The photo must be JPG, PNG or WebP and under 2 MB.",
+    },
+    photo: {
+      label: "Bottle photo",
+      add: "Add photo",
+      change: "Change photo",
+      remove: "Remove photo",
+      alt: (vino: string) => `Bottle of ${vino}`,
+      preview: "Photo preview",
+      processing: "Preparing the photo…",
+      unreadable: "Couldn't read that image. Try another photo.",
     },
   },
   common: {

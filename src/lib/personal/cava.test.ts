@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cavaTotals, drinkWindow, validateCava } from "./cava";
+import { cavaTotals, drinkWindow, parseFoto, validateCava } from "./cava";
 
 function form(values: Record<string, string>) {
   const f = new FormData();
@@ -93,5 +93,30 @@ describe("cavaTotals", () => {
         { cantidad: 2, precio_compra: null },
       ]),
     ).toEqual({ botellas: 5, valor: 30 });
+  });
+});
+
+describe("parseFoto", () => {
+  const withFile = (file: File, extra: Record<string, string> = {}) => {
+    const f = form(extra);
+    f.set("foto", file);
+    return f;
+  };
+
+  it("sin fichero no cambia nada, salvo que se pida quitarla", () => {
+    expect(parseFoto(form({}))).toEqual({ ok: true, file: null, quitar: false });
+    expect(parseFoto(form({ foto_quitar: "1" }))).toEqual({ ok: true, file: null, quitar: true });
+    expect(parseFoto(withFile(new File([], "vacio.jpg", { type: "image/jpeg" })))).toMatchObject({ file: null });
+  });
+
+  it("acepta un JPEG y deja de quitar la anterior", () => {
+    const r = parseFoto(withFile(new File(["x"], "a.jpg", { type: "image/jpeg" }), { foto_quitar: "1" }));
+    expect(r).toMatchObject({ ok: true, quitar: false });
+  });
+
+  it("rechaza otros tipos y ficheros de más de 2 MB", () => {
+    expect(parseFoto(withFile(new File(["x"], "a.gif", { type: "image/gif" })))).toEqual({ ok: false, error: "photo" });
+    const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], "a.jpg", { type: "image/jpeg" });
+    expect(parseFoto(withFile(big))).toEqual({ ok: false, error: "photo" });
   });
 });
