@@ -35,6 +35,9 @@
 - [ ] Recomendaciones por reglas en `/yo`
 - [ ] Sugerir correcciones / vino o bodega nuevos + moderación en admin
 - [ ] RGPD: exportar mis datos y borrar mi cuenta
+- [ ] **Reconocimiento de botellas**: hacer una foto con el móvil y que la app identifique la botella. Dos vías posibles para la primera iteración:
+  1. OCR: leer el nombre del vino y la bodega en la etiqueta y buscarlos en el buscador.
+  2. ML de imagen: buscar la botella más parecida entre las que ya tenemos registradas.
 
 ## ⚪ Rendimiento y menores
 
