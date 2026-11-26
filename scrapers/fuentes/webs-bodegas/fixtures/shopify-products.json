@@ -1,0 +1,359 @@
+{
+ "products": [
+  {
+   "id": 1446225018980,
+   "title": "Crianza 2022 (Caja de 6 botellas)",
+   "handle": "crianza",
+   "body_html": "<p><strong>Variedades</strong>: Tempranillo, Graciano, Viura</p>\n<p><strong>Alc/Vol:</strong> 14.5%<br><br></p>\n<p><strong>Tiempo en Barrica</strong>: <span style=\"font-weight: 400;\">12 meses en roble Frances &amp; Americano</span></p>\n<p><strong>Tiempo en Botella:</strong> 12 meses</p>\n<p> </p>\n<h3><strong>CATA</strong></h3>\n<p><strong>Color</strong>: Color cereza de capa alta.<br><br><strong>Nariz</strong>: Aromas de crianza con predominio de madera nueva sobre un elegante y perfumado fondo a frutas maduras.<br><br><strong>Boca</strong>: En la entrada a boca se muestra carnoso, expresivo, co",
+   "product_type": "vino",
+   "tags": [
+    "Vino Tinto"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "49.50",
+     "compare_at_price": null,
+     "available": true,
+     "sku": "",
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0033/3666/7236/files/CRIANZA_DECANTER_2025_shopify.png?v=1750520329",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 4592975675492,
+   "title": "Caja Combinada Tintos (6 botellas)",
+   "handle": "caja-combinada-de-tinto",
+   "body_html": "<p>Caja de 6 botellas: </p>\n<p>2 Botellas de Joven II Tinto </p>\n<p>2 Botellas de Crianza Tinto</p>\n<meta charset=\"utf-8\">\n<p><span>2 Botellas de Joven Especial Tinto</span><br></p>\n<p> </p>\n<meta charset=\"utf-8\">\n<h3><strong></strong></h3>",
+   "product_type": "vino",
+   "tags": [
+    "Vino Tinto"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "43.00",
+     "compare_at_price": null,
+     "available": true,
+     "sku": "",
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0033/3666/7236/products/CajadeTintos.png?v=1588093278",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 5282716385448,
+   "title": "Visita a la Bodega",
+   "handle": "visita-a-la-bodega",
+   "body_html": "<p>Ofrecemos dos opciones enoturísticas: </p>\n<p> </p>\n<p>Opción 1:</p>\n<ul>\n<li>Visita a la bodega</li>\n<li>Degustación de 3 vinos: 2 vinos tintos y 1 vino blanco.</li>\n<li>Aperitivo</li>\n</ul>\n<p>Precio: 20 € por persona</p>\n<p> </p>\n<p> </p>\n<p><span>Opción 2: </span><br></p>\n<ul>\n<li>Visita de viñedo</li>\n<li>Visita de bodega</li>\n<li>Visita de bodega antigua - el calado</li>\n<li>Degustación de 4 vinos : 1 blanco, 1 blanco fermentado en barrica , 1 vino tinto maceración carbónica y 1 crianza</li>\n<li>Aperitivo</li>\n</ul>\n<p>Precio: 30 € por persona</p>\n<p> </p>\n<p>*CONTACTAR CON LA BODEGA ",
+   "product_type": "visita",
+   "tags": [
+    "Evento",
+    "Visita"
+   ],
+   "variants": [
+    {
+     "title": "Visita Bodega",
+     "price": "20.00",
+     "compare_at_price": null,
+     "available": true,
+     "sku": "",
+     "barcode": null
+    },
+    {
+     "title": "Visita Bodega + Viñedo",
+     "price": "30.00",
+     "compare_at_price": null,
+     "available": true,
+     "sku": "",
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0033/3666/7236/products/SELECTS-26.jpg?v=1591612149",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Opción",
+     "values": [
+      "Visita Bodega",
+      "Visita Bodega + Viñedo"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 15477026423107,
+   "title": "GOSSET CELEBRIS VINTAGE 2012 BRUT | BOTELLA INDIVIDUAL 0,75L · Catálogo Navidad",
+   "handle": "gosset-celebris-vintage-2012-brut-botella-individual-0-75l-navidad26",
+   "body_html": "",
+   "product_type": "CHAMPAGNE",
+   "tags": [
+    "catalogo-navidad-2026",
+    "GosseteBlanc",
+    "navidad26",
+    "spo-default",
+    "spo-disabled"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "235.00",
+     "compare_at_price": null,
+     "available": true,
+     "sku": "2H12VNMN001A-N26",
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0413/0232/7459/files/Celebris2012_053b24c2-0566-4325-b151-fd751dafcff4.jpg?v=1792137004",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 15477026357571,
+   "title": "GOSSET CELEBRIS VINTAGE 2008 ROSÉ BRUT | BOTELLA INDIVIDUAL 0,75L · Catálogo Navidad",
+   "handle": "gosset-celebris-vintage-2008-rose-brut-botella-individual-0-75l-navidad26",
+   "body_html": "",
+   "product_type": "CHAMPAGNE",
+   "tags": [
+    "catalogo-navidad-2026",
+    "Celebris",
+    "navidad26"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "230.00",
+     "compare_at_price": null,
+     "available": true,
+     "sku": "2H08ANCN001A-N26",
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0413/0232/7459/products/CELEBRISROSE_6d2900fb-0218-452c-b529-8d3727e7771e.jpg?v=1663936773",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 15462261195076,
+   "title": "Fruta Leche Tropical",
+   "handle": "fruta-leche-sabor-tropical-bricks-de-1-litro-000000000000012678",
+   "body_html": "<p><strong>Fruta+leche Tropical Don Simón</strong>. Elaborado con piña, uva, mango, manzana y leche desnatada. Sin azúcares añadidos y rico en vitaminas A,C y E.<br><br><strong>Consumo, conservación y recomendaciones:</strong><br>-Agitar antes de servir.<br>-Una vez abierto, conservar refrigerado y consumir antes de transcurridos 5 días.</p>",
+   "product_type": "",
+   "tags": [
+    "Bebidas de frutas y vegetales",
+    "code_000000000000012678",
+    "Fruta leche"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "12.00",
+     "compare_at_price": null,
+     "available": true,
+     "sku": null,
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0957/1729/4404/files/0_1200Wx1200H_6783a085-0962-40a9-84bf-8e361bbb854b.jpg?v=1770408357",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 15772294283588,
+   "title": "VINO INCUNABLE RIOJA TEMPR. BT3/4X6",
+   "handle": "8410261116006_1",
+   "body_html": "",
+   "product_type": "",
+   "tags": [
+    "code_8410261116006_1"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "0.00",
+     "compare_at_price": null,
+     "available": false,
+     "sku": null,
+     "barcode": null
+    }
+   ],
+   "images": [],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 7523020669143,
+   "title": "MAZUELO",
+   "handle": "mazuelo-2015",
+   "body_html": "<div id=\"product-description-short-68\" data-mce-fragment=\"1\" itemprop=\"description\">\n<h3 class=\"vc_custom_heading\">Mazuelo 100%</h3>\n<h3 class=\"vc_custom_heading\">Vendimiado a mano.</h3>\n<div class=\"wpb_text_column wpb_content_element\">\n<div class=\"wpb_wrapper\">\n<p>Vendimia durante los primeros días de noviembre en nuestro viñedo centenario de la variedad mazuelo. Se realiza toda la fermentación en tinos de madera. Maceración en frío de los hollejos durante 24 horas. Fermentación a 25ºC durante 7 días, la maceración se prolonga durante 6 días más después de la fermentación. Envejecido durante ",
+   "product_type": "Vino",
+   "tags": [
+    "tinto"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "20.45",
+     "compare_at_price": null,
+     "available": true,
+     "sku": "",
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/0621/5031/2151/products/MAZUELO.png?v=1651677698",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 16343334617413,
+   "title": "Descubre Marqués del Atrio",
+   "handle": "descubre-marques-del-atrio",
+   "body_html": "<p>Haz tu propia selección de Marqués del Atrio y descubre todos sus vinos sin tener que comprar una caja entera de cada uno.</p>\n<p>Rioja desde 1899, en una selección hecha por ti. Combina sus clásicos (Blanco, Rosado, Crianza y Reserva) con sus vinos más singulares: el 2 Cepas, la Edición Limitada y Finca El Rubio.</p>\n<p>Tú eliges cuáles y cuántos: cuantas más botellas, más ahorras.</p>\n<ul>\n<li>3 botellas: 3% de descuento</li>\n<li>6 botellas: 6% de descuento<br>\n</li>\n</ul>\n<p>El descuento se aplica automáticamente en el carrito. Envío gratis en península a partir de 50 €.</p>",
+   "product_type": "Pack",
+   "tags": [
+    "AOV Bundle"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "0.00",
+     "compare_at_price": null,
+     "available": true,
+     "sku": null,
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/1038/5394/9253/files/BannerhorizontalMDA.png?v=1793803634",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  },
+  {
+   "id": 16230983303493,
+   "title": "Conde Del Pazo Albariño - Caja de 6 botellas de 75cl",
+   "handle": "conde-del-pazo-albarino-caja-de-6-botellas-de-75cl",
+   "body_html": "<p>La colección de vinos misteriosos de la Familia Rivero. Tres vinos Atlánticos con una halo de magnetismo y singularidad que fascinan.</p>",
+   "product_type": "Pack",
+   "tags": [
+    "Albariño",
+    "Blanco",
+    "DO Rias Baixas"
+   ],
+   "variants": [
+    {
+     "title": "Default Title",
+     "price": "73.25",
+     "compare_at_price": "77.94",
+     "available": true,
+     "sku": "20008652",
+     "barcode": null
+    }
+   ],
+   "images": [
+    {
+     "src": "https://cdn.shopify.com/s/files/1/1038/5394/9253/files/CondeAlbarino.webp?v=1791275134",
+     "alt": null
+    }
+   ],
+   "options": [
+    {
+     "name": "Title",
+     "values": [
+      "Default Title"
+     ]
+    }
+   ]
+  }
+ ]
+}

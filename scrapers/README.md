@@ -195,7 +195,7 @@ Scraper de tienda **parametrizado por plataforma** en `fuentes/tiendas/` (Ola B;
 
 ## Webs de bodegas (`fuentes/webs-bodegas/`)
 
-Crawler genérico de las webs oficiales (`bodegas.web`). Fase A: WordPress (API REST y Store API de WooCommerce) y HTML genérico (sitemap y enlaces). Shopify y Wix tienen su punto de extensión (`EXTRACTORES` en `sitio.ts`), que hoy cae en sitemap + HTML y lo dice en el log. Ver SOURCES §3.
+Crawler genérico de las webs oficiales (`bodegas.web`). Fase A: WordPress (API REST y Store API de WooCommerce) y HTML genérico (sitemap y enlaces). Shopify lee el catálogo público `/products.json` (`shopify.ts`; en `/es/` si la portada está en otro idioma) y Wix va por sitemap; cada plataforma es una entrada de `EXTRACTORES` en `sitio.ts`. Ver SOURCES §3.
 
 ```bash
 # Dry-run con las webs de un dry-run de Ribera (o un .txt con una URL por línea, o URLs separadas por comas)
@@ -246,7 +246,7 @@ Fuera quedan otros idiomas (`/en/`, `/pt-pt/`, `?lang=en`), noticias y blog, y c
   - JSON-LD `Product`/`Offer` en cualquier HTML.
   - **Subdominios** del mismo dominio enlazados desde la portada (`tienda.`, `enoturismo.`, `shop.`…). Cada host pasa robots.txt; un 403/429 o un desafío anti-bot en un subdominio deja ese host sin detener el sitio.
   - Fuera: noticias con fecha, «en los medios», `?add-to-cart`, `/page/N/`, páginas de envío y pago, y slugs que ya dicen que no son un vino (estuche, sacacorchos…).
-- **Plataformas**: Wix va por su sitemap (`store-products-sitemap.xml`) más el JSON-LD de cada ficha, sin `/_api/`. Shopify sigue como punto de extensión (0 webs en el catálogo).
+- **Plataformas**: Wix va por su sitemap (`store-products-sitemap.xml`) más el JSON-LD de cada ficha, sin `/_api/`. Shopify (10 webs) va por `/products.json`: título sin envase («Crianza 2022 (Caja de 6 botellas)» → «Crianza 2022», con el formato a la oferta), tipo y etiquetas como categorías (sin las internas: `code_…`, `bf-…`, campañas), precio y stock de la variante, EAN del código de barras e imagen. Fuera reventa (champagne, oporto), alimentación, accesorios, tarjetas regalo, lotes y surtidos, referencias de ERP sin ficha y productos a 0 €. Las experiencias van a servicios. Las fichas `/products/…` no se vuelven a pedir por HTML; el sitemap sigue para historia, visitas y contacto.
 - **Incremental**: `datos.paginas` guarda la `modificada` (lastmod del sitemap, `modified` de WP) de cada página. Si no ha cambiado, no se pide: sus registros se marcan vistos y no cuentan como desaparecidos. Excepción: una ficha que dio una oferta con precio se vuelve a leer si lleva más de 7 días sin leerse (`DIAS_REFRESCO_OFERTA`), porque el precio y el stock no cambian el lastmod en muchas webs. La Store API de Woo se lee entera en cada pasada. Las ofertas de las fichas sin cambios se dan por vistas con `RegistroOfertas.refrescarVistas()`, y así `cerrar()` puede marcar las que de verdad desaparecen.
 - **D.O. por vino** (`denominacion.ts`):
   - Orden de búsqueda: la ficha («D.O. Rueda», «D.O.Ca. Rioja», «Vino de la Tierra de Castilla y León», «Denominación: …»), luego la categoría o las migas, luego la ruta (`/vinos-rueda/`; en el slug del vino solo las D.O. de varias palabras).

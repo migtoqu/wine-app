@@ -88,6 +88,8 @@ export interface Huella {
   /** Raíz de la API REST de WordPress, si la anuncia la portada. */
   wpJson: string | null;
   generador: string | null;
+  /** `<html lang>` de la portada («es», «ca», «en»…). */
+  idioma: string | null;
 }
 
 export function huella(html: string, origen: string, cabeceras?: Headers): Huella {
@@ -107,5 +109,6 @@ export function huella(html: string, origen: string, cabeceras?: Headers): Huell
       wpJson = null;
     }
   }
-  return { plataforma, woocommerce, wpJson, generador };
+  const idioma = html.match(/<html\b[^>]*\blang=["']([a-z]{2}(?:-[a-z]{2})?)/i)?.[1]?.toLowerCase() ?? null;
+  return { plataforma, woocommerce, wpJson, generador, idioma };
 }
