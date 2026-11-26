@@ -12,6 +12,7 @@ import { clasificar, esOtroIdioma, huella, type Clase, type Huella } from "./cla
 import { detectarDenominacion, type DeteccionDo, type ResolutorDenominaciones } from "./denominacion.ts";
 import { formatoMl, ofertaDeJsonLd, ofertaDeWoo, unidades, type OfertaWeb } from "./ofertas.ts";
 import { adaptadorPara } from "./adaptadores/index.ts";
+import { productoDeShopify, type ProductoShopify } from "./shopify.ts";
 import { dominioBase } from "./dominio.ts";
 import type { AdaptadorSitio } from "./adaptadores/tipos.ts";
 import { candidatasDePagina, elegirImagenBodega, imagenBotella, type CandidataImagen, type ImagenElegida } from "./imagen.ts";
@@ -89,7 +90,7 @@ export interface Verificacion {
 export interface PaginaVista {
   url: string;
   clase: Clase;
-  origen: "html" | "wp" | "woo";
+  origen: "html" | "wp" | "woo" | "shopify";
   titulo: string | null;
   /** lastmod del sitemap o `modified` de WordPress (para el rastreo incremental). */
   modificada?: string | null;
@@ -195,7 +196,7 @@ interface Contenido {
   titulo: string;
   bloques: Bloque[];
   enlaces: Enlace[];
-  /** Ficha de producto de la Store API de WooCommerce. */
+  /** Ficha de producto de la Store API de WooCommerce (o de `/products.json` de Shopify, en su forma). */
   producto?: ProductoWoo;
   gtin?: string | null;
   /** Migas o categorías de la tienda (para la D.O.). */
@@ -257,6 +258,9 @@ function esListado(url: string, tituloPagina: string): boolean {
   const conQuery = [...new URL(url).searchParams.keys()].some((k) => !/^(lang|idioma|l)$/i.test(k));
   return (!conQuery && /^(?:nuestros?-?)?(?:vinos|wines|productos|gama|tienda|shop)(?:\.(?:asp|php|html?))?$/i.test(ultimo)) || LISTADO.test(tituloPagina.trim());
 }
+
+/** Producto de un catálogo de tienda (Store API de Woo o `/products.json` de Shopify), no una página HTML. */
+const deTienda = (c: { origen: PaginaVista["origen"] }) => c.origen === "woo" || c.origen === "shopify";
 
 const TITULO_PAGINA_GENERICO = TITULO_GENERICO;
 /** Título: el de la API de WordPress, el `Product` del JSON-LD, og:title, h1 o <title>. */
@@ -465,7 +469,7 @@ export class RastreadorSitio {
     }
     // Versión inglesa publicada sin prefijo de idioma (/los-vinos-3/sheet-x/): fuera por su texto. La
     // portada no se descarta (puede ser bilingüe) ni los productos de la Store API (idioma de la tienda).
-    const enIngles = contenidos.filter((c) => c.origen !== "woo" && !isRaiz(c.url) && idiomaDeTexto(textoDe(c.bloques)) === "en");
+    const enIngles = contenidos.filter((c) => !deTienda(c) && !isRaiz(c.url) && idiomaDeTexto(textoDe(c.bloques)) === "en");
     if (enIngles.length) {
       r.avisos.push(`${enIngles.length} páginas en inglés sin prefijo de idioma, descartadas (p. ej. ${enIngles[0]!.url})`);
       for (const c of enIngles) contenidos.splice(contenidos.indexOf(c), 1);
@@ -496,7 +500,7 @@ export class RastreadorSitio {
     r.imagen = elegirImagenBodega(paginasFoto, esDelSitio);
     if (r.imagen && !(await this.robotsPermite(r.imagen.url, esDelSitio))) r.imagen = null;
     for (const v of r.vinos) if (v.imagen && !(await this.robotsPermite(v.imagen.url, esDelSitio))) v.imagen = null;
-    const eno = contenidos.find((c) => c.clase === "enoturismo" && c.origen !== "woo") ?? contenidos.find((c) => c.clase === "enoturismo");
+    const eno = contenidos.find((c) => c.clase === "enoturismo" && !deTienda(c)) ?? contenidos.find((c) => c.clase === "enoturismo");
     if (eno || r.servicios.length) {
       r.bodega.enoturismo = true;
       r.bodega.enoturismo_web = eno?.url ?? r.servicios[0]!.url;
@@ -758,14 +762,16 @@ const generico: Extractor = {
   },
 };
 
-// Shopify (/products.json, /collections/*.json): ningún caso en el catálogo (0 de 129 webs aptas,
-// 2026-11). Punto de extensión: hoy usa sitemap + HTML y lo deja dicho en el log.
-const pendiente = (nombre: string): Extractor => ({
+// Shopify (10 webs a 2026-11): el catálogo público `/products.json` trae todo lo de la ficha (texto,
+// tipo, etiquetas, variantes con precio y stock, EAN e imagen); el resto (historia, visitas,
+// contacto) sigue por sitemap + HTML, sin volver a pedir las fichas `/products/…`.
+const shopify: Extractor = {
   async descubrir(ctx, contenidos, enlacesHome) {
-    ctx.log.info(`${ctx.origen}: plataforma ${nombre} sin extractor propio todavía; se usa sitemap + HTML`);
-    return `${nombre}→${await sitemapYEnlaces(ctx, contenidos, enlacesHome)}`;
+    const n = await catalogoShopify(ctx, contenidos);
+    const resto = ctx.quedan() > 3 ? `+${await sitemapYEnlaces(ctx, contenidos, enlacesHome)}` : "";
+    return `${n > 0 ? "shopify" : "shopify(sin catálogo)"}${resto}`;
   },
-});
+};
 
 // Wix (4 webs): el HTML viene renderizado en servidor; su sitemap índice trae
 // `store-products-sitemap.xml` y `pages-sitemap.xml`, y cada ficha de producto lleva JSON-LD
@@ -779,7 +785,7 @@ const wix: Extractor = {
 export const EXTRACTORES: Record<Huella["plataforma"], Extractor> = {
   wordpress,
   generico,
-  shopify: pendiente("shopify"),
+  shopify,
   wix,
 };
 
@@ -833,6 +839,46 @@ async function tiendaWoo(ctx: ContextoDescubrimiento, contenidos: Contenido[]): 
     });
   }
   return true;
+}
+
+/**
+ * `/products.json` de Shopify, en castellano si la portada está en otro idioma y la tienda tiene
+ * `/es/`. Devuelve cuántos productos trae el catálogo.
+ */
+async function catalogoShopify(ctx: ContextoDescubrimiento, contenidos: Contenido[]): Promise<number> {
+  const raiz = new URL("/", ctx.origen).href;
+  // Portada en `/es/` (la versión castellana de una tienda en catalán) o en otro idioma: primero `/es/`.
+  const portada = contenidos.find((c) => c.origen === "html" && c.clase === "historia")?.url;
+  const enEs = !!portada && /^\/es(?:-[a-z]{2})?(?:\/|$)/i.test(new URL(portada).pathname);
+  const bases = enEs || (ctx.huella.idioma && !/^es\b/i.test(ctx.huella.idioma)) ? [new URL("/es/", ctx.origen).href, raiz] : [raiz];
+  let productos: ProductoShopify[] = [];
+  let base = raiz;
+  for (const b of bases) {
+    productos = [];
+    for (let pagina = 1; pagina <= 8; pagina++) {
+      const r = await pedirJson<{ products?: ProductoShopify[] }>(ctx, new URL(`products.json?limit=250&page=${pagina}`, b).href);
+      const lista = r?.datos?.products;
+      if (!Array.isArray(lista) || lista.length === 0) break;
+      productos.push(...lista);
+      if (lista.length < 250) break;
+    }
+    base = b;
+    if (productos.length) break;
+  }
+  // Fichas que ya leyó el adaptador del sitio (misma URL): manda el adaptador.
+  const ya = new Set(contenidos.map((c) => normalizarUrl(c.url)));
+  let n = 0;
+  for (const p of productos) {
+    const m = productoDeShopify(p, base);
+    if (!m || ctx.adaptador?.rutas?.excluir?.test(m.producto.permalink) || ya.has(normalizarUrl(m.producto.permalink))) continue;
+    contenidos.push({
+      url: m.producto.permalink, clase: m.clase, origen: "shopify", titulo: m.producto.name, bloques: [], enlaces: [],
+      producto: m.producto, gtin: m.gtin, categorias: m.categorias,
+    });
+    n++;
+  }
+  if (productos.length) ctx.log.info(`${new URL("products.json", base).href}: ${productos.length} productos, ${n} nuevos útiles`);
+  return productos.length;
 }
 
 interface TipoWp {
@@ -1219,16 +1265,20 @@ async function sitemapYEnlaces(ctx: ContextoDescubrimiento, contenidos: Contenid
   for (const e of enlacesHome.filter((x) => delSitio(x.url))) {
     candidatos.push({ url: e.url, clase: clasificar({ url: e.url, titulo: e.texto }), modificada: null });
   }
-  // Con la Store API de Woo el catálogo ya está completo: sus fichas no se vuelven a pedir por HTML.
+  // Con la Store API de Woo o `/products.json` el catálogo ya está completo: sus fichas no se vuelven
+  // a pedir por HTML. En Shopify, tampoco las del idioma por defecto (`/products/x` frente a `/es/products/x`).
   const prefijosWoo = new Set(
-    contenidos.filter((c) => c.origen === "woo").map((c) => new URL(c.url).pathname.split("/").filter(Boolean).slice(0, -1).join("/")),
+    contenidos.filter(deTienda).map((c) => new URL(c.url).pathname.split("/").filter(Boolean).slice(0, -1).join("/")),
   );
-  const deWoo = (u: string) => prefijosWoo.has(new URL(u).pathname.split("/").filter(Boolean).slice(0, -1).join("/"));
+  const conShopify = contenidos.some((c) => c.origen === "shopify");
+  const deWoo = (u: string) => prefijosWoo.has(new URL(u).pathname.split("/").filter(Boolean).slice(0, -1).join("/")) ||
+    (conShopify && /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?products\//i.test(new URL(u).pathname));
   // Fichas cuyo slug ya dice que no es un vino (estuche, sacacorchos, lote…): ni se piden.
   const slugNoVino = (u: string) => !esNombreDeVino(decodeURIComponent(new URL(u).pathname.split("/").filter(Boolean).pop() ?? "").replace(/[-_]+/g, " "));
   const unicos = [...new Map(
     candidatos
-      .filter((c) => MAX_POR_CLASE[c.clase] > 0 && !isRaiz(c.url) && !(c.clase === "vino" && (deWoo(c.url) || slugNoVino(c.url))))
+      // Con el catálogo de Shopify, ninguna página HTML da vinos (colecciones, carrito, eventos).
+      .filter((c) => MAX_POR_CLASE[c.clase] > 0 && !isRaiz(c.url) && !(c.clase === "vino" && (conShopify || deWoo(c.url) || slugNoVino(c.url))))
       .map((c) => [normalizarUrl(c.url), c]),
   ).values()];
   ctx.ampliar(unicos.filter((c) => c.clase === "vino").length);
@@ -1300,7 +1350,7 @@ async function profundidad2(ctx: ContextoDescubrimiento, contenidos: Contenido[]
 function wooCubre(contenidos: Contenido[], u: string): boolean {
   const carpeta = (x: string) => new URL(x).pathname.split("/").filter(Boolean).slice(0, -1).join("/");
   const c = carpeta(u);
-  return c !== "" && contenidos.some((x) => x.origen === "woo" && carpeta(x.url) === c);
+  return c !== "" && contenidos.some((x) => deTienda(x) && carpeta(x.url) === c);
 }
 
 /** Subdominios del propio dominio enlazados desde la portada (tienda., enoturismo., shop.). */

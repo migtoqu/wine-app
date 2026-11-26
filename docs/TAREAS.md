@@ -10,7 +10,6 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] Lector para webs de bodega en **Shopify** (6 webs que hoy no dan vinos), en PR aparte.
 - [ ] Webs que necesitan **navegador** (render JS): cooperativa de Cigales y Mazuela.
 - [ ] **AJV**: devolvió 429 en la última prueba; revisar ritmo y reintentar.
 - [ ] **Vinorea**: listados vacíos desde Actions (adaptado a PrestaShop 8 en #37); confirmar en la próxima ejecución.
@@ -19,6 +18,7 @@
 
 ## ✅ Hecho el 2026-11-26
 
+- Lector Shopify para webs de bodega (`/products.json`): en dry-run las 10 webs Shopify pasan de 63 a 233 vinos (Gran Clos, Trossos del Priorat y Bello Berganzo de 0 a 7, 12 y 4; Murrieta de 1 a 21; García Carrión de 2 a 90). Los vinos de webs de grupo (García Carrión, Marqués del Atrio) con otra D.O. van a revisión como siempre.
 - Mi cava: foto de la botella con miniatura (#59).
 - Revisión de los vinos de webs de grupo: 19 registros (los 38 ya habían bajado). 5 de Irache asociados a sus fichas; creadas las bodegas Bodegas Sierra Cantabria, Viñedos Sierra Cantabria y Señorío de San Vicente (sin web, para no compartir dominio con Páganos) con sus 12 vinos, y 2 vinos «Colección Privada» de Irache. La próxima carga de webs aplica las decisiones.
 
