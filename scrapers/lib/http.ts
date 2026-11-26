@@ -6,7 +6,7 @@ import { dormir, LimitadorPorHost } from "./rate-limit.ts";
 import { permitido, RobotsDenegado, robotsDesdeRespuesta, type Robots } from "./robots.ts";
 
 export const USER_AGENT =
-  "wine-app-bot/0.1 (+https://github.com/migtoqu/wine-app; contacto: migueltoquerob@gmail.com)";
+  "wine-app-bot/0.1 (+https://github.com/migtoqu/wine-app; contacto: https://github.com/migtoqu/wine-app/issues)";
 
 /** La fuente nos pide parar (403/429) o hay un desafío anti-bot: se aborta la fuente. */
 export class ParadaFuente extends Error {

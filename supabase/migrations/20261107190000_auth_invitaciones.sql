@@ -219,21 +219,17 @@ create policy "propia borra" on public.preferencias_vino
 -- Semilla: admins iniciales
 -- =====================================================================
 
-insert into public.invitaciones (email, rol, creada_por) values
-  ('soniaapariciocorada@gmail.com', 'admin', null),
-  ('migueltoquerob@gmail.com', 'admin', null)
-on conflict do nothing;
-
--- Por si alguno ya se había registrado antes de esta migración.
-update public.invitaciones i
-set usada_por = u.id, usada_en = now()
-from auth.users u
-where lower(u.email) = i.email
-  and i.usada_en is null
-  and i.email in ('soniaapariciocorada@gmail.com', 'migueltoquerob@gmail.com');
-
-update public.perfiles p
-set rol = 'admin'
-from auth.users u
-where p.id = u.id
-  and lower(u.email) in ('soniaapariciocorada@gmail.com', 'migueltoquerob@gmail.com');
+-- Los emails de los admins iniciales no se guardan en el repositorio (es
+-- público). En producción se sembraron al aplicar esta migración y ahora se
+-- gestionan desde /admin/invitaciones y /admin/usuarios. En una base nueva,
+-- el primer admin se crea a mano con el SQL de abajo, cambiando el email:
+--
+--   insert into public.invitaciones (email, rol, creada_por)
+--   values ('admin@example.com', 'admin', null)
+--   on conflict do nothing;
+--
+-- y, si ya se había registrado:
+--
+--   update public.perfiles p set rol = 'admin'
+--   from auth.users u
+--   where p.id = u.id and lower(u.email) = 'admin@example.com';

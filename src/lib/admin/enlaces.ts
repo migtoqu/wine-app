@@ -48,7 +48,7 @@ export interface Comprobacion {
 }
 
 const USER_AGENT =
-  "wine-app-bot/0.1 (+https://github.com/migtoqu/wine-app; contacto: migueltoquerob@gmail.com)";
+  "wine-app-bot/0.1 (+https://github.com/migtoqu/wine-app; contacto: https://github.com/migtoqu/wine-app/issues)";
 
 /**
  * Comprobación inmediata de una URL (botón "Reintentar"): HEAD y, si no
