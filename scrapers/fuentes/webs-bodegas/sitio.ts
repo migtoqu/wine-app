@@ -243,9 +243,10 @@ const PRIORIDAD_CLASE: Clase[] = ["vino", "historia", "enoturismo", "contacto"];
 const TIPOS_WP_IGNORADOS = /^(attachment|nav_menu_item|wp_|post$|jp_|elementor|e-landing|oembed|revision|customize|user_request|wpcf7|acf|br_|et_|ct_|fl-|mc4wp|product_variation|shop_)/;
 const SUBSITEMAP_UTIL = /page|product|vino|wine|visita|experienc|enoturismo|portfolio|project|anada|pagina/i;
 const SUBSITEMAP_INUTIL = /category|tag|author|attachment|post-sitemap|user|product_cat|product_tag|format|archive|news|noticia|blog/i;
-const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b|bodegas?\b|grupo\b|castilla[ -]la[ -]mancha$|¿)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos?|wines?|tinto|blanco|rosado)$/i;
+const TITULO_NO_VINO = /^(?:d\.?\s?o\.?\s|denominaci[óo]n|gama\b|l[íi]nea\b|colecci[óo]n\b|bodegas?\b|grupo\b|castilla[ -]la[ -]mancha$|¿)|^(nota de cata|notas de cata|ficha t[ée]cnica|elaboraci[óo]n|vi[ñn]edos?|maridaje|vista|nariz|boca|crianza en barrica|variedad(es)?|descargar|premios|puntuaciones|comprar|añadas?|otros vinos|nuestros vinos|vinos?|wines?|tinto|blanco|rosado|caracter[ií]sticas|gastronom[ií]a|el vi[ñn]edo)$/i;
 const CATEGORIA_NO_VINO = /gourmet|alimentaci[oó]n|delicatessen|merchandising|regalos?|packs?|lotes?|accesorios|aceites?|conservas|queso|otras bodegas|vinos de otras|otros vinos|importaci[oó]n|internacional|del mundo|champagne|oporto|porto|destilados|licores/i;
-const RUTA_NOTICIA = /\/(noticias?\d*|news|blog|actualidad|prensa|press|tag|category|categoria|author|[\w-]*en-los-medios|medios|premios-y-[\w-]+)(?:[\/._?-]|$)|\/(19|20)\d\d\/\d\d\/|[?&](add-to-cart|orderby|filter_|share|replytocom|add_to_wishlist)=|\/page\/\d+\/?$/i;
+const RUTA_NOTICIA = /\/(noticias?\d*|news|blogs?|magazine|revista|historias|articulos?|actualidad|prensa|press|tag|category|categoria|author|[\w-]*en-los-medios|medios|premios-y-[\w-]+)(?:[\/._?-]|$)|\/(19|20)\d\d\/\d\d\/|[?&](add-to-cart|orderby|filter_|share|replytocom|add_to_wishlist)=|\/page\/\d+\/?$/i;
+const RUTA_NO_VINO = /\/(destilados?|licores|aguardientes|aceites?|gourmet|merchandising|visitas?|visitar[\w-]*|enoturismo|experiencias?)(?:[\/._?-]|$)/i;
 const RUTA_PRIVADA = /\/(wp-login|wp-admin|login|mi-cuenta|my-account|cuenta|account|carrito|cart|checkout|finalizar-compra)(?:[\/.?]|$)/i;
 const PROTEGIDA = /class=["'][^"']*post-password-form|<title>[^<]*(protegid[oa] con contraseña|password protected)/i;
 const LISTADO = /^(?:nuestros?\s+)?(?:vinos|wines|productos|gama|nuestra gama|tienda|shop|elaboraci[óo]n)$/i;
@@ -606,6 +607,8 @@ export class RastreadorSitio {
     const out = new Map<string, VinoSitio>();
     const meter = (v: VinoSitio) => {
       if (!v.nombre || v.nombre.length < 2 || v.nombre.length > 80 || !esNombreDeVino(v.nombre) || TITULO_NO_VINO.test(v.nombre)) return;
+      // Noticias, blog, destilados y visitas nunca son la ficha de un vino, las descubra quien las descubra.
+      if (RUTA_NOTICIA.test(v.url) || RUTA_NO_VINO.test(v.url)) return;
       const k = `${claveTexto(v.nombre)}|${v.anio ?? ""}`;
       const previo = out.get(k);
       // Mismo vino en otro formato (mágnum, caja) o en dos fichas: se queda la ficha con más datos y

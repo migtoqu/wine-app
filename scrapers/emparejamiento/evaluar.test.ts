@@ -24,7 +24,8 @@ describe("métricas sobre casos reales", () => {
   it("catálogo de bodegas contra sí mismo: ninguna se vincula a otra", () => {
     const m = evaluarCatalogoBodegas();
     expect(m.falsosPositivos, m.detalle.filter((l) => l.startsWith("FP")).join("\n")).toBe(0);
-  });
+    // ~2,6 s en local y ~5,4 s en el runner de GitHub: el límite de 5 s lo hacía intermitente.
+  }, 20_000);
 
   it("vinos parecidos de la cola: 0 FP automáticos y al menos 4 de 7 duplicados resueltos", () => {
     const m = evaluarCasosVinos();

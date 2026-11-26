@@ -43,9 +43,26 @@ function principal($: Doc) {
 }
 
 /** Texto principal como lista de bloques en orden de documento. */
+/**
+ * Titulares animados letra a letra (Elementor «animated headline», Splitting.js): cada letra en su
+ * <span> separado por espacios daba «V i ñ a A n e». Un elemento cuyos hijos son 2 o más <span>
+ * de una sola letra, sin más texto, se sustituye por la palabra unida.
+ */
+export function unirLetras(c: CheerioAPI): void {
+  c("span, div, h1, h2, h3, h4, h5, h6, a").each((_, el) => {
+    const $el = c(el);
+    const hijos = $el.children().toArray();
+    if (hijos.length < 2 || !hijos.every((h) => (h as { tagName?: string }).tagName === "span" && c(h).children().length === 0 && c(h).text().trim().length === 1)) return;
+    const suelto = $el.contents().toArray().filter((n) => n.type === "text").map((n) => c(n).text()).join("").trim();
+    if (suelto) return;
+    $el.text(hijos.map((h) => c(h).text().trim()).join(""));
+  });
+}
+
 export function bloques($: Doc): Bloque[] {
   const c = cheerio.load($.html());
   c(RUIDO.join(", ")).remove();
+  unirLetras(c);
   const raiz = principal(c);
   const out: Bloque[] = [];
   raiz.find(BLOQUES).each((_, el) => {
@@ -76,6 +93,7 @@ export function bloquesDeContenedor(html: string): Bloque[] {
   const c = cheerio.load(`<html><body><main>${html}</main></body></html>`);
   // Las pestañas ocultas (`aria-hidden`) del contenedor son parte de la ficha: no se quitan.
   c(RUIDO.filter((r) => !/^(header|footer|nav|\.menu|\.sub-menu|\[aria-hidden=true\])$/.test(r)).join(", ")).remove();
+  unirLetras(c);
   const out: Bloque[] = [];
   c("main").find(BLOQUES_DIV).each((_, el) => {
     const $el = c(el);
