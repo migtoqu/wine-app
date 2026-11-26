@@ -409,7 +409,7 @@ export function extraerTemperatura(texto: string): { min: number; max: number } 
 /** Año de añada en el título o en una etiqueta («Añada: 2019»). */
 export function extraerAnio(titulo: string, texto: string, hoy = new Date().getFullYear()): number | null {
   const t = titulo.match(/\b(19[5-9]\d|20[0-4]\d)\b/);
-  const e = texto.match(/\b(?:añada|cosecha|vintage)\s*:?\s*(19[5-9]\d|20[0-4]\d)\b/i);
+  const e = texto.match(/\b(?:añada|cosecha|vendimia|vintage)\s*:?\s*(19[5-9]\d|20[0-4]\d)\b/i);
   const n = Number((t ?? e)?.[1]);
   return n >= 1950 && n <= hoy ? n : null;
 }

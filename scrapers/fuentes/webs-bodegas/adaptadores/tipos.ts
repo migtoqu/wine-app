@@ -53,13 +53,19 @@ export interface AdaptadorSitio {
   };
   /** Selectores CSS (cheerio) aplicados a las fichas (URLs que casan `patronFicha`). */
   selectores?: {
+    /**
+     * Varias fichas en una página (pestañas, acordeón, bloques de la portada): cada elemento es un
+     * vino, con su propio texto; `nombre` e `imagen` se buscan dentro de cada uno. La página puede
+     * ser la portada (`patronFicha` que casa la raíz): sigue contando como historia de la bodega.
+     */
+    fichas?: string;
     /** Contenedor(es) de la ficha: su texto sustituye al de `<main>`. */
     contenido?: string;
     /** Nombre del vino (si el h1 es el de la bodega o «Tienda online»). */
     nombre?: string;
     /** Elementos a quitar antes de leer (menús de «otros vinos», premios, carruseles). */
     quitar?: string;
-    /** Imagen de la botella. */
+    /** Imagen de la botella (`src`, `data-src` o el `background-image` de su `style`). */
     imagen?: string;
     /** Precio en euros de la ficha (si no hay JSON-LD `Offer`): «36.00€», «12,50 €». */
     precio?: string;

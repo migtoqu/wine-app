@@ -6,7 +6,6 @@
 
 ## 🔴 Bloqueos (te tocan a ti)
 
-- [ ] **Dominio Lubiano** en `/admin/bodegas`: renombrar «Velvety Wines» → «Dominio Lubiano», web `https://dominiolubiano.com`, y borrar su vino falso «Laon Wine House» (es el nombre de la plantilla de su web).
 - [ ] **Probar en el móvil con sesión iniciada**: Mi cava (`/yo/cava`), la portada nueva y el botón Atrás. Nadie lo ha recorrido aún con una cuenta real.
 
 ## 🟠 Siguiente (datos)
