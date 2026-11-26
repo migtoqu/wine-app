@@ -210,6 +210,15 @@ interface Contenido {
   soloEnlaces?: boolean;
   /** Ficha de un adaptador: no se divide como listado y usa su umbral de evidencias. */
   fichaAdaptador?: { evidenciasMin: number; parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null };
+  /** `selectores.fichas` de un adaptador: un vino por elemento de la página (en cualquier clase). */
+  fichasAdaptador?: FichaEnPagina[];
+}
+
+interface FichaEnPagina {
+  titulo: string;
+  bloques: Bloque[];
+  imagen: { url: string; alt: string | null } | null;
+  parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null;
 }
 
 interface ProductoWoo {
@@ -605,7 +614,18 @@ export class RastreadorSitio {
       if (!previo || v.evidencias > previo.evidencias) out.set(k, { ...v, ofertas, imagen: v.imagen ?? previo?.imagen ?? null });
       else previo.ofertas = ofertas;
     };
-    for (const c of contenidos.filter((x) => x.clase === "vino" && !x.soloEnlaces)) {
+    // Varias fichas en una página (adaptador con `selectores.fichas`): un vino por elemento.
+    for (const c of contenidos.filter((x) => x.fichasAdaptador)) {
+      const min = c.fichaAdaptador?.evidenciasMin ?? 2;
+      for (const f of c.fichasAdaptador!) {
+        const texto = textoDe(f.bloques);
+        const { bodega: dueña, ...parcial } = f.parcial ?? {};
+        const v: VinoWeb & { bodega_marca?: VinoSitio["bodega_marca"] } = { ...extraerVino(f.titulo, texto, { hoy }), ...parcial };
+        if (dueña !== undefined) v.bodega_marca = { estado: "dudosa", bodega: dueña };
+        if (v.evidencias >= min) meter(conDo(v, { ...c, titulo: f.titulo }, c.url, texto, imagenBotella(f.imagen?.url, f.imagen?.alt ?? null, c.url, esDelSitio)));
+      }
+    }
+    for (const c of contenidos.filter((x) => x.clase === "vino" && !x.soloEnlaces && !x.fichasAdaptador)) {
       if (c.producto) {
         const p = c.producto;
         // Con `fichaHtmlWoo` el texto de la ficha HTML se suma al de la Store API.
@@ -996,11 +1016,29 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
       : null;
     const bs = indexable ? bloquesFicha ?? bloques($) : [];
     const imagenSel = sel.imagen ? $(sel.imagen).first() : null;
-    const srcSel = imagenSel?.attr("data-large_image") ?? imagenSel?.attr("data-src") ?? imagenSel?.attr("src");
+    const srcSel = imagenSel ? srcDe(imagenSel) : undefined;
     // <base href> (p. ej. «/es/»): las rutas relativas de enlaces e imágenes se resuelven contra él.
     const base = baseDe($, res.url);
     let parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null = null;
-    if (ficha && ad?.extraerVino) {
+    const fichasAdaptador = ficha && indexable && sel.fichas
+      ? $(sel.fichas).toArray().map((el): FichaEnPagina => {
+          const $el = $(el);
+          const n = sel.nombre ? $el.find(sel.nombre).first() : null;
+          n?.find("br").replaceWith(" ");
+          const nombre = limpiarEspacios((n?.text() ?? "").replace(/\u00ad/g, ""));
+          const img = sel.imagen ? $el.find(sel.imagen).first() : null;
+          const src = img?.length ? srcDe(img) : undefined;
+          const bs1 = bloquesDeContenedor($.html(el));
+          const texto = textoDe(bs1);
+          return {
+            titulo: nombre,
+            bloques: bs1,
+            imagen: src ? urlImagen(src, base, img?.attr("alt")) : null,
+            parcial: ad?.extraerVino ? ad.extraerVino({ $, url: res.url, texto, vino: extraerVino(nombre, texto, { hoy: ctx.ahora.getFullYear() }) }) : null,
+          };
+        }).filter((f) => f.titulo.length >= 2)
+      : undefined;
+    if (ficha && ad?.extraerVino && !fichasAdaptador) {
       const texto = textoDe(bs);
       parcial = ad.extraerVino({ $, url: res.url, texto, vino: extraerVino(t, texto, { hoy: ctx.ahora.getFullYear() }) });
     }
@@ -1010,6 +1048,7 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
       origen: "html",
       titulo: t,
       fichaAdaptador: ficha && indexable ? { evidenciasMin: ad!.evidenciasMin ?? 2, parcial } : undefined,
+      fichasAdaptador: fichasAdaptador?.length ? fichasAdaptador : undefined,
       soloEnlaces: soloEnlaces || undefined,
       bloques: bs,
       enlaces: sigue ? enlaces($, base) : [],
@@ -1058,6 +1097,12 @@ export function baseDe($: ReturnType<typeof cargar>, url: string): string {
   }
 }
 
+/** URL de una imagen: atributos de carga diferida, `src` o el `background-image` de su `style`. */
+function srcDe(img: ReturnType<ReturnType<typeof cargar>>): string | undefined {
+  const fondo = img.attr("style")?.match(/background(?:-image)?\s*:[^;]*url\(\s*['"]?([^'")]+)['"]?\s*\)/i)?.[1];
+  return img.attr("data-large_image") ?? img.attr("data-src") ?? img.attr("src") ?? fondo;
+}
+
 function urlImagen(src: string, base: string, alt: string | undefined): { url: string; alt: string | null } | null {
   try {
     return { url: new URL(src, base).href, alt: alt?.trim() || null };
@@ -1081,6 +1126,7 @@ async function descubrirAdaptador(ctx: ContextoDescubrimiento, contenidos: Conte
   const rutas = ad.rutas ?? {};
   // Clave normalizada → URL tal cual y lastmod del sitemap.
   const fichas = new Map<string, { url: string; lastmod: string | null }>();
+  let vistas = 0;
   const abs = (u: string) => new URL(u, ctx.origen).href;
   const anotar = (u0: string, lastmod: string | null) => {
     const u = rutas.canonica ? rutas.canonica(u0) : u0;
@@ -1101,6 +1147,19 @@ async function descubrirAdaptador(ctx: ContextoDescubrimiento, contenidos: Conte
     if (!esFichaAdaptador(ad, c.url)) contenidos.push({ ...c, clase: "vino", soloEnlaces: true });
   }
   for (const e of enlacesHome) anotar(e.url, null);
+  // Fichas en la portada (o en otra página ya vista como historia): se lee otra vez con los
+  // selectores del adaptador y sus vinos se añaden a esa página, que conserva su clase.
+  if (ad.selectores?.fichas) {
+    anotar(abs("/"), null);
+    for (const [k, f] of fichas) {
+      const previa = contenidos.find((c) => normalizarUrl(c.url) === k && !c.fichasAdaptador);
+      if (!previa) continue;
+      fichas.delete(k);
+      const c = await paginaHtml(ctx, f.url, previa.clase);
+      if (c?.fichasAdaptador) Object.assign(previa, { fichasAdaptador: c.fichasAdaptador, fichaAdaptador: c.fichaAdaptador });
+      vistas += c?.fichasAdaptador ? 1 : 0;
+    }
+  }
   const ya = new Set(contenidos.map((c) => normalizarUrl(c.url)));
   const lista = [...fichas]
     .filter(([k]) => !ya.has(k))
@@ -1112,7 +1171,7 @@ async function descubrirAdaptador(ctx: ContextoDescubrimiento, contenidos: Conte
     const c = await paginaHtml(ctx, e.url, "vino");
     if (c) contenidos.push({ ...c, modificada: e.modificada });
   }
-  return lista.length;
+  return lista.length + vistas;
 }
 
 /** `fichaHtmlWoo`: el HTML de cada producto de la Store API completa su texto (y la imagen y el JSON-LD). */
