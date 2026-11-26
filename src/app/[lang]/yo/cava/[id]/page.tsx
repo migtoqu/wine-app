@@ -8,6 +8,7 @@ import { buttonStyles, Card, CardBody } from "@/components/ui";
 import { localePath } from "@/i18n/config";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { requireUser } from "@/lib/auth/server";
+import { cavaFormLabels } from "@/lib/personal/cava";
 import { getVino } from "@/lib/catalog/queries";
 import { deleteCavaLote } from "@/lib/personal/cava-actions";
 import { getCavaLote } from "@/lib/personal/queries";
@@ -66,7 +67,7 @@ async function EditForm({ params }: Pick<PageProps<"/[lang]/yo/cava/[id]">, "par
     <>
       <Card className="mt-6">
         <CardBody>
-          <CavaForm lang={lang} labels={cava} vino={vino} values={lote} />
+          <CavaForm lang={lang} labels={cavaFormLabels(cava)} vino={vino} values={lote} />
         </CardBody>
       </Card>
       <form action={deleteCavaLote} className="mt-6">
