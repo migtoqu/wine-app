@@ -19,6 +19,7 @@ const adaptador: AdaptadorSitio = {
     { patron: /\/bodegas\/vinedos-sierra-cantabria\//, bodega: "Viñedos Sierra Cantabria" },
     { patron: /\/bodegas\/sierra-cantabria\//, bodega: "Bodegas Sierra Cantabria" },
     { patron: /\/bodegas\/teso-la-monja\//, bodega: "Teso La Monja" },
+    { patron: /\/bodegas\/senorio-de-san-vicente\//, bodega: "Señorío de San Vicente" },
   ],
   // «Gran Reserva», «Reserva», «Crianza» sin color en el nombre: en este grupo son tintos.
   extraerVino: (f) => (f.vino.tipo == null && f.vino.crianza && !/blanco|rosado/i.test(f.vino.nombre) ? { tipo: "tinto" } : null),
