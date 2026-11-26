@@ -10,14 +10,17 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] Revisar en `/admin/revision` los 38 vinos de webs compartidas por varias bodegas (Sierra Cantabria / Teso La Monja, Pago de Cirsus…). La carga de webs de bodegas con la ola D se lanzó a mano el 2026-11-26.
 - [ ] Lector para webs de bodega en **Shopify** (6 webs que hoy no dan vinos), en PR aparte.
 - [ ] Webs que necesitan **navegador** (render JS): cooperativa de Cigales y Mazuela.
 - [ ] **AJV**: devolvió 429 en la última prueba; revisar ritmo y reintentar.
 - [ ] **Vinorea**: listados vacíos desde Actions (adaptado a PrestaShop 8 en #37); confirmar en la próxima ejecución.
-- [ ] Test intermitente `scrapers/emparejamiento/evaluar.test.ts` («catálogo de bodegas contra sí mismo»): pasa de 5 s con la suite en paralelo. Subir su timeout o aligerarlo.
 - [ ] Ampliar **cobertura de D.O.**: hoy 8; faltan Rías Baixas, Ribeiro, Penedès, Cava, Somontano, Jumilla, La Mancha, Jerez…
 - [ ] Nombres alternativos de bodega en el buscador (marca vs. razón social).
+
+## ✅ Hecho el 2026-11-26
+
+- Mi cava: foto de la botella con miniatura (#59).
+- Revisión de los vinos de webs de grupo: 19 registros (los 38 ya habían bajado). 5 de Irache asociados a sus fichas; creadas las bodegas Bodegas Sierra Cantabria, Viñedos Sierra Cantabria y Señorío de San Vicente (sin web, para no compartir dominio con Páganos) con sus 12 vinos, y 2 vinos «Colección Privada» de Irache. La próxima carga de webs aplica las decisiones.
 
 ## 🟡 Producto — Fase 2
 
