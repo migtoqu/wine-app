@@ -10,14 +10,15 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] **AJV**: devolvió 429 en la última prueba; revisar ritmo y reintentar.
-- [ ] **Vinorea**: listados vacíos desde Actions (adaptado a PrestaShop 8 en #37); confirmar en la próxima ejecución.
 - [ ] Ampliar **cobertura de D.O.**: hoy 8; faltan Rías Baixas, Ribeiro, Penedès, Cava, Somontano, Jumilla, La Mancha, Jerez…
 - [ ] Nombres alternativos de bodega en el buscador (marca vs. razón social).
 
 ## ✅ Hecho el 2026-11-27
 
 - Cooperativa de Cigales y Mazuela: no necesitaban navegador. Adaptadores nuevos (de 0 a 14 vinos en dry-run): en `bodegacigales.es` las fichas están por columnas en las dos páginas de gama Torondos (9 vinos; el «Torondos Verdejo Rueda» va a D.O. Rueda); en `bodegasmazuela.com` `/vinos/` redirige por JavaScript y el nombre solo está en el `<title>` con «Caja de 6» (5 vinos, con añada e imagen). Los adaptadores pueden dar ya la D.O. de una ficha que no trae la sigla. Se cargan en la próxima ejecución de webs.
+- AJV sin 429: las ejecuciones del 26 de noviembre leyeron la web entera (7 vinos en la BD, 11 servicios).
+- Vinorea confirmada tras el arreglo de PrestaShop 8: la ejecución del 15 de noviembre leyó 114 ofertas sin errores (la del 22 no arrancó por la facturación de Actions, antes de que el repo fuera público).
+- Tablero de tareas en vivo (artifact privado, fuente en `docs/tablero/tareas.html`): lo actualiza Claude al empezar y acabar cada tarea.
 
 ## ✅ Hecho el 2026-11-26
 
