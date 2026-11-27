@@ -10,7 +10,7 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] Ampliar **cobertura de D.O.**: hoy 19 (el 2026-11-27 se añadieron Penedès, Jerez, Ribeiro, Cava, La Mancha, Jumilla, Somontano, Empordà, Ribera del Guadiana, Calatayud y Alicante). Aplazadas por no tener directorio con datos: Valdepeñas, Utiel-Requena, Campo de Borja y Montilla-Moriles. Pendiente buscar el dominio real de Montsant, Costers del Segre, Monterrei, Bullas, Yecla, Manchuela, Arlanza, Binissalem y Tierra de León (los habituales no resuelven), y el de Cariñena (docarinena.com es ahora spam). Rías Baixas sigue dando 403 a nuestro UA.
+- [ ] Ampliar **cobertura de D.O.**: hoy 27 (el 2026-11-27 se añadieron Penedès, Jerez, Ribeiro, Cava, La Mancha, Jumilla, Somontano, Empordà, Ribera del Guadiana, Calatayud, Alicante, Costers del Segre, Monterrei, Bullas, Arlanza, León, Yecla, Binissalem y Cariñena). Aplazadas por no tener directorio con datos en el HTML: Valdepeñas, Utiel-Requena, Campo de Borja, Montilla-Moriles y Montsant. Manchuela perdió su dominio (hoy es spam). Rías Baixas sigue dando 403 a nuestro UA.
 - [ ] Nombres alternativos de bodega en el buscador (marca vs. razón social).
 
 ## ✅ Hecho el 2026-11-27

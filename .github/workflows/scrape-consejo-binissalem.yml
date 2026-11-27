@@ -1,0 +1,59 @@
+name: Scraper C.R. Binissalem
+
+# Semanal, en su propia franja: miércoles 11:07 UTC (antes del crawler de webs del jueves,
+# que rastrea las webs que este scraper deja en bodegas.web).
+# Nunca se ejecuta en pull requests: solo cron y lanzamiento manual.
+on:
+  schedule:
+    - cron: "7 11 * * 3"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run: no toca la BD y sube el JSON normalizado como artefacto"
+        type: boolean
+        default: false
+      limit:
+        description: "Máximo de bodegas a procesar (vacío = todas)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-consejo-binissalem
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Ejecutar scraper
+        env:
+          # Solo se pasan en ejecuciones reales; en dry-run no hacen falta.
+          SUPABASE_URL: ${{ !inputs.dry_run && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ !inputs.dry_run && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          args=(consejo-binissalem)
+          if [ -n "$DRY_RUN" ]; then args+=(--dry-run --out scrapers/out/consejo-binissalem.json); fi
+          if [ -n "$LIMIT" ]; then args+=(--limit "$LIMIT"); fi
+          node scrapers/cli.ts "${args[@]}"
+
+      - name: Subir resultado del dry-run
+        if: ${{ always() && inputs.dry_run }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: consejo-binissalem-dry-run
+          path: scrapers/out/consejo-binissalem.json
+          if-no-files-found: ignore
+          retention-days: 14
