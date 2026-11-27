@@ -433,7 +433,7 @@ Los términos de Rueda y Navarra **no se han leído** todavía: auditarlos al em
 
 ### 5.3 Ola C: consejos con directorio de bodegas (auditados el 2026-11-08)
 
-Scrapers en `scrapers/fuentes/consejos/`: un **núcleo común** (`comun/`: normalizar → `EmparejadorBodegas` → consolidación, con la D.O. como parámetro) y un parser por consejo, porque las cinco webs usan plataformas distintas. CLI: `node scrapers/cli.ts consejo-<toro|cigales|bierzo|priorat|rueda|penedes|jerez>`. Fuentes `cr-<consejo>` (migraciones `20261112120000` y, para Penedès y Jerez, `20261127111655` y `20261127113231`), tipo `consejo_regulador`, semanales.
+Scrapers en `scrapers/fuentes/consejos/`: un **núcleo común** (`comun/`: normalizar → `EmparejadorBodegas` → consolidación, con la D.O. como parámetro) y un parser por consejo, porque las cinco webs usan plataformas distintas. CLI: `node scrapers/cli.ts consejo-<toro|cigales|bierzo|priorat|rueda|penedes|jerez|ribeiro>`. Fuentes `cr-<consejo>` (migraciones `20261112120000` y, para Penedès, Jerez y Ribeiro, `20261127111655`, `20261127113231` y `20261127115900`), tipo `consejo_regulador`, semanales.
 
 Auditoría: unas 40 peticiones, como mucho 7 por sitio, ≥ 4 s entre peticiones al mismo host y con el UA del proyecto. Todos responden 200, sin desafío anti-bot ni WAF.
 
@@ -446,12 +446,15 @@ Auditoría: unas 40 peticiones, como mucho 7 por sitio, ≥ 4 s entre peticiones
 | **Rueda** (`dorueda.com`) | Vacío | Igual que Toro | `/bodegas/`: **tabla única** (las fichas `?pdb=N` devuelven la misma tabla y no se piden) | Nombre, localidad, web, «Visitable», tienda online. Sin CP: provincia por tabla de municipios (Valladolid, Segovia, Ávila) |
 | **Penedès** (`dopenedes.cat`, auditado el 2026-11-27) | `Disallow:` vacío | Reproducir o comunicar contenidos requiere consentimiento expreso; nada sobre extracción | `/es/bodegas/` (tabla: id de ficha, nombre, municipio, iconos de venta online y WineBar) + **CSV del consejo** `/llistat_cellers.php`; se cruzan por nombre (134/134) y las fichas `?id=N` no se piden | Nombre, dirección, CP, municipio, teléfono, web, email; `venta_online` y `winebar` en `datos`. El CSV va en Latin-1 aunque se anuncie UTF-8 (`decodificarCuerpo` en `lib/http.ts`) |
 | **Jerez** (`www.sherry.wine`, auditado el 2026-11-27) | Solo `/admin/` y URLs sueltas | `/es/legal`: prohíbe reproducir contenidos sin consentimiento; nada sobre extracción | `/sherry-wine/bodegas/bodegas-listing`: **página única** con las 64 bodegas (solo en inglés); las pestañas `?t=crianza-y-expedicion` y `?t=crianza-y-almacenista` dan el tipo de registro. Las fichas no se piden | Nombre, razón social (en `datos`), dirección, CP, municipio, email, web, registro. Slugs con tildes codificadas (`bodegas-arg%C3%BCeso`). Una sola D.O. en el catálogo (`jerez-xeres-sherry`) aunque el consejo gestiona también Manzanilla-Sanlúcar |
+| **Ribeiro** (`www.ribeiro.wine`, auditado el 2026-11-27) | Solo `/wp-admin/` | `/es/aviso-legal`: prohíbe el uso no autorizado y la reventa; nada sobre extracción | `/es/bodegas-y-colleiteiros`: dos secciones (bodegas y colleiteiros, cosecheros < 60.000 l/año) → una ficha por bodega con un bloque «CONTACTO» de líneas `Etiqueta: valor` | Dirección, CP y municipio («Ayuntamiento: 32429 Leiro»), email, web, teléfono, coordenadas (solo 1 ficha), registro (bodega/colleiteiro). **No** se leen descripción, razón social ni persona de contacto (en los colleiteiros son particulares). «Localización instalaciones» manda sobre la sede. Toda la D.O. en Ourense (`provinciaUnica`) |
 
 Reglas: solo hechos con enlace a la ficha; **nunca** la descripción de la bodega, imágenes ni nombres de personas (contacto, enólogos, responsables). Las marcas no crean vinos: van a `datos` y al emparejador. La provincia sale del código postal; si no hay, de la tabla de municipios de la D.O.; nunca se pone la de la D.O. por defecto. Proyecto privado y sin ánimo de lucro; **avisar a cada consejo antes de la fase pública** (Cigales es el más restrictivo).
 
 Descartados: **Rías Baixas** (`doriasbaixas.com`) devuelve 403 a `robots.txt`; no se insiste ni se cambia de UA. Re-comprobado el 2026-11-27: `robots.txt` ya responde 200 (solo bloquea `wp-admin` y búsquedas), pero la portada y el sitemap siguen dando **403** con nuestro UA: sigue descartada.
 
 **Jerez, dry-run (2026-11-27):** 64 bodegas en 4 peticiones y 13 s, 0 errores; todas con CP, municipio, provincia (62 Cádiz, 2 Sevilla) y email, 51 con web; 45 de crianza y expedición y 8 almacenistas.
+
+**Ribeiro, dry-run (2026-11-27):** 88 bodegas (51 bodegas y 37 colleiteiros) en 90 peticiones y 372 s, 0 errores; 77 con CP, 85 con municipio, 78 con email, 52 con web.
 
 **Penedès, dry-run (2026-11-27):** 134 bodegas en 3 peticiones y 8 s, 0 errores; todas con CP, municipio y provincia (124 Barcelona, 10 Tarragona), 133 con teléfono, 129 con email, 121 con web.
 

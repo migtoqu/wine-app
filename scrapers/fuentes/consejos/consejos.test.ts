@@ -14,6 +14,7 @@ import { CONSEJOS } from "./index.ts";
 import * as jerez from "./jerez.ts";
 import * as penedes from "./penedes.ts";
 import * as priorat from "./priorat.ts";
+import * as ribeiro from "./ribeiro.ts";
 import * as rueda from "./rueda.ts";
 import * as toro from "./toro.ts";
 
@@ -289,7 +290,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -413,5 +414,47 @@ describe("Jerez: listado único de sherry.wine", () => {
     expect(pedidas).toEqual([jerez.URL_LISTADO, jerez.URL_EXPEDICION, jerez.URL_ALMACENISTA]);
     expect(r.find((e) => e.datos.id_externo === "slug:albarizas")!.datos.extra).toMatchObject({ registro: "crianza_y_expedicion" });
     expect(r.find((e) => e.datos.id_externo === "slug:bodega-conde-peraleja")!.datos.extra).not.toHaveProperty("registro");
+  });
+});
+
+describe("Ribeiro: listado + ficha con bloque de contacto", () => {
+  const es = ribeiro.parsearListado(fixture("ribeiro-listado.html"));
+
+  it("bodegas y colleiteiros por sección, sin el enlace del pie", () => {
+    expect(es.map((e) => e.datos.id_externo)).toEqual([
+      "slug:a-vilerma", "slug:adega-as-pegas", "slug:adegas-francisco-fernandez-sousa", "slug:adega-catro-ferrados", "slug:adegas-celme",
+    ]);
+    expect(es[0]!.url).toBe("https://www.ribeiro.wine/es/bodegas-y-colleiteiros/a-vilerma");
+    expect(es[0]!.datos.extra).toEqual({ registro: "bodega" });
+    expect(es[4]!.datos).toMatchObject({ nombre: "Adegas Celme, S.L.", extra: { registro: "colleiteiro" } });
+  });
+
+  it("ficha: CP y municipio del ayuntamiento, coordenadas, sin razón social ni persona", () => {
+    const f = ribeiro.parsearFicha(fixture("ribeiro-a-vilerma.html"), es[0]!);
+    expect(f).toMatchObject({
+      nombre: "A Vilerma", direccion: "A Vilerma - Gomariz", codigo_postal: "32429", municipio: "Leiro",
+      web: "https://vilerma.com/", email: "contacto@vilerma.com", telefono: "983 816 600",
+      ubicacion: { lat: 42.3792262, lng: -8.104550600000039 }, extra: { registro: "bodega" },
+    });
+    expect(JSON.stringify(f)).not.toMatch(/Pariente S\.L|Prieto/);
+  });
+
+  it("ayuntamiento sin CP cae en Ourense; email en enlace mailto", () => {
+    const entrada = { url: `${ribeiro.URL_LISTADO}/bodega-alanis`, datos: { id_externo: "slug:bodega-alanis", nombre: "Bodega Alanís" } };
+    const alanis = ribeiro.parsearFicha(fixture("ribeiro-alanis.html"), entrada);
+    expect(alanis).toMatchObject({ codigo_postal: null, municipio: "Cenlle", web: "http://www.bodegaalanis.com" });
+    expect(normalizarBodega(alanis, ribeiro.consejoRibeiro).campos).toMatchObject({ provincia: "Ourense" });
+    const pazo = ribeiro.parsearFicha(fixture("ribeiro-pazo-do-mar.html"), { url: "u", datos: { nombre: "Adegas Pazo do Mar" } });
+    expect(pazo).toMatchObject({ email: "info@pazodomar.com", codigo_postal: "32940", municipio: "Toén", direccion: "Féa" });
+  });
+
+  it("fichas sin <p>, sin <br/> entre líneas y con instalaciones aparte de la sede", () => {
+    const html = (lineas: string) => `<div><div><h3>CONTACTO</h3>\n${lineas}\n</div></div>`;
+    const sinP = ribeiro.parsearFicha(html("Dirección: Crtra. Pena Corneira, 22<br/>\nAyuntamiento: Leiro<br/>\nE-mail: <a href=\"mailto:x@y.es\"></a>x@y.es<br/>"), { url: "u", datos: { nombre: "A" } });
+    expect(sinP).toMatchObject({ direccion: "Crtra. Pena Corneira, 22", municipio: "Leiro", email: "x@y.es" });
+    const inst = ribeiro.parsearFicha(html("<p>\nDirección: Av. Das caldas 24<br/>\nLocalización instalaciones: Esposende 5, Cenlle\nAyuntamiento: 32003 Ourense <br/>\nE-mail: <br/>"), { url: "u", datos: { nombre: "B" } });
+    expect(inst).toMatchObject({ direccion: "Esposende 5, Cenlle", municipio: "Cenlle", codigo_postal: null, email: null });
+    expect(ribeiro.partirAyuntamiento("32420 - Leiro")).toEqual({ cp: "32420", municipio: "Leiro" });
+    expect(municipioDe("Gomariz", ribeiro.ALIAS_MUNICIPIO)).toBe("Leiro");
   });
 });
