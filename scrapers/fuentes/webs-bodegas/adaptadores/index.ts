@@ -4,12 +4,14 @@ import { dominioBase } from "../dominio.ts";
 import ajv from "./ajv.wine.ts";
 import alegrevalganon from "./alegrevalganon.com.ts";
 import arrocal from "./arrocal.com.ts";
+import bodegacigales from "./bodegacigales.es.ts";
 import bodegamartinezyebra from "./bodegamartinezyebra.es.ts";
 import bodegasLozano from "./bodegas-lozano.com.ts";
 import bodegasanmiguelsc from "./bodegasanmiguelsc.es.ts";
 import bodegascampillo from "./bodegascampillo.com.ts";
 import bodegasdiezgomez from "./bodegasdiezgomez.com.ts";
 import bodegasfaustino from "./bodegasfaustino.com.ts";
+import bodegasmazuela from "./bodegasmazuela.com.ts";
 import bodegasgarciadeolano from "./bodegasgarciadeolano.com.ts";
 import dominiodecair from "./dominiodecair.com.ts";
 import dominiolubiano from "./dominiolubiano.com.ts";
@@ -27,7 +29,7 @@ import virtuswine from "./virtuswine.com.ts";
 import type { AdaptadorSitio } from "./tipos.ts";
 
 export const ADAPTADORES: AdaptadorSitio[] = [
-  ajv, alegrevalganon, arrocal, bodegamartinezyebra, bodegasLozano, bodegasanmiguelsc, bodegascampillo, bodegasdiezgomez, bodegasfaustino, bodegasgarciadeolano, dominiodecair, dominiolubiano, luiscanas, milenico, obac, pagodecirsus, ribasdelcua, senoriodelibano, sierracantabria, sinforianobodegas, tomaspostigo, vinazorzalwines, virtuswine,
+  ajv, alegrevalganon, arrocal, bodegacigales, bodegamartinezyebra, bodegasLozano, bodegasanmiguelsc, bodegascampillo, bodegasdiezgomez, bodegasfaustino, bodegasmazuela, bodegasgarciadeolano, dominiodecair, dominiolubiano, luiscanas, milenico, obac, pagodecirsus, ribasdelcua, senoriodelibano, sierracantabria, sinforianobodegas, tomaspostigo, vinazorzalwines, virtuswine,
 ];
 
 const porDominio = new Map(ADAPTADORES.flatMap((a) => a.dominios.map((d) => [d, a] as const)));

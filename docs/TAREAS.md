@@ -1,6 +1,6 @@
 # Tareas pendientes
 
-> Resumen operativo a 2026-11-26, sacado de las sesiones anteriores (orquestación del MVP, plan de trabajos, scope y diseño) y de [ROADMAP.md](./ROADMAP.md).
+> Resumen operativo a 2026-11-27, sacado de las sesiones anteriores (orquestación del MVP, plan de trabajos, scope y diseño) y de [ROADMAP.md](./ROADMAP.md).
 > El roadmap sigue siendo la lista completa por fases; aquí va solo lo siguiente que hay que hacer, en orden.
 > Estado del repo: público desde el 2026-11-26 (#51), así GitHub Actions es gratis y sin límite de minutos.
 
@@ -10,11 +10,14 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] Webs que necesitan **navegador** (render JS): cooperativa de Cigales y Mazuela.
 - [ ] **AJV**: devolvió 429 en la última prueba; revisar ritmo y reintentar.
 - [ ] **Vinorea**: listados vacíos desde Actions (adaptado a PrestaShop 8 en #37); confirmar en la próxima ejecución.
 - [ ] Ampliar **cobertura de D.O.**: hoy 8; faltan Rías Baixas, Ribeiro, Penedès, Cava, Somontano, Jumilla, La Mancha, Jerez…
 - [ ] Nombres alternativos de bodega en el buscador (marca vs. razón social).
+
+## ✅ Hecho el 2026-11-27
+
+- Cooperativa de Cigales y Mazuela: no necesitaban navegador. Adaptadores nuevos (de 0 a 14 vinos en dry-run): en `bodegacigales.es` las fichas están por columnas en las dos páginas de gama Torondos (9 vinos; el «Torondos Verdejo Rueda» va a D.O. Rueda); en `bodegasmazuela.com` `/vinos/` redirige por JavaScript y el nombre solo está en el `<title>` con «Caja de 6» (5 vinos, con añada e imagen). Los adaptadores pueden dar ya la D.O. de una ficha que no trae la sigla. Se cargan en la próxima ejecución de webs.
 
 ## ✅ Hecho el 2026-11-26
 
