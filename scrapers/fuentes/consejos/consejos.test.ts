@@ -18,6 +18,7 @@ import * as jumilla from "./jumilla.ts";
 import * as laMancha from "./la-mancha.ts";
 import * as penedes from "./penedes.ts";
 import * as priorat from "./priorat.ts";
+import * as riberaGuadiana from "./ribera-guadiana.ts";
 import * as ribeiro from "./ribeiro.ts";
 import * as rueda from "./rueda.ts";
 import * as somontano from "./somontano.ts";
@@ -295,7 +296,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda", "consejo-ribera-guadiana"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+(?:-[a-z]+)*$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -626,5 +627,37 @@ describe("Empordà: ficha con bloque de datos y etiquetas", () => {
     });
     expect(JSON.stringify(f)).not.toMatch(/omesa|Petit celler/);
     expect(normalizarBodega(f, emporda.consejoEmporda).campos).toMatchObject({ provincia: "Girona", comunidad: "Cataluña" });
+  });
+});
+
+describe("Ribera del Guadiana: lista con iconos y tarjetas de vinos", () => {
+  it("listado con rel=next", () => {
+    const { entradas, ultimaPagina } = riberaGuadiana.parsearListado(fixture("ribera-guadiana-listado.html"));
+    expect(entradas.map((e) => e.datos.id_externo)).toEqual(["slug:bodegas-canalva", "slug:bodegas-oran"]);
+    expect(ultimaPagina).toBe(2);
+  });
+
+  it("ficha: dirección con C.P., teléfono, email, web y vinos como marcas", () => {
+    const f = riberaGuadiana.parsearFicha(fixture("ribera-guadiana-canalva.html"), { url: "u", datos: { id_externo: "slug:bodegas-canalva" } });
+    expect(f).toMatchObject({
+      nombre: "Cañalva bodegas y viñedos", direccion: "C/Coto Nº 54", codigo_postal: "10136", telefono: "+34 927 369 405",
+      email: "info@bodegascanalva.com", web: "https://www.bodegascanalva.com/es/",
+      marcas: ["Cañalva blanco", "Cañalva Tinto", "Cañalva Roble"],
+    });
+    expect(normalizarBodega(f, riberaGuadiana.consejoRiberaGuadiana).campos).toMatchObject({ provincia: "Cáceres", comunidad: "Extremadura" });
+  });
+
+  it("direcciones con y sin CP", () => {
+    expect(riberaGuadiana.partirDireccion("Ctra. Badajoz, s/n 06200 Almendralejo")).toMatchObject({ direccion: "Ctra. Badajoz, s/n", cp: "06200", municipio: "Almendralejo" });
+    expect(riberaGuadiana.partirDireccion("Carretera de Palomas, Km. 1,8, Villafranca de los Barros, Badajoz"))
+      .toEqual({ direccion: "Carretera de Palomas, Km. 1,8", cp: null, municipio: "Villafranca de los Barros", provincia: "Badajoz" });
+  });
+
+  it("se para cuando una página no trae fichas nuevas", async () => {
+    const pedidas: string[] = [];
+    const html = fixture("ribera-guadiana-listado.html");
+    const ctx = { http: { get: async (u: string) => (pedidas.push(u), { url: u, status: 200, texto: html }) }, log: new Log() } as unknown as Contexto;
+    expect(await riberaGuadiana.consejoRiberaGuadiana.listar(ctx)).toHaveLength(2);
+    expect(pedidas).toEqual(["https://riberadelguadiana.eu/bodegas/", "https://riberadelguadiana.eu/bodegas/page/2/"]);
   });
 });
