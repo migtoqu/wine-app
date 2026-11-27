@@ -101,10 +101,14 @@ export function parsearFicha(html: string, entrada: EntradaListado): FichaConsej
   const sede = partirAyuntamiento(valor("ayuntamiento", "concello"));
   // «Localización instalaciones: Esposende 5, Cenlle»: la bodega está ahí; el ayuntamiento es la sede.
   const instalaciones = valor("localizacion instalaciones");
-  const municipioInstalaciones = instalaciones ? t(instalaciones.split(",").pop()) : null;
-  const usarSede = !municipioInstalaciones;
+  // Solo vale como municipio si el último trozo es un nombre («A Ponte, 21» no lo trae).
+  const ultimo = instalaciones?.includes(",") ? t(instalaciones.split(",").pop()) : null;
+  const municipioInstalaciones = ultimo && !/\d/.test(ultimo) ? ultimo : null;
+  const otroMunicipio =
+    !!municipioInstalaciones && claveTexto(municipioInstalaciones) !== claveTexto(sede.municipio ?? "");
+  const usarSede = !otroMunicipio;
   const cp = usarSede ? sede.cp : null;
-  const municipio = municipioInstalaciones ?? sede.municipio;
+  const municipio = otroMunicipio ? municipioInstalaciones : sede.municipio;
   const emailTexto = valor("e mail", "email", "correo electronico");
   const email = emailTexto && /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(emailTexto) ? emailTexto.toLowerCase() : null;
   const hrefWeb = l.get("web")?.href ?? null;
@@ -115,7 +119,7 @@ export function parsearFicha(html: string, entrada: EntradaListado): FichaConsej
     url: entrada.url,
     id_externo: entrada.datos.id_externo ?? `slug:${slugDe(entrada.url)}`,
     nombre,
-    direccion: usarSede ? valor("direccion", "enderezo") : instalaciones,
+    direccion: instalaciones ?? valor("direccion", "enderezo"),
     codigo_postal: cp,
     municipio,
     provincia_texto: null,

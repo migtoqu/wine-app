@@ -454,6 +454,8 @@ describe("Ribeiro: listado + ficha con bloque de contacto", () => {
     expect(sinP).toMatchObject({ direccion: "Crtra. Pena Corneira, 22", municipio: "Leiro", email: "x@y.es" });
     const inst = ribeiro.parsearFicha(html("<p>\nDirección: Av. Das caldas 24<br/>\nLocalización instalaciones: Esposende 5, Cenlle\nAyuntamiento: 32003 Ourense <br/>\nE-mail: <br/>"), { url: "u", datos: { nombre: "B" } });
     expect(inst).toMatchObject({ direccion: "Esposende 5, Cenlle", municipio: "Cenlle", codigo_postal: null, email: null });
+    const mismo = ribeiro.parsearFicha(html("<p>Dirección: A Laixa, 35 <br/>\nLocalización instalaciones: A Ponte, 21<br/>\nAyuntamiento: 32417 Arnoia <br/>"), { url: "u", datos: { nombre: "C" } });
+    expect(mismo).toMatchObject({ direccion: "A Ponte, 21", municipio: "Arnoia", codigo_postal: "32417" });
     expect(ribeiro.partirAyuntamiento("32420 - Leiro")).toEqual({ cp: "32420", municipio: "Leiro" });
     expect(municipioDe("Gomariz", ribeiro.ALIAS_MUNICIPIO)).toBe("Leiro");
   });
