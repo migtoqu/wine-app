@@ -12,6 +12,7 @@ import { candidatosSlug, hechosConsejo, vinculoDudosoPorDominio } from "./comun/
 import { limpiarMarcas, municipioDe, normalizarBodega, provinciaDe, provinciaDeTexto, webPropia } from "./comun/normalizar.ts";
 import type { DefinicionConsejo, EntradaListado } from "./comun/tipos.ts";
 import { CONSEJOS } from "./index.ts";
+import * as emporda from "./emporda.ts";
 import * as jerez from "./jerez.ts";
 import * as jumilla from "./jumilla.ts";
 import * as laMancha from "./la-mancha.ts";
@@ -294,7 +295,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+(?:-[a-z]+)*$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -608,5 +609,22 @@ describe("Somontano: ficha con bloque de dirección y lista de datos", () => {
     expect(somontano.primerTelefono(["Pedro", "Visitas: 974 26 97 08 Restaurante: 607 11 77 66"])).toBe("974 26 97 08");
     expect(somontano.primerTelefono(["974 31 31 12 - 974 31 06 89"])).toBe("974 31 31 12");
     expect(normalizarBodega(f, somontano.consejoSomontano).campos).toMatchObject({ municipio: "Lascellas", provincia: "Huesca", comunidad: "Aragón" });
+  });
+});
+
+describe("Empordà: ficha con bloque de datos y etiquetas", () => {
+  it("listado por id sin duplicados", () => {
+    expect(emporda.parsearListado(fixture("emporda-listado.html")).map((e) => e.datos.id_externo)).toEqual(["id:60", "id:62"]);
+  });
+
+  it("ficha: dirección, CP, municipio, teléfono, coordenadas, marcas y viñedo", () => {
+    const f = emporda.parsearFicha(fixture("emporda-aldea.html"), { url: "u", datos: { id_externo: "id:60" } });
+    expect(f).toMatchObject({
+      nombre: "Aldea de Buscarós", direccion: "Carretera de Darnius, km. 2,5", codigo_postal: "17750", municipio: "Capmany",
+      telefono: "+ 34 972 53 17 65", web: null, ubicacion: { lat: 42.365839, lng: 2.880506 }, marcas: ["Aldea de Buscarós"],
+      extra: { vinedo_propio_ha: 2, variedades: ["chardonnay", "merlot", "cabernet sauvignon", "lledoner negre"], tipos_vino: ["blanc", "rosat", "negre"] },
+    });
+    expect(JSON.stringify(f)).not.toMatch(/omesa|Petit celler/);
+    expect(normalizarBodega(f, emporda.consejoEmporda).campos).toMatchObject({ provincia: "Girona", comunidad: "Cataluña" });
   });
 });
