@@ -13,6 +13,7 @@ import { limpiarMarcas, municipioDe, normalizarBodega, provinciaDe, provinciaDeT
 import type { DefinicionConsejo, EntradaListado } from "./comun/tipos.ts";
 import { CONSEJOS } from "./index.ts";
 import * as jerez from "./jerez.ts";
+import * as jumilla from "./jumilla.ts";
 import * as laMancha from "./la-mancha.ts";
 import * as penedes from "./penedes.ts";
 import * as priorat from "./priorat.ts";
@@ -292,7 +293,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+(?:-[a-z]+)*$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -555,5 +556,33 @@ describe("núcleo común: fichas descartadas y retiradas", () => {
     } as unknown as Contexto;
     await crearScraperConsejo(def)(ctx);
     expect(contadores).toMatchObject({ descartados: 2, errores: 0 });
+  });
+});
+
+describe("Jumilla: bloques de texto de la ficha", () => {
+  it("listado sin duplicados ni la página de bodegas", () => {
+    expect(jumilla.parsearListado(fixture("jumilla-listado.html")).map((e) => e.url)).toEqual([
+      "https://jumilla.wine/bodegas_cpt/bodegas-alceno/", "https://jumilla.wine/bodegas_cpt/bodegas-bleda/",
+    ]);
+  });
+
+  it("ficha: dirección, teléfono, web, tienda y email, sin el contacto del consejo del pie", () => {
+    const f = jumilla.parsearFicha(fixture("jumilla-alceno.html"), { url: "u", datos: { id_externo: "slug:bodegas-alceno" } });
+    expect(f).toMatchObject({
+      nombre: "Bodegas Alceño", direccion: "C/ Del Duque, nº 34", codigo_postal: "30520", municipio: "Jumilla",
+      provincia_texto: "Murcia", telefono: "(+34) 968 78 01 42", web: "https://alceno.com/", email: "info@alceno.com",
+      extra: { tienda_online: "http://www.grupofamiliabastida.com/" },
+    });
+    expect(JSON.stringify(f)).not.toMatch(/vinosdejumilla|San Roque|1870/);
+    expect(normalizarBodega(f, jumilla.consejoJumilla).campos).toMatchObject({ provincia: "Murcia", comunidad: "Región de Murcia" });
+  });
+
+  it("dirección en varias líneas, sin apartado de correos", () => {
+    expect(jumilla.partirDireccion(["Ctra. Jumilla-Ontur km 2", "Apartado de correos nº62", "30520 Jumilla (Murcia)"]))
+      .toEqual({ direccion: "Ctra. Jumilla-Ontur km 2", cp: "30520", municipio: "Jumilla", provincia: "Murcia" });
+    expect(jumilla.partirDireccion(["Av. de Murcia, S/N,", "30520 Jumilla, Murcia"])).toEqual({ direccion: "Av. de Murcia, S/N", cp: "30520", municipio: "Jumilla", provincia: "Murcia" });
+    expect(municipioDe("Fuenteálamo", jumilla.ALIAS_MUNICIPIO)).toBe("Fuente-Álamo");
+    expect(provinciaDe(null, "Ontur", null, jumilla.PROVINCIA_POR_MUNICIPIO)).toBe("Albacete");
+    expect(jumilla.partirDireccion(["C/ Rosario, nº 6-bis", "02652 Ontur (Albacete)"])).toMatchObject({ cp: "02652", municipio: "Ontur", provincia: "Albacete" });
   });
 });
