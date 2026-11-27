@@ -19,6 +19,7 @@ import * as penedes from "./penedes.ts";
 import * as priorat from "./priorat.ts";
 import * as ribeiro from "./ribeiro.ts";
 import * as rueda from "./rueda.ts";
+import * as somontano from "./somontano.ts";
 import * as toro from "./toro.ts";
 
 const fixture = (f: string) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url), "utf8");
@@ -293,7 +294,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+(?:-[a-z]+)*$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -584,5 +585,28 @@ describe("Jumilla: bloques de texto de la ficha", () => {
     expect(municipioDe("Fuenteálamo", jumilla.ALIAS_MUNICIPIO)).toBe("Fuente-Álamo");
     expect(provinciaDe(null, "Ontur", null, jumilla.PROVINCIA_POR_MUNICIPIO)).toBe("Albacete");
     expect(jumilla.partirDireccion(["C/ Rosario, nº 6-bis", "02652 Ontur (Albacete)"])).toMatchObject({ cp: "02652", municipio: "Ontur", provincia: "Albacete" });
+  });
+});
+
+describe("Somontano: ficha con bloque de dirección y lista de datos", () => {
+  it("listado de logos sin duplicados", () => {
+    expect(somontano.parsearListado(fixture("somontano-listado.html")).map((e) => e.url)).toEqual([
+      "https://dosomontano.com/bodega/aldahara/", "https://dosomontano.com/bodega/abinasa/",
+    ]);
+  });
+
+  it("ficha: dirección, web, email, teléfono sin la persona, visitas y viñedo", () => {
+    const f = somontano.parsearFicha(fixture("somontano-abinasa.html"), { url: "u", datos: { id_externo: "slug:abinasa" } });
+    expect(f).toMatchObject({
+      nombre: "Abinasa", direccion: "Ctra. N-240, km. 180", codigo_postal: "22124", municipio: "LASCELLAS", provincia_texto: "Huesca",
+      web: "http://www.bodegasabinasa.com", email: "info@bodegasabinasa.com", telefono: "974 31 91 56", enoturismo: true,
+      extra: { vinedo_propio_ha: 10, capacidad_elaboracion: 95000 },
+    });
+    expect(JSON.stringify(f)).not.toMatch(/omitida|1912/);
+    expect(somontano.partirDireccion(["Castillo San Marcos", "Ctra. A-1232 (Barbastro a Alquézar), km. 3.800 22300 BARBASTRO (Huesca)"]))
+      .toEqual({ direccion: "Castillo San Marcos, Ctra. A-1232 (Barbastro a Alquézar), km. 3.800", cp: "22300", municipio: "BARBASTRO", provincia: "Huesca" });
+    expect(somontano.primerTelefono(["Pedro", "Visitas: 974 26 97 08 Restaurante: 607 11 77 66"])).toBe("974 26 97 08");
+    expect(somontano.primerTelefono(["974 31 31 12 - 974 31 06 89"])).toBe("974 31 31 12");
+    expect(normalizarBodega(f, somontano.consejoSomontano).campos).toMatchObject({ municipio: "Lascellas", provincia: "Huesca", comunidad: "Aragón" });
   });
 });

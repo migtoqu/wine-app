@@ -12,6 +12,7 @@ import { consejoPenedes } from "./penedes.ts";
 import { consejoPriorat } from "./priorat.ts";
 import { consejoRibeiro } from "./ribeiro.ts";
 import { consejoRueda } from "./rueda.ts";
+import { consejoSomontano } from "./somontano.ts";
 import { consejoToro } from "./toro.ts";
 
 /** Alias de línea de comandos → definición. */
@@ -27,6 +28,7 @@ export const CONSEJOS: Record<string, DefinicionConsejo> = {
   "consejo-cava": consejoCava,
   "consejo-la-mancha": consejoLaMancha,
   "consejo-jumilla": consejoJumilla,
+  "consejo-somontano": consejoSomontano,
 };
 
 export const SCRAPERS_CONSEJOS: Record<string, { slug: string; scraper: Scraper }> = Object.fromEntries(
