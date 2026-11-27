@@ -433,7 +433,7 @@ Los términos de Rueda y Navarra **no se han leído** todavía: auditarlos al em
 
 ### 5.3 Ola C: consejos con directorio de bodegas (auditados el 2026-11-08)
 
-Scrapers en `scrapers/fuentes/consejos/`: un **núcleo común** (`comun/`: normalizar → `EmparejadorBodegas` → consolidación, con la D.O. como parámetro) y un parser por consejo, porque las cinco webs usan plataformas distintas. CLI: `node scrapers/cli.ts consejo-<toro|cigales|bierzo|priorat|rueda>`. Fuentes `cr-<consejo>` (migración `20261112120000`), tipo `consejo_regulador`, semanales.
+Scrapers en `scrapers/fuentes/consejos/`: un **núcleo común** (`comun/`: normalizar → `EmparejadorBodegas` → consolidación, con la D.O. como parámetro) y un parser por consejo, porque las cinco webs usan plataformas distintas. CLI: `node scrapers/cli.ts consejo-<toro|cigales|bierzo|priorat|rueda|penedes>`. Fuentes `cr-<consejo>` (migraciones `20261112120000` y, para Penedès, `20261127111655`), tipo `consejo_regulador`, semanales.
 
 Auditoría: unas 40 peticiones, como mucho 7 por sitio, ≥ 4 s entre peticiones al mismo host y con el UA del proyecto. Todos responden 200, sin desafío anti-bot ni WAF.
 
@@ -444,10 +444,13 @@ Auditoría: unas 40 peticiones, como mucho 7 por sitio, ≥ 4 s entre peticiones
 | **Bierzo** (`www.crdobierzo.es`) | **404** (= todo permitido) | Sin cláusula de propiedad intelectual | `/es/bodegas-y-vinos/` → `/<slug>/<id>/` | Razón social, dirección, CP, municipio, **coordenadas**, teléfono, email, web |
 | **Priorat** (`www.doqpriorat.org`) | Yoast, `Disallow:` vacío | Prohíbe reproducir o transformar sin consentimiento | `/cellers/` paginado → `/cellers/<slug>/` (en catalán) | Nombre, dirección, CP, municipio (con alias, sin traducir), **coordenadas**, contacto, idiomas de visita; `bodega.enoturismo` solo si las visitas son para público |
 | **Rueda** (`dorueda.com`) | Vacío | Igual que Toro | `/bodegas/`: **tabla única** (las fichas `?pdb=N` devuelven la misma tabla y no se piden) | Nombre, localidad, web, «Visitable», tienda online. Sin CP: provincia por tabla de municipios (Valladolid, Segovia, Ávila) |
+| **Penedès** (`dopenedes.cat`, auditado el 2026-11-27) | `Disallow:` vacío | Reproducir o comunicar contenidos requiere consentimiento expreso; nada sobre extracción | `/es/bodegas/` (tabla: id de ficha, nombre, municipio, iconos de venta online y WineBar) + **CSV del consejo** `/llistat_cellers.php`; se cruzan por nombre (134/134) y las fichas `?id=N` no se piden | Nombre, dirección, CP, municipio, teléfono, web, email; `venta_online` y `winebar` en `datos`. El CSV va en Latin-1 aunque se anuncie UTF-8 (`decodificarCuerpo` en `lib/http.ts`) |
 
 Reglas: solo hechos con enlace a la ficha; **nunca** la descripción de la bodega, imágenes ni nombres de personas (contacto, enólogos, responsables). Las marcas no crean vinos: van a `datos` y al emparejador. La provincia sale del código postal; si no hay, de la tabla de municipios de la D.O.; nunca se pone la de la D.O. por defecto. Proyecto privado y sin ánimo de lucro; **avisar a cada consejo antes de la fase pública** (Cigales es el más restrictivo).
 
-Descartados: **Rías Baixas** (`doriasbaixas.com`) devuelve 403 a `robots.txt`; no se insiste ni se cambia de UA.
+Descartados: **Rías Baixas** (`doriasbaixas.com`) devuelve 403 a `robots.txt`; no se insiste ni se cambia de UA. Re-comprobado el 2026-11-27: `robots.txt` ya responde 200 (solo bloquea `wp-admin` y búsquedas), pero la portada y el sitemap siguen dando **403** con nuestro UA: sigue descartada.
+
+**Penedès, dry-run (2026-11-27):** 134 bodegas en 3 peticiones y 8 s, 0 errores; todas con CP, municipio y provincia (124 Barcelona, 10 Tarragona), 133 con teléfono, 129 con email, 121 con web.
 
 **Dry-run completo (2026-11-09)**, sin tocar la BD:
 
