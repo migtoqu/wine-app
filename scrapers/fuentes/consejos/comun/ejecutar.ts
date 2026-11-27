@@ -1,7 +1,7 @@
 // Runner común de los consejos: robots → listado → fichas → normalizar → guardar (o salida del dry-run).
 import { registrosConocidos } from "../../../lib/db.ts";
 import type { Contexto, Scraper } from "../../../lib/ejecucion.ts";
-import { ParadaFuente } from "../../../lib/http.ts";
+import { ErrorHttp, ParadaFuente } from "../../../lib/http.ts";
 import { RobotsDenegado } from "../../../lib/robots.ts";
 import { GuardadoConsejo } from "./guardar.ts";
 import { normalizarBodega } from "./normalizar.ts";
@@ -54,6 +54,11 @@ export function crearScraperConsejo(def: DefinicionConsejo): Scraper {
         const ficha = def.parsearFicha
           ? def.parsearFicha((await ctx.http.get(entrada.url)).texto, entrada)
           : fichaDesdeListado(entrada);
+        if (!ficha) {
+          ctx.contadores.descartados++;
+          ctx.log.info(`Descartada (no es bodega de la D.O.): ${entrada.datos.nombre ?? entrada.url}`);
+          continue;
+        }
         const n = normalizarBodega(ficha, def);
         if (!n.campos.provincia) ctx.log.warn(`Sin provincia: ${n.campos.nombre} (${n.campos.municipio ?? "sin municipio"})`);
         if (guardado) {
@@ -76,6 +81,12 @@ export function crearScraperConsejo(def: DefinicionConsejo): Scraper {
           continue;
         }
         if (e instanceof ParadaFuente) throw e;
+        // Una ficha que ya no existe (sitemap o listado desfasado) no es un fallo de la fuente.
+        if (e instanceof ErrorHttp && (e.status === 404 || e.status === 410)) {
+          ctx.contadores.descartados++;
+          ctx.log.warn(`Ficha retirada (${e.status}): ${entrada.url}`);
+          continue;
+        }
         ctx.contadores.errores++;
         ctx.log.error(`${entrada.url}: ${(e as Error).message}`);
       }
