@@ -13,6 +13,7 @@ import { limpiarMarcas, municipioDe, normalizarBodega, provinciaDe, provinciaDeT
 import type { DefinicionConsejo, EntradaListado } from "./comun/tipos.ts";
 import { CONSEJOS } from "./index.ts";
 import * as jerez from "./jerez.ts";
+import * as laMancha from "./la-mancha.ts";
 import * as penedes from "./penedes.ts";
 import * as priorat from "./priorat.ts";
 import * as ribeiro from "./ribeiro.ts";
@@ -291,9 +292,9 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha"]);
     for (const def of Object.values(CONSEJOS)) {
-      expect(def.slug).toMatch(/^cr-[a-z]+$/);
+      expect(def.slug).toMatch(/^cr-[a-z]+(?:-[a-z]+)*$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
       expect(def.urlsRobots.length).toBeGreaterThan(0);
     }
@@ -491,5 +492,48 @@ describe("Cava: listado paginado + ficha por columnas", () => {
     expect(pedidas).toHaveLength(8);
     expect(pedidas[7]).toBe("https://www.cava.wine/es/bodegas/?page=8");
     expect(r).toHaveLength(2);
+  });
+});
+
+describe("La Mancha: fichas del sitemap del directorio", () => {
+  it("sitemaps de fichas del índice y URLs sin duplicados ni papelera", () => {
+    expect(laMancha.sitemapsDeFichas("<sitemap><loc>https://lamanchawines.com/post-sitemap.xml</loc></sitemap><sitemap><loc>https://lamanchawines.com/wpbdp_listing-sitemap.xml</loc></sitemap><sitemap><loc>https://lamanchawines.com/wpbdp_listing-sitemap2.xml</loc></sitemap>"))
+      .toEqual(["https://lamanchawines.com/wpbdp_listing-sitemap.xml", "https://lamanchawines.com/wpbdp_listing-sitemap2.xml"]);
+    expect(laMancha.fichasDeSitemap(fixture("la-mancha-sitemap.xml")).map((e) => e.url)).toEqual([
+      "https://lamanchawines.com/enoturismo/bodegas-la-tercia/", "https://lamanchawines.com/enoturismo/altosa/",
+    ]);
+  });
+
+  it("ficha: campos wpbdp, marcas partidas, enoturismo y tipo de bodega", () => {
+    const f = laMancha.parsearFicha(fixture("la-mancha-tercia.html"), { url: "u", datos: { id_externo: "slug:bodegas-la-tercia" } });
+    expect(f).toMatchObject({
+      nombre: "Bodega La Tercia", direccion: "C/ Almagro, 6", codigo_postal: "13600", municipio: "Alcázar de San Juan",
+      provincia_texto: "CIUDAD REAL", web: "http://www.bodegalatercia.com/", telefono: "926 55 01 04",
+      marcas: ["YEMANUEVA", "YEMAVERDE", "YEMASERENA"], enoturismo: true,
+      extra: { elaboracion: true, crianza: true, embotellado: true, categorias: ["Ciudad Real"] },
+    });
+    expect(JSON.stringify(f)).not.toMatch(/facebook|coraz/i);
+    expect(normalizarBodega(f!, laMancha.consejoLaMancha).campos).toMatchObject({ provincia: "Ciudad Real", comunidad: "Castilla-La Mancha" });
+    const fuera = fixture("la-mancha-tercia.html").replace(/<a href="[^"]*\/ciudad-real\/" rel="tag">Ciudad Real<\/a>/, '<a href="x" rel="tag">Otras (embotellado)</a>');
+    expect(laMancha.parsearFicha(fuera, { url: "u", datos: {} })).toBeNull();
+    expect(laMancha.partirMarcas("Viña Ojos; Gran Ojos / Reserva")).toEqual(["Viña Ojos", "Gran Ojos", "Reserva"]);
+  });
+});
+
+describe("núcleo común: fichas descartadas y retiradas", () => {
+  it("parsearFicha null y 404 cuentan como descartadas, no como errores", async () => {
+    const { ErrorHttp } = await import("../../lib/http.ts");
+    const def: DefinicionConsejo = {
+      slug: "cr-prueba", denominacion: { slug: "prueba", nombre: "Prueba" }, urlsRobots: [],
+      listar: async () => [{ url: "https://x/a", datos: {} }, { url: "https://x/b", datos: {} }],
+      parsearFicha: () => null,
+    };
+    const contadores = { nuevos: 0, actualizados: 0, sinCambios: 0, descartados: 0, revision: 0, omitidas: 0, errores: 0 };
+    const ctx = {
+      http: { comprobarRobots: async () => {}, get: async (u: string) => { if (u.endsWith("b")) throw new ErrorHttp(u, 404); return { url: u, status: 200, texto: "" }; } },
+      log: new Log(), contadores, salida: [], marcarParcial: () => {},
+    } as unknown as Contexto;
+    await crearScraperConsejo(def)(ctx);
+    expect(contadores).toMatchObject({ descartados: 2, errores: 0 });
   });
 });

@@ -48,8 +48,11 @@ export interface DefinicionConsejo {
   urlsRobots: string[];
   /** Recorre el listado del consejo. */
   listar(ctx: Contexto): Promise<EntradaListado[]>;
-  /** Lee una ficha. Si falta, el listado ya trae la ficha completa (Rueda). */
-  parsearFicha?(html: string, entrada: EntradaListado): FichaConsejo;
+  /**
+   * Lee una ficha. Si falta, el listado ya trae la ficha completa (Rueda). `null` = la ficha no es
+   * de una bodega de la D.O. (embotelladores de fuera en La Mancha) y se descarta.
+   */
+  parsearFicha?(html: string, entrada: EntradaListado): FichaConsejo | null;
   /** Provincia por municipio cuando no hay código postal (clave: `claveTexto(municipio)`). */
   provinciaPorMunicipio?: Record<string, string>;
   /** Alias de municipio (otra lengua o grafía → nombre del catálogo), por `claveTexto`. */
