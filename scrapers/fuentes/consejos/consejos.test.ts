@@ -5,6 +5,7 @@ import { provinciaDeCodigoPostal } from "../../lib/geo.ts";
 import { decodificarCuerpo } from "../../lib/http.ts";
 import { Log } from "../../lib/log.ts";
 import * as bierzo from "./bierzo.ts";
+import * as cava from "./cava.ts";
 import * as cigales from "./cigales.ts";
 import { crearScraperConsejo, fichaDesdeListado } from "./comun/ejecutar.ts";
 import { candidatosSlug, hechosConsejo, vinculoDudosoPorDominio } from "./comun/guardar.ts";
@@ -290,7 +291,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -458,5 +459,37 @@ describe("Ribeiro: listado + ficha con bloque de contacto", () => {
     expect(mismo).toMatchObject({ direccion: "A Ponte, 21", municipio: "Arnoia", codigo_postal: "32417" });
     expect(ribeiro.partirAyuntamiento("32420 - Leiro")).toEqual({ cp: "32420", municipio: "Leiro" });
     expect(municipioDe("Gomariz", ribeiro.ALIAS_MUNICIPIO)).toBe("Leiro");
+  });
+});
+
+describe("Cava: listado paginado + ficha por columnas", () => {
+  const { entradas, ultimaPagina } = cava.parsearListado(fixture("cava-listado.html"));
+
+  it("nombre, municipio y zona del listado; última página", () => {
+    expect(ultimaPagina).toBe(8);
+    expect(entradas.map((e) => e.datos.id_externo)).toEqual(["slug:artcava", "slug:art-laieta-dalta-alella"]);
+    expect(entradas[1]!.datos).toMatchObject({ nombre: "ART LAIETÀ d'Alta Alella", municipio: "Alella", extra: { zona: "Comtats de Barcelona" } });
+    expect(entradas[0]!.url).toBe("https://www.cava.wine/es/bodegas/artcava/");
+  });
+
+  it("ficha: contacto, dirección en líneas, enoturismo, tienda y tipos", () => {
+    const f = cava.parsearFicha(fixture("cava-artcava.html"), entradas[0]!);
+    expect(f).toMatchObject({
+      nombre: "ARTCAVA", direccion: "Masia Can Batlle", municipio: "Avinyonet del Penedès", codigo_postal: "08793",
+      telefono: "+34647906742", email: "info@artcava.com", web: "https://www.artcava.com", enoturismo: true,
+      extra: { zona: "Comtats de Barcelona", tipos_cava: ["Cava de Guarda", "Cava de Guarda Superior Reserva"], tienda_online: "https://artcava.com/ca/botiga-virtual/" },
+    });
+    expect(normalizarBodega(f, cava.consejoCava).campos).toMatchObject({ nombre: "Artcava", provincia: "Barcelona" });
+    expect(cava.partirDireccion(["Ctra. EX-105, km 3", "06200"])).toEqual({ direccion: "Ctra. EX-105, km 3", municipio: null, cp: "06200" });
+  });
+
+  it("recorre todas las páginas", async () => {
+    const pedidas: string[] = [];
+    const html = fixture("cava-listado.html");
+    const ctx = { http: { get: async (u: string) => (pedidas.push(u), { url: u, status: 200, texto: html }) }, log: new Log() } as unknown as Contexto;
+    const r = await cava.consejoCava.listar(ctx);
+    expect(pedidas).toHaveLength(8);
+    expect(pedidas[7]).toBe("https://www.cava.wine/es/bodegas/?page=8");
+    expect(r).toHaveLength(2);
   });
 });

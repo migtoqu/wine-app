@@ -1,6 +1,7 @@
 // Consejos reguladores con directorio de bodegas: una definición por consejo sobre el núcleo común.
 import type { Scraper } from "../../lib/ejecucion.ts";
 import { consejoBierzo } from "./bierzo.ts";
+import { consejoCava } from "./cava.ts";
 import { consejoCigales } from "./cigales.ts";
 import { crearScraperConsejo } from "./comun/ejecutar.ts";
 import type { DefinicionConsejo } from "./comun/tipos.ts";
@@ -21,6 +22,7 @@ export const CONSEJOS: Record<string, DefinicionConsejo> = {
   "consejo-penedes": consejoPenedes,
   "consejo-jerez": consejoJerez,
   "consejo-ribeiro": consejoRibeiro,
+  "consejo-cava": consejoCava,
 };
 
 export const SCRAPERS_CONSEJOS: Record<string, { slug: string; scraper: Scraper }> = Object.fromEntries(
