@@ -262,8 +262,8 @@ export type Database = {
           cantidad: number
           created_at: string
           fecha_compra: string | null
-          foto_path: string | null
           formato_ml: number
+          foto_path: string | null
           id: string
           nombre: string
           notas: string | null
@@ -284,8 +284,8 @@ export type Database = {
           cantidad?: number
           created_at?: string
           fecha_compra?: string | null
-          foto_path?: string | null
           formato_ml?: number
+          foto_path?: string | null
           id?: string
           nombre: string
           notas?: string | null
@@ -306,8 +306,8 @@ export type Database = {
           cantidad?: number
           created_at?: string
           fecha_compra?: string | null
-          foto_path?: string | null
           formato_ml?: number
+          foto_path?: string | null
           id?: string
           nombre?: string
           notas?: string | null
@@ -1589,6 +1589,28 @@ export type Database = {
           slug: string
           subtitulo: string
           tipo_vino: Database["public"]["Enums"]["tipo_vino"]
+        }[]
+      }
+      buscar_vinos_cava: {
+        Args: {
+          anio?: number
+          limite?: number
+          meses?: number
+          palabras: string[]
+        }
+        Returns: {
+          anadas: Json
+          bodega_id: string
+          bodega_nombre: string
+          crianza: Database["public"]["Enums"]["crianza_vino"]
+          denominacion_nombre: string
+          id: string
+          imagen_url: string
+          nombre: string
+          precio_desde: number
+          relevancia: number
+          slug: string
+          tipo: Database["public"]["Enums"]["tipo_vino"]
         }[]
       }
       dominio_web: { Args: { url: string }; Returns: string }
