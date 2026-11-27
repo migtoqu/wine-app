@@ -85,3 +85,13 @@ export function BackIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function MedalIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M8 3h8l-2 6h-4L8 3Z" />
+      <circle cx="12" cy="15" r="6" />
+      <path d="m12 12.5.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3.9-1.8Z" />
+    </svg>
+  );
+}

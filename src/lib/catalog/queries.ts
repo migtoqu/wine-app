@@ -11,6 +11,7 @@ import type {
   DenominacionRef,
   FilterOption,
   Oferta,
+  Premio,
   Procedencias,
   Resumen,
   SearchSuggestion,
@@ -28,6 +29,8 @@ import type {
 export const CATALOG_TAG = "catalogo";
 // Ofertas y precios (comparador): se puede invalidar sin tocar el resto del catálogo.
 export const OFERTAS_TAG = "ofertas";
+// Premios y puntuaciones (certámenes): se puede invalidar sin tocar el resto del catálogo.
+export const PREMIOS_TAG = "premios";
 
 type RawImage = {
   url: string;
@@ -276,6 +279,63 @@ export async function getOtrosVinos(
   });
   if (error) throw new Error(`getOtrosVinos(${bodegaSlug}): ${error.message}`);
   return data.filter((v) => v.id !== excludeId).slice(0, limit);
+}
+
+const PREMIO_COLUMNAS = `id, anio, edicion, medalla, puntos, distincion, mencion, url,
+  certamen:certamenes!inner(slug, nombre, tipo, escala_max, orden)`;
+
+type FilaPremio = {
+  id: string;
+  anio: number | null;
+  edicion: number;
+  medalla: Premio["medalla"];
+  puntos: number | string | null;
+  distincion: string | null;
+  mencion: string | null;
+  url: string | null;
+  certamen: Premio["certamen"];
+  vino?: { slug: string; nombre: string };
+};
+
+function aPremio(f: FilaPremio): Premio {
+  return { ...f, puntos: f.puntos === null ? null : Number(f.puntos) };
+}
+
+// Premios de un vino (la RLS ya oculta los que el admin ha ocultado).
+export async function getPremiosVino(slug: string): Promise<Premio[]> {
+  "use cache";
+  cacheLife("catalogo");
+  cacheTag(CATALOG_TAG, `vino:${slug}`, PREMIOS_TAG);
+  if (!isValidSlug(slug)) return [];
+  const { data, error } = await createPublicClient()
+    .from("premios")
+    .select(`${PREMIO_COLUMNAS}, vino:vinos!inner(slug)`)
+    .eq("vino.slug", slug)
+    .order("edicion", { ascending: false });
+  if (error) throw new Error(`getPremiosVino(${slug}): ${error.message}`);
+  return (data as unknown as FilaPremio[]).map((f) => {
+    const premio = aPremio(f);
+    delete premio.vino;
+    return premio;
+  });
+}
+
+// Premios de los vinos de una bodega (con el vino premiado). Una bodega tiene a lo sumo unos cientos.
+export async function getPremiosBodega(slug: string): Promise<Premio[]> {
+  "use cache";
+  cacheLife("catalogo");
+  cacheTag(CATALOG_TAG, `bodega:${slug}`, PREMIOS_TAG);
+  if (!isValidSlug(slug)) return [];
+  const { data, error } = await createPublicClient()
+    .from("premios")
+    .select(`${PREMIO_COLUMNAS}, vino:vinos!inner(slug, nombre, bodega:bodegas!inner(slug))`)
+    .eq("vino.bodega.slug", slug)
+    .order("edicion", { ascending: false })
+    .limit(500);
+  if (error) throw new Error(`getPremiosBodega(${slug}): ${error.message}`);
+  return (data as unknown as (FilaPremio & { vino: { slug: string; nombre: string; bodega: unknown } })[]).map(
+    ({ vino: { slug: vs, nombre }, ...f }) => ({ ...aPremio(f), vino: { slug: vs, nombre } }),
+  );
 }
 
 export async function getBodega(slug: string): Promise<BodegaFicha | null> {

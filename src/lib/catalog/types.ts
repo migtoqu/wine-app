@@ -263,3 +263,20 @@ export type Oferta = {
 };
 
 export type PuntoPrecio = { fecha: string; precio: number };
+
+export type Medalla = "gran_oro" | "oro" | "plata" | "bronce";
+
+// Premio de un certamen (guía o concurso) a un vino; anio = añada premiada.
+export type Premio = {
+  id: string;
+  anio: number | null;
+  edicion: number;
+  medalla: Medalla | null;
+  puntos: number | null;
+  distincion: string | null;
+  mencion: string | null;
+  url: string | null;
+  certamen: { slug: string; nombre: string; tipo: "guia" | "concurso"; escala_max: number | null; orden: number };
+  // Solo en las listas de bodega: el vino premiado.
+  vino?: { slug: string; nombre: string };
+};

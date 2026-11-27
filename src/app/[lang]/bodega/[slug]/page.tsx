@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Attribution } from "@/components/catalog/attribution";
+import { WineryAwards } from "@/components/catalog/awards";
 import { BodegaWines } from "@/components/catalog/bodega-wines";
 import { CatalogImage } from "@/components/catalog/catalog-image";
 import { FieldSources, SummarySources } from "@/components/catalog/field-sources";
@@ -21,7 +22,7 @@ import {
   truncate,
 } from "@/lib/catalog/format";
 import { pickResumen } from "@/lib/catalog/provenance";
-import { getBodega } from "@/lib/catalog/queries";
+import { getBodega, getPremiosBodega } from "@/lib/catalog/queries";
 import { cn } from "@/lib/cn";
 
 // Ficha de bodega (§5.5). Igual que la de vino: lectura cacheada, ISR por
@@ -54,7 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function WineryPage({ params }: Props) {
   const { slug } = await params;
-  const bodega = await getBodega(slug);
+  const [bodega, premios] = await Promise.all([getBodega(slug), getPremiosBodega(slug)]);
   if (!bodega) notFound();
 
   const lang = await getLocale();
@@ -359,6 +360,8 @@ export default async function WineryPage({ params }: Props) {
             <EmptyState as="h3" title={winery.noWines} />
           )}
         </section>
+
+        <WineryAwards lang={lang} dict={dict} premios={premios} />
 
         <Attribution
           lang={lang}

@@ -259,6 +259,22 @@ const en = {
       date: "Date",
       bestPrice: "Best price",
     },
+    awards: {
+      heading: "Awards",
+      intro: "Medals and scores from competitions and guides, linked to the source.",
+      wineryHeading: "Awards for its wines",
+      wineryIntro: (n: number) =>
+        n === 1 ? "1 award in competitions and guides." : `${n} awards in competitions and guides.`,
+      medals: { gran_oro: "Grand Gold", oro: "Gold", plata: "Silver", bronce: "Bronze" },
+      points: (n: string) => `${n} points`,
+      edition: (year: number) => `${year} edition`,
+      vintage: (year: number) => `${year} vintage`,
+      noVintage: "Non-vintage",
+      thisVintage: "This vintage",
+      source: "See at source",
+      sourceLabel: (contest: string) => `See the award at ${contest} (opens in a new tab)`,
+      seeAll: (n: number) => `See all ${n} awards`,
+    },
     winery: {
       about: "About the winery",
       appellations: "Designations of origin",
