@@ -84,7 +84,7 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [x] Gráfica de historial de precios y mínimo histórico
 - [x] Más tiendas (objetivo: 3–5) y emparejamiento por EAN — Vinoselección, Vinopremier, Vinatis, Vinorea + ~200 tiendas de bodega; descartadas por bloqueo o términos: ver SOURCES
 - [x] Cola de duplicados/emparejamiento en admin (`/admin/revision`)
-- [ ] Premios y puntuaciones: tablas (§6.3), scraper de al menos una guía y un concurso
+- [ ] Premios y puntuaciones: tablas (§6.3), scraper de al menos una guía y un concurso (tablas, Concours Mondial de Bruxelles y fichas hechos; falta una guía con puntos)
 - [ ] Reseñas externas (extracto + enlace)
 - [x] Servicios de enoturismo en la ficha de bodega
 - [x] Scraper de webs de bodegas (enoturismo; fotos pendientes)
