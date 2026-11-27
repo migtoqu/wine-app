@@ -4,6 +4,7 @@ import { consejoBierzo } from "./bierzo.ts";
 import { consejoCigales } from "./cigales.ts";
 import { crearScraperConsejo } from "./comun/ejecutar.ts";
 import type { DefinicionConsejo } from "./comun/tipos.ts";
+import { consejoPenedes } from "./penedes.ts";
 import { consejoPriorat } from "./priorat.ts";
 import { consejoRueda } from "./rueda.ts";
 import { consejoToro } from "./toro.ts";
@@ -15,6 +16,7 @@ export const CONSEJOS: Record<string, DefinicionConsejo> = {
   "consejo-bierzo": consejoBierzo,
   "consejo-priorat": consejoPriorat,
   "consejo-rueda": consejoRueda,
+  "consejo-penedes": consejoPenedes,
 };
 
 export const SCRAPERS_CONSEJOS: Record<string, { slug: string; scraper: Scraper }> = Object.fromEntries(

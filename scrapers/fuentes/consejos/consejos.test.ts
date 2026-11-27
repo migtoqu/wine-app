@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Contexto } from "../../lib/ejecucion.ts";
 import { provinciaDeCodigoPostal } from "../../lib/geo.ts";
+import { decodificarCuerpo } from "../../lib/http.ts";
 import { Log } from "../../lib/log.ts";
 import * as bierzo from "./bierzo.ts";
 import * as cigales from "./cigales.ts";
@@ -10,11 +11,13 @@ import { candidatosSlug, hechosConsejo, vinculoDudosoPorDominio } from "./comun/
 import { limpiarMarcas, municipioDe, normalizarBodega, provinciaDe, provinciaDeTexto, webPropia } from "./comun/normalizar.ts";
 import type { DefinicionConsejo, EntradaListado } from "./comun/tipos.ts";
 import { CONSEJOS } from "./index.ts";
+import * as penedes from "./penedes.ts";
 import * as priorat from "./priorat.ts";
 import * as rueda from "./rueda.ts";
 import * as toro from "./toro.ts";
 
 const fixture = (f: string) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url), "utf8");
+const fixtureBytes = (f: string) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url));
 
 describe("provincia y municipio", () => {
   it("provincia por código postal", () => {
@@ -285,7 +288,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+$/);
@@ -329,5 +332,45 @@ describe("núcleo común", () => {
     expect(ctx.contadores.errores).toBe(1);
     expect(ctx.salida).toHaveLength(1);
     expect((ctx.salida[0] as { campos: { provincia: string } }).campos.provincia).toBe("Zamora");
+  });
+});
+
+describe("Penedès: tabla + CSV del consejo", () => {
+  const tabla = penedes.parsearTabla(fixture("penedes-listado.html"));
+  // El CSV se sirve en Latin-1: se decodifica como lo hace el cliente HTTP.
+  const csv = penedes.parsearCsv(decodificarCuerpo(fixtureBytes("penedes-cellers.csv")));
+
+  it("las 134 bodegas de la tabla, todas con su fila del CSV", () => {
+    expect(tabla).toHaveLength(134);
+    expect(csv).toHaveLength(134);
+    const es = penedes.combinar(tabla, csv);
+    expect(es.filter((e) => e.datos.telefono || e.datos.web || e.datos.email)).toHaveLength(134);
+    const albet = es.find((e) => e.datos.nombre === "Albet i Noya")!;
+    expect(albet.url).toBe("https://dopenedes.cat/es/bodega/?id=77");
+    expect(albet.datos).toMatchObject({
+      id_externo: "id:77",
+      municipio: "Sant Pau d'Ordal",
+      codigo_postal: "08739",
+      web: "www.albetinoya.cat",
+      email: "info@albetinoya.cat",
+    });
+    expect(albet.datos.extra).toEqual({ venta_online: true, winebar: true });
+    expect(es.find((e) => e.datos.nombre === "Agustí Torelló Mata")!.datos.extra).toEqual({});
+  });
+
+  it("CSV: comillas, Latin-1 y CP sin el cero de Excel", () => {
+    expect(penedes.camposCsv('"Can ""Ràfols""";"A";;8770;"Sant Sadurní"')).toEqual(['Can "Ràfols"', "A", "", "8770", "Sant Sadurní"]);
+    const [f] = penedes.parsearCsv('Celler;Carrer;Carrer2;"Codi Postal";Població;Tel;Web;Email\n"X";"C/ Major, 1";"Baixos";8770;"Sant Sadurní d\'Anoia";938911173;www.x.cat;INFO@X.CAT');
+    expect(f).toEqual({ nombre: "X", direccion: "C/ Major, 1, Baixos", codigo_postal: "08770", municipio: "Sant Sadurní d'Anoia", telefono: "938911173", web: "www.x.cat", email: "info@x.cat" });
+    expect(csv.find((c) => c.nombre === "Agricola de Llorenç")?.municipio).toBe("Llorenç del Penedès");
+  });
+
+  it("normaliza a la D.O. Penedès con provincia por CP (Barcelona y Tarragona)", () => {
+    const es = penedes.combinar(tabla, csv);
+    const llorenc = normalizarBodega(fichaDesdeListado(es.find((e) => e.datos.nombre === "Agricola de Llorenç")!), penedes.consejoPenedes);
+    expect(llorenc.campos.provincia).toBe("Tarragona");
+    const albet = normalizarBodega(fichaDesdeListado(es.find((e) => e.datos.nombre === "Albet i Noya")!), penedes.consejoPenedes);
+    expect(albet.campos).toMatchObject({ nombre: "Albet i Noya", provincia: "Barcelona", codigo_postal: "08739", web: "http://www.albetinoya.cat" });
+    expect(albet.hechos).toContainEqual({ clave: "bodega.denominacion", valor: "Penedès" });
   });
 });

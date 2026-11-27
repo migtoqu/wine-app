@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ClienteHttp, ErrorHttp, ParadaFuente, USER_AGENT } from "./http.ts";
+import { ClienteHttp, decodificarCuerpo, ErrorHttp, ParadaFuente, USER_AGENT } from "./http.ts";
 import { Log } from "./log.ts";
 import { LimitadorPorHost } from "./rate-limit.ts";
 import { permitido, RobotsDenegado, robotsDesdeRespuesta, tokenUserAgent } from "./robots.ts";
@@ -196,5 +196,15 @@ describe("ClienteHttp", () => {
   it("aborta si robots.txt da 5xx", async () => {
     const { http } = cliente((u) => (u.endsWith("/robots.txt") ? respuesta(500) : respuesta(200)));
     await expect(http.get("https://a.es/x")).rejects.toThrow(/robots/);
+  });
+});
+
+describe("decodificarCuerpo", () => {
+  it("UTF-8 válido queda igual; Latin-1 anunciado como UTF-8 conserva las tildes", () => {
+    expect(decodificarCuerpo(new TextEncoder().encode("Sant Sadurní d'Anoia · Penedès"))).toBe("Sant Sadurní d'Anoia · Penedès");
+    // «Llorenç del Penedès» en ISO-8859-1: ç = 0xE7, è = 0xE8.
+    const latin1 = Uint8Array.from([..."Lloren"].map((c) => c.charCodeAt(0)).concat([0xe7], [..." del Pened"].map((c) => c.charCodeAt(0)), [0xe8, 0x73]));
+    expect(decodificarCuerpo(latin1)).toBe("Llorenç del Penedès");
+    expect(decodificarCuerpo(new Uint8Array([0xef, 0xbb, 0xbf, 0x61]))).toBe("a");
   });
 });

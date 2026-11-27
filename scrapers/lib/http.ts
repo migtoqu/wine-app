@@ -169,9 +169,26 @@ export class ClienteHttp {
       throw new Reintentable(`GET ${url} → HTTP ${res.status}`);
     }
     try {
-      return { url: res.url || url, status: res.status, texto: await res.text(), cabeceras: res.headers };
+      return { url: res.url || url, status: res.status, texto: decodificarCuerpo(await res.arrayBuffer()), cabeceras: res.headers };
     } catch (e) {
       throw new Reintentable(`GET ${url}: cuerpo incompleto: ${(e as Error).message}`);
     }
+  }
+}
+
+const UTF8 = new TextDecoder("utf-8", { fatal: true });
+const WIN1252 = new TextDecoder("windows-1252");
+
+/**
+ * Cuerpo → texto. UTF-8 si es válido (lo mismo que `res.text()`); si no, Windows-1252, que cubre
+ * Latin-1: hay servidores que anuncian UTF-8 y sirven Latin-1 (el CSV de la D.O. Penedès), y
+ * `res.text()` cambiaría cada tilde por «�» sin avisar.
+ */
+export function decodificarCuerpo(buf: ArrayBuffer | Uint8Array): string {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  try {
+    return UTF8.decode(bytes);
+  } catch {
+    return WIN1252.decode(bytes);
   }
 }
