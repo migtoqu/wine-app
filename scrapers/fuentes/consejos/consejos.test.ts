@@ -11,6 +11,7 @@ import { candidatosSlug, hechosConsejo, vinculoDudosoPorDominio } from "./comun/
 import { limpiarMarcas, municipioDe, normalizarBodega, provinciaDe, provinciaDeTexto, webPropia } from "./comun/normalizar.ts";
 import type { DefinicionConsejo, EntradaListado } from "./comun/tipos.ts";
 import { CONSEJOS } from "./index.ts";
+import * as jerez from "./jerez.ts";
 import * as penedes from "./penedes.ts";
 import * as priorat from "./priorat.ts";
 import * as rueda from "./rueda.ts";
@@ -288,10 +289,10 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+$/);
-      expect(def.denominacion.slug).toMatch(/^[a-z]+$/);
+      expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
       expect(def.urlsRobots.length).toBeGreaterThan(0);
     }
   });
@@ -376,5 +377,41 @@ describe("Penedès: tabla + CSV del consejo", () => {
     const albet = normalizarBodega(fichaDesdeListado(es.find((e) => e.datos.nombre === "Albet i Noya")!), penedes.consejoPenedes);
     expect(albet.campos).toMatchObject({ nombre: "Albet i Noya", provincia: "Barcelona", codigo_postal: "08739", web: "http://www.albetinoya.cat" });
     expect(albet.hechos).toContainEqual({ clave: "bodega.denominacion", valor: "Penedès" });
+  });
+});
+
+describe("Jerez: listado único de sherry.wine", () => {
+  const es = jerez.parsearListado(fixture("jerez-listado.html"));
+
+  it("una entrada por bodega con dirección en tres líneas, email y web", () => {
+    expect(es.map((e) => e.datos.id_externo)).toContain("slug:albarizas");
+    const albarizas = es.find((e) => e.datos.id_externo === "slug:albarizas")!;
+    expect(albarizas.url).toBe("https://www.sherry.wine/sherry-wine/bodegas/albarizas");
+    expect(albarizas.datos).toMatchObject({
+      nombre: "Albarizas", direccion: "Avda. de Jerez s/n", codigo_postal: "11560", municipio: "Trebujena",
+      provincia_texto: "Cádiz", web: "https://www.vinosdealbarizas.com",
+    });
+    expect(albarizas.datos.extra).toEqual({ razon_social: "S.C.A. Vitivinícola Albarizas" });
+  });
+
+  it("slugs con tildes codificadas y alias de municipio", () => {
+    const n = (id: string) => normalizarBodega(fichaDesdeListado(es.find((e) => e.datos.id_externo === id)!), jerez.consejoJerez).campos;
+    expect(n("slug:bodega-conde-peraleja")).toMatchObject({ municipio: "Jerez de la Frontera", provincia: "Cádiz", codigo_postal: "11591" });
+    expect(es.every((e) => /^slug:[a-z0-9áéíóúüñ-]+$/.test(e.datos.id_externo!))).toBe(true);
+    expect(jerez.partesDireccion(["C/ Olivo, 1", "Chiclana Cádiz", "11130 Spain"])).toEqual({ direccion: "C/ Olivo, 1", municipio: "Chiclana", provincia: "Cádiz", cp: "11130" });
+    expect(municipioDe("Chiclana", jerez.ALIAS_MUNICIPIO)).toBe("Chiclana de la Frontera");
+    expect(jerez.partesDireccion(["None", "None Sanlúcar de Barrameda", "11540 Spain"])).toEqual({ direccion: null, municipio: "Sanlúcar de Barrameda", provincia: null, cp: "11540" });
+    expect(jerez.partesDireccion(["C/Bogotá, 19, B5, 3H", "Sevilla Sevilla", "41013 Spain"])).toMatchObject({ municipio: "Sevilla", provincia: "Sevilla" });
+  });
+
+  it("el tipo de registro sale de las pestañas", async () => {
+    const pedidas: string[] = [];
+    const html = fixture("jerez-listado.html");
+    const soloAlbarizas = html.replace(/<div class="box-item is-flex(?:(?!<div class="box-item is-flex)[\s\S])*?bodega-conde-peraleja[\s\S]*?(?=<div class="box-item is-flex|<\/div><\/div><\/div><\/div><\/section>)/, "");
+    const ctx = { http: { get: async (u: string) => { pedidas.push(u); return { url: u, status: 200, texto: u.endsWith("expedicion") ? soloAlbarizas : u.endsWith("almacenista") ? "<html></html>" : html }; } }, log: new Log() } as unknown as Contexto;
+    const r = await jerez.consejoJerez.listar(ctx);
+    expect(pedidas).toEqual([jerez.URL_LISTADO, jerez.URL_EXPEDICION, jerez.URL_ALMACENISTA]);
+    expect(r.find((e) => e.datos.id_externo === "slug:albarizas")!.datos.extra).toMatchObject({ registro: "crianza_y_expedicion" });
+    expect(r.find((e) => e.datos.id_externo === "slug:bodega-conde-peraleja")!.datos.extra).not.toHaveProperty("registro");
   });
 });

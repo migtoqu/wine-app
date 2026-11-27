@@ -10,7 +10,7 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] Ampliar **cobertura de D.O.**: hoy 9 (Penedès añadida el 2026-11-27); faltan Ribeiro, Cava, Somontano, Jumilla, La Mancha, Jerez… Rías Baixas sigue dando 403 a nuestro UA.
+- [ ] Ampliar **cobertura de D.O.**: hoy 10 (Penedès y Jerez añadidas el 2026-11-27); faltan Ribeiro, Cava, Somontano, Jumilla, La Mancha… Ribeiro, Cava y La Mancha tienen directorio de bodegas Rías Baixas sigue dando 403 a nuestro UA.
 - [ ] Nombres alternativos de bodega en el buscador (marca vs. razón social).
 
 ## ✅ Hecho el 2026-11-27
