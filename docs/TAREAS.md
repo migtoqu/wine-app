@@ -19,6 +19,7 @@
 - AJV sin 429: las ejecuciones del 26 de noviembre leyeron la web entera (7 vinos en la BD, 11 servicios).
 - Vinorea confirmada tras el arreglo de PrestaShop 8: la ejecución del 15 de noviembre leyó 114 ofertas sin errores (la del 22 no arrancó por la facturación de Actions, antes de que el repo fuera público).
 - **D.O. Penedès**: consejo nuevo (#65) a partir de la tabla de bodegas y del CSV que publica el propio consejo. Carga real: 133 bodegas nuevas (120 con web, 132 con teléfono, todas con CP) y 1 a revisión (Família Torres ~ Selección de Torres). El catálogo pasa a 1.000 bodegas. El crawler de webs del jueves sacará sus vinos.
+- **D.O. Jerez**: consejo nuevo (#67) desde el listado único de sherry.wine. Carga real: 64 bodegas nuevas (todas con CP y email, 51 con web), 0 a revisión. El crawler de webs del jueves sacará sus vinos.
 - Tablero de tareas en vivo (artifact privado, fuente en `docs/tablero/tareas.html`): lo actualiza Claude al empezar y acabar cada tarea.
 
 ## ✅ Hecho el 2026-11-26
