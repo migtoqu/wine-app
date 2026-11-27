@@ -5,8 +5,12 @@ import { provinciaDeCodigoPostal } from "../../lib/geo.ts";
 import { decodificarCuerpo } from "../../lib/http.ts";
 import { Log } from "../../lib/log.ts";
 import * as alicante from "./alicante.ts";
+import * as arlanza from "./arlanza.ts";
 import * as bierzo from "./bierzo.ts";
+import * as binissalem from "./binissalem.ts";
+import * as bullas from "./bullas.ts";
 import * as calatayud from "./calatayud.ts";
+import * as carinena from "./carinena.ts";
 import * as cava from "./cava.ts";
 import * as cigales from "./cigales.ts";
 import { crearScraperConsejo, fichaDesdeListado } from "./comun/ejecutar.ts";
@@ -14,10 +18,13 @@ import { candidatosSlug, hechosConsejo, vinculoDudosoPorDominio } from "./comun/
 import { limpiarMarcas, municipioDe, normalizarBodega, provinciaDe, provinciaDeTexto, webPropia } from "./comun/normalizar.ts";
 import type { DefinicionConsejo, EntradaListado } from "./comun/tipos.ts";
 import { CONSEJOS } from "./index.ts";
+import * as costersSegre from "./costers-segre.ts";
 import * as emporda from "./emporda.ts";
 import * as jerez from "./jerez.ts";
 import * as jumilla from "./jumilla.ts";
 import * as laMancha from "./la-mancha.ts";
+import * as leon from "./leon.ts";
+import * as monterrei from "./monterrei.ts";
 import * as penedes from "./penedes.ts";
 import * as priorat from "./priorat.ts";
 import * as riberaGuadiana from "./ribera-guadiana.ts";
@@ -25,6 +32,7 @@ import * as ribeiro from "./ribeiro.ts";
 import * as rueda from "./rueda.ts";
 import * as somontano from "./somontano.ts";
 import * as toro from "./toro.ts";
+import * as yecla from "./yecla.ts";
 
 const fixture = (f: string) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url), "utf8");
 const fixtureBytes = (f: string) => readFileSync(new URL(`./fixtures/${f}`, import.meta.url));
@@ -298,7 +306,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda", "consejo-ribera-guadiana", "consejo-calatayud", "consejo-alicante"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda", "consejo-ribera-guadiana", "consejo-calatayud", "consejo-alicante", "consejo-costers-segre", "consejo-monterrei", "consejo-bullas", "consejo-arlanza", "consejo-leon", "consejo-yecla", "consejo-binissalem", "consejo-carinena"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+(?:-[a-z]+)*$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -694,5 +702,164 @@ describe("Alicante: tarjetas por comarca, sin fichas", () => {
       expect(es[i]!.datos.extra).toHaveProperty("web_grupo");
     }
     expect(normalizarBodega(fichaDesdeListado(es[0]!), alicante.consejoAlicante).campos).toMatchObject({ provincia: "Alicante", comunidad: "Comunitat Valenciana" });
+  });
+});
+
+describe("Costers del Segre: bloques con icono y vinos", () => {
+  it("listado: fichas /ca/cellers/<slug> sin las letras ni «Show More»", () => {
+    const es = costersSegre.parsearListado(fixture("costers-segre-listado.html"));
+    expect(es.map((e) => e.datos.id_externo)).toEqual(["slug:analec", "slug:antoni-giribet", "slug:batlliu-de-sort", "slug:cal-cabo-celler", "slug:carviresa", "slug:castell-dencus"]);
+  });
+
+  it("ficha: «Calle, Municipio, CP - (Provincia)», contacto, visitas y marcas", () => {
+    const f = costersSegre.parsearFicha(fixture("costers-segre-carviresa.html"), { url: "u", datos: {} });
+    expect(f).toMatchObject({
+      nombre: "Carviresa", direccion: "Av. Tarragona s/n", codigo_postal: "25300", municipio: "Tàrrega", provincia_texto: "Lleida",
+      web: "http://www.carviresa.com", telefono: "973 310 732", email: "carviresa@carviresa.com", enoturismo: true, marcas: ["POCA PENA"],
+    });
+    expect(normalizarBodega(f, costersSegre.consejoCostersSegre).campos).toMatchObject({ provincia: "Lleida", comunidad: "Cataluña" });
+  });
+
+  it("dirección y teléfono con variantes", () => {
+    expect(costersSegre.partirDireccion("C/ Vallbona, 15-18, Omells de Na Gaia, 43449 - ()")).toEqual({ direccion: "C/ Vallbona, 15-18", cp: "43449", municipio: "Omells de Na Gaia", provincia: null });
+    expect(costersSegre.primerTelefono("Telèfon: (+34) 973 580 200 Fax: 973 718 312")).toBe("(+34) 973 580 200");
+  });
+});
+
+describe("Monterrei: «Datos de Interés» etiquetados", () => {
+  it("listado de fichas /bodegas/<slug>/", () => {
+    const es = monterrei.parsearListado(fixture("monterrei-listado.html"));
+    expect(es.length).toBe(29);
+    expect(es[0]!.url).toBe("https://www.domonterrei.wine/bodegas/abeledos/");
+  });
+
+  it("ficha: dirección con aldea, contacto, variedades y marcas; nunca la persona", () => {
+    const f = monterrei.parsearFicha(fixture("monterrei-abeledos.html"), { url: "u", datos: {} });
+    expect(f).toMatchObject({
+      nombre: "Abeledos", direccion: "C/ Principal, 7, Tamagos", codigo_postal: "32697", municipio: "Verín",
+      telefono: "+34 616571938", email: "adegaabeledos@gmail.com", marcas: ["Abeledos Blanco", "Abeledos Tinto", "Tirabeque Godello", "Tirabeque Mencía"],
+    });
+    expect(f.extra.variedades).toContain("Treixadura");
+    expect(JSON.stringify(f)).not.toMatch(/Fernando/);
+  });
+
+  it("dirección: municipio tras «-» y aldeas por alias", () => {
+    expect(monterrei.partirDireccion("Rúa da Igrexa,1, 32627, Villamayor del Valle - Verín (Ourense)")).toMatchObject({ cp: "32627", municipio: "Verín" });
+    expect(monterrei.partirDireccion("Calle del Castillo, 59, 32619 Pazos, Verín (Ourense)")).toMatchObject({ direccion: "Calle del Castillo, 59, Pazos", municipio: "Verín" });
+    expect(normalizarBodega(monterrei.parsearFicha(fixture("monterrei-abeledos.html"), { url: "u", datos: {} }), monterrei.consejoMonterrei).campos).toMatchObject({ provincia: "Ourense", comunidad: "Galicia" });
+    expect(monterrei.partirMarcas("Quinta Soutullo (Godello, Treixadura) y Quinta Soutullo (Mencía)")).toEqual(["Quinta Soutullo"]);
+  });
+});
+
+describe("Bullas: una página con todas las bodegas", () => {
+  const es = bullas.parsearListado(fixture("bullas-listado.html"));
+
+  it("nombre, dirección, teléfono, web y tienda; sin responsable ni email ofuscado", () => {
+    expect(es.length).toBe(14);
+    expect(es[2]!.datos).toMatchObject({ nombre: "Bodegas Carreño", direccion: "C/ Ginés de Paco, 22", codigo_postal: "30430", municipio: "Cehegín", telefono: "968 740 004", web: "http://bodegascarreno.com", email: null });
+    expect(JSON.stringify(es)).not.toMatch(/Responsable|Pepa/);
+  });
+
+  it("coordenadas del texto y web de grupo apartada", () => {
+    expect(es[0]!.datos.ubicacion).toEqual({ lat: 37.97931, lng: -1.71829 });
+    const lavia = es.find((e) => e.datos.nombre!.startsWith("Bodegas Lavia"))!;
+    expect(lavia.datos.web).toBeNull();
+    expect(lavia.datos.extra).toMatchObject({ web_grupo: "http://mgwinesgroup.com/bodegas-lavia" });
+  });
+
+  it("variantes de dirección", () => {
+    expect(bullas.partirDireccion('C12 - Polígono Industrial "EL ARREAQUE" Mula, 30.193 (Murcia)')).toEqual({ direccion: 'C12 - Polígono Industrial "EL ARREAQUE"', cp: "30193", municipio: "Mula" });
+    expect(bullas.partirDireccion("Paraje Casa Enrique. Caravaca de la Cruz, (Murcia)")).toEqual({ direccion: "Paraje Casa Enrique", cp: null, municipio: "Caravaca de la Cruz" });
+    expect(normalizarBodega(fichaDesdeListado(es[0]!), bullas.consejoBullas).campos).toMatchObject({ provincia: "Murcia", comunidad: "Región de Murcia" });
+  });
+});
+
+describe("Arlanza: municipio del listado y sede aparte", () => {
+  const es = arlanza.parsearListado(fixture("arlanza-listado.html"));
+  const de = (slug: string) => es.find((e) => e.datos.id_externo === `slug:${slug}`)!;
+
+  it("listado: razón social y municipio entre paréntesis", () => {
+    expect(es.length).toBe(27);
+    expect(de("bodegas-monte-aman").datos).toMatchObject({ nombre: "Monte Amán S.L.", municipio: "Castrillo de Solarana" });
+  });
+
+  it("ficha: dirección con CP, email y web; la persona de contacto no se lee", () => {
+    const f = arlanza.parsearFicha(fixture("arlanza-atancaba.html"), de("atancaba"));
+    expect(f).toMatchObject({ nombre: "Atancaba", direccion: "C/ Tordomar s/n", codigo_postal: "09341", municipio: "Ruyales del Agua", web: "http://bodegasatancaba.es" });
+    const m = arlanza.parsearFicha(fixture("arlanza-monte-aman.html"), de("bodegas-monte-aman"));
+    expect(m).toMatchObject({ codigo_postal: "09348", municipio: "Castrillo de Solarana", email: "bodegas@monteaman.com", web: "http://www.monteaman.com" });
+    expect(normalizarBodega(m, arlanza.consejoArlanza).campos).toMatchObject({ provincia: "Burgos", comunidad: "Castilla y León" });
+  });
+
+  it("una ubicación en otra ciudad es la sede: va a direccion_contacto", () => {
+    expect(arlanza.partirUbicacion("Avda. Casado del Alisal, 26. 34001 Palencia.", "Palenzuela").nombraMunicipio).toBe(false);
+    expect(arlanza.partirUbicacion("C/Mayor 14, Castrillo de Solarana 09348 Burgos, España", "Castrillo de Solarana")).toMatchObject({ direccion: "C/Mayor 14", cp: "09348", nombraMunicipio: true });
+  });
+});
+
+describe("León: entradas de la categoría «Bodegas DO León»", () => {
+  it("listado sin las noticias", () => {
+    const es = leon.parsearListado(fixture("leon-listado.html"));
+    expect(es.length).toBe(35);
+    expect(es.map((e) => e.url)).not.toContain("https://doleon.es/nota-blancomantico-2026/");
+  });
+
+  it("ficha: dirección con pedanía, teléfono en un <li> mal cerrado, web y marcas", () => {
+    const f = leon.parsearFicha(fixture("leon-julio-crespo.html"), { url: "u", datos: {} });
+    expect(f).toMatchObject({
+      nombre: "Julio Crespo", direccion: "Finca Villazán, Ctra. Sahagún-Renedo Km 6", codigo_postal: "24326", municipio: "Sahagún", provincia_texto: "León",
+      telefono: "987 13 00 10", email: "luisaguado@bodegasjuliocrespo.com", web: "http://www.bodegasjuliocrespo.com", marcas: ["JULIO", "FINCA VILLAZÁN"],
+    });
+  });
+
+  it("variantes de dirección", () => {
+    expect(leon.partirDireccion("Avenida Palanquinos 20, Valencia de Don Juan, León")).toEqual({ direccion: "Avenida Palanquinos 20", cp: null, municipio: "Valencia de Don Juan", provincia: "León" });
+    expect(leon.partirDireccion("C/ La Iglesia, s/n. Ardoncino. 24392, LEÓN, ESPAÑA")).toMatchObject({ direccion: "C/ La Iglesia, s/n", cp: "24392", municipio: "Ardoncino" });
+    expect(leon.partirDireccion("Calle Palmera nº 15, 47673 Roales de Campos, Valladolid, España.")).toMatchObject({ cp: "47673", municipio: "Roales de Campos", provincia: "Valladolid" });
+    expect(leon.partirDireccion("Ctra. Leon S/N, Valdevimbre, LEÓN, ESPAÑA")).toMatchObject({ direccion: "Ctra. Leon S/N", municipio: "Valdevimbre" });
+  });
+});
+
+describe("Yecla: lista con iconos, sin el teléfono de plantilla", () => {
+  it("listado y ficha", () => {
+    expect(yecla.parsearListado(fixture("yecla-listado.html")).length).toBe(7);
+    const f = yecla.parsearFicha(fixture("yecla-barahonda.html"), { url: "u", datos: {} });
+    expect(f).toMatchObject({ nombre: "Barahonda", direccion: "Carretera Pinoso, Km 3", codigo_postal: "30510", municipio: "Yecla", web: "https://www.barahonda.com/", email: "info@barahonda.com", telefono: null });
+  });
+
+  it("la dirección sin el nombre de la bodega", () => {
+    expect(yecla.partirDireccion("Bodegas Castaño - Avenida de Fuenteálamo nº 3 - 30510 - España - Murcia - Yecla")).toEqual({ direccion: "Avenida de Fuenteálamo nº 3", cp: "30510" });
+    expect(yecla.partirDireccion("Viñavista, Ctra. Pinoso, km. 14,5 30510 Yecla (Murcia)")).toEqual({ direccion: "Ctra. Pinoso, km. 14,5", cp: "30510" });
+  });
+});
+
+describe("Binissalem: municipio por sección y «Contacto bodega»", () => {
+  const es = binissalem.parsearListado(fixture("binissalem-listado.html"));
+
+  it("listado: nombre y municipio de cada ficha", () => {
+    expect(es.length).toBe(9);
+    expect(es[0]!.datos).toMatchObject({ nombre: "Bodega Biniagual", municipio: "Binissalem" });
+    expect(es.find((e) => e.datos.nombre === "Vinya Taujana")!.datos.municipio).toBe("Santa Eugènia");
+  });
+
+  it("ficha: sin el apartado de correos", () => {
+    const f = binissalem.parsearFicha(fixture("binissalem-biniagual.html"), es[0]!);
+    expect(f).toMatchObject({ direccion: "Llogaret de Biniagual", codigo_postal: "07350", municipio: "Binissalem", telefono: "+34 689 18 39 54", email: "info@bodegabiniagual.com", web: "https://finca-biniagual.com/" });
+    expect(normalizarBodega(f, binissalem.consejoBinissalem).campos).toMatchObject({ provincia: "Illes Balears" });
+  });
+});
+
+describe("Cariñena: cabecera con municipio y botón de enoturismo", () => {
+  it("listado y ficha", () => {
+    expect(carinena.parsearListado(fixture("carinena-listado.html")).length).toBe(17);
+    const f = carinena.parsearFicha(fixture("carinena-care.html"), { url: "u", datos: {} });
+    expect(f).toMatchObject({
+      nombre: "CARE", direccion: "Ctra. Aguarón, km. 47.100", codigo_postal: "50400", municipio: "Cariñena",
+      telefono: "+34 976 793 016", email: "bodega@bodegascare.com", web: "https://www.carewines.com", enoturismo: true,
+    });
+  });
+
+  it("dirección sin el municipio repetido", () => {
+    expect(carinena.partirDireccion("Ctra. Valencia km 45,700 Cariñena 50400 (Zaragoza)", "Cariñena")).toEqual({ direccion: "Ctra. Valencia km 45,700", cp: "50400" });
   });
 });
