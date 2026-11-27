@@ -117,7 +117,7 @@ Objetivo: el grupo de invitados puede buscar vinos y bodegas reales y guardar fa
 - [x] Lentitud: búsquedas con índices trigram (#41, #44), esqueletos al navegar a fichas, funciones en cdg1 junto a Supabase
 - [ ] Lentitud restante: arranques en frío de Vercel (~1 s la primera visita) y de Supabase Free; medir en móvil con sesión
 - [ ] Bodegas que no aparecen por su marca: el catálogo usa la razón social del consejo (p. ej. «Velvety Wines» = Dominio Lubiano, ya renombrada). Renombrar en `/admin` (desde #47 el nombre del admin ya no lo pisan los scrapers) y valorar nombres alternativos en el buscador
-- [ ] Cobertura de D.O.: hoy 9 (Ribera, Rioja, Priorat, Rueda, Bierzo, Toro, Navarra, Cigales, Penedès); faltan Rías Baixas (403 a nuestro UA), Ribeiro, Cava, Somontano, Jumilla, La Mancha, Jerez…
+- [ ] Cobertura de D.O.: hoy 10 (Ribera, Rioja, Priorat, Rueda, Bierzo, Toro, Navarra, Cigales, Penedès, Jerez); faltan Rías Baixas (403 a nuestro UA), Ribeiro, Cava, Somontano, Jumilla, La Mancha…
 
 ## Fase 4 — Apertura pública
 
