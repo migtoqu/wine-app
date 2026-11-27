@@ -340,11 +340,15 @@ describe("Penedès: tabla + CSV del consejo", () => {
   // El CSV se sirve en Latin-1: se decodifica como lo hace el cliente HTTP.
   const csv = penedes.parsearCsv(decodificarCuerpo(fixtureBytes("penedes-cellers.csv")));
 
-  it("las 134 bodegas de la tabla, todas con su fila del CSV", () => {
+  // La fixture del CSV tiene solo 4 filas (sin el contacto de las otras 130 bodegas en el repo).
+  it("las 134 bodegas de la tabla; el contacto, de su fila del CSV", () => {
     expect(tabla).toHaveLength(134);
-    expect(csv).toHaveLength(134);
+    expect(csv).toHaveLength(4);
     const es = penedes.combinar(tabla, csv);
-    expect(es.filter((e) => e.datos.telefono || e.datos.web || e.datos.email)).toHaveLength(134);
+    expect(es).toHaveLength(134);
+    expect(es.filter((e) => e.datos.telefono || e.datos.web || e.datos.email)).toHaveLength(4);
+    // Sin fila en el CSV, la bodega sale igual con lo que da la tabla.
+    expect(es.find((e) => e.datos.nombre === "Vinya Escudé")?.datos).toMatchObject({ municipio: "Sant Quintí de Mediona", telefono: null });
     const albet = es.find((e) => e.datos.nombre === "Albet i Noya")!;
     expect(albet.url).toBe("https://dopenedes.cat/es/bodega/?id=77");
     expect(albet.datos).toMatchObject({
