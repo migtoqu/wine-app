@@ -7,6 +7,7 @@ import type { DefinicionConsejo } from "./comun/tipos.ts";
 import { consejoJerez } from "./jerez.ts";
 import { consejoPenedes } from "./penedes.ts";
 import { consejoPriorat } from "./priorat.ts";
+import { consejoRibeiro } from "./ribeiro.ts";
 import { consejoRueda } from "./rueda.ts";
 import { consejoToro } from "./toro.ts";
 
@@ -19,6 +20,7 @@ export const CONSEJOS: Record<string, DefinicionConsejo> = {
   "consejo-rueda": consejoRueda,
   "consejo-penedes": consejoPenedes,
   "consejo-jerez": consejoJerez,
+  "consejo-ribeiro": consejoRibeiro,
 };
 
 export const SCRAPERS_CONSEJOS: Record<string, { slug: string; scraper: Scraper }> = Object.fromEntries(
