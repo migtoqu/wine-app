@@ -10,7 +10,7 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] Ampliar **cobertura de D.O.**: hoy 11 (Penedès, Jerez y Ribeiro añadidas el 2026-11-27); faltan Cava, Somontano, Jumilla, La Mancha… Cava y La Mancha tienen directorio de bodegas. Rías Baixas sigue dando 403 a nuestro UA.
+- [ ] Ampliar **cobertura de D.O.**: hoy 12 (Penedès, Jerez, Ribeiro y Cava añadidas el 2026-11-27); faltan Somontano, Jumilla, La Mancha… La Mancha tiene directorio de bodegas. Rías Baixas sigue dando 403 a nuestro UA.
 - [ ] Nombres alternativos de bodega en el buscador (marca vs. razón social).
 
 ## ✅ Hecho el 2026-11-27
@@ -21,6 +21,7 @@
 - **D.O. Penedès**: consejo nuevo (#65) a partir de la tabla de bodegas y del CSV que publica el propio consejo. Carga real: 133 bodegas nuevas (120 con web, 132 con teléfono, todas con CP) y 1 a revisión (Família Torres ~ Selección de Torres). El catálogo pasa a 1.000 bodegas. El crawler de webs del jueves sacará sus vinos.
 - **D.O. Jerez**: consejo nuevo (#67) desde el listado único de sherry.wine. Carga real: 64 bodegas nuevas (todas con CP y email, 51 con web), 0 a revisión. El crawler de webs del jueves sacará sus vinos.
 - **D.O. Ribeiro**: consejo nuevo (#70) desde el listado de bodegas y colleiteiros de ribeiro.wine y una ficha por bodega (sin razón social ni persona de contacto). Carga real: 88 bodegas nuevas (51 bodegas, 37 colleiteiros), 0 a revisión. El catálogo pasa a 1.152 bodegas.
+- **D.O. Cava**: consejo nuevo (#72) desde el listado paginado de cava.wine y una ficha por bodega. Carga real: 71 bodegas nuevas, 62 ya existentes vinculadas a la D.O. Cava (casi todas del Penedès) y 9 a revisión en /admin (Ondarre, Jaume Serra y Marqués de la Concordia parecen la misma bodega). Su aviso legal es el más restrictivo: pedir permiso antes de una fase pública.
 - Tablero de tareas en vivo (artifact privado, fuente en `docs/tablero/tareas.html`): lo actualiza Claude al empezar y acabar cada tarea.
 
 ## ✅ Hecho el 2026-11-26
