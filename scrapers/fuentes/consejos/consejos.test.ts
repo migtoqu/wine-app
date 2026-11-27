@@ -4,6 +4,7 @@ import type { Contexto } from "../../lib/ejecucion.ts";
 import { provinciaDeCodigoPostal } from "../../lib/geo.ts";
 import { decodificarCuerpo } from "../../lib/http.ts";
 import { Log } from "../../lib/log.ts";
+import * as alicante from "./alicante.ts";
 import * as bierzo from "./bierzo.ts";
 import * as calatayud from "./calatayud.ts";
 import * as cava from "./cava.ts";
@@ -297,7 +298,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda", "consejo-ribera-guadiana", "consejo-calatayud"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda", "consejo-ribera-guadiana", "consejo-calatayud", "consejo-alicante"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+(?:-[a-z]+)*$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -675,5 +676,23 @@ describe("Calatayud: secciones «Dirección» y «Vinos»", () => {
       telefono: "(+34) 976 848 031", web: "http://www.bodegasesteban.es", marcas: ["Tranquera", "180 Noches", "Sargas de Idues"],
     });
     expect(normalizarBodega(f, calatayud.consejoCalatayud).campos).toMatchObject({ provincia: "Zaragoza", comunidad: "Aragón" });
+  });
+});
+
+describe("Alicante: tarjetas por comarca, sin fichas", () => {
+  const es = alicante.parsearListado(fixture("alicante-listado.html"));
+
+  it("nombre, web y comarca; sin duplicados", () => {
+    expect(es.map((e) => e.datos.nombre)).toEqual(["Bodegas Sierras de Cabrera", "Finca la Lagunilla", "Sierra Salinas", "Vivanza", "Bodegas Monovar"]);
+    expect(es[0]!.datos).toMatchObject({ web: "https://www.carabibas.com/", extra: { comarca: "Vinalopó Alto" } });
+    expect(es[4]!.datos.extra).toMatchObject({ comarca: "Vinalopó Medio" });
+  });
+
+  it("una web de grupo compartida no se asigna a ninguna bodega", () => {
+    for (const i of [1, 2, 4]) {
+      expect(es[i]!.datos.web).toBeNull();
+      expect(es[i]!.datos.extra).toHaveProperty("web_grupo");
+    }
+    expect(normalizarBodega(fichaDesdeListado(es[0]!), alicante.consejoAlicante).campos).toMatchObject({ provincia: "Alicante", comunidad: "Comunitat Valenciana" });
   });
 });
