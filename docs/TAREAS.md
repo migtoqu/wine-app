@@ -10,7 +10,7 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] Ampliar **cobertura de D.O.**: hoy 15 (Penedès, Jerez, Ribeiro, Cava, La Mancha, Jumilla y Somontano añadidas el 2026-11-27). Valdepeñas y Utiel-Requena auditadas y aplazadas: sus webs no tienen directorio con datos. Quedan por auditar las D.O. pequeñas (Calatayud, Campo de Borja, Alicante, Bullas, Yecla…). Rías Baixas sigue dando 403 a nuestro UA.
+- [ ] Ampliar **cobertura de D.O.**: hoy 19 (el 2026-11-27 se añadieron Penedès, Jerez, Ribeiro, Cava, La Mancha, Jumilla, Somontano, Empordà, Ribera del Guadiana, Calatayud y Alicante). Aplazadas por no tener directorio con datos: Valdepeñas, Utiel-Requena, Campo de Borja y Montilla-Moriles. Pendiente buscar el dominio real de Montsant, Costers del Segre, Monterrei, Bullas, Yecla, Manchuela, Arlanza, Binissalem y Tierra de León (los habituales no resuelven), y el de Cariñena (docarinena.com es ahora spam). Rías Baixas sigue dando 403 a nuestro UA.
 - [ ] Nombres alternativos de bodega en el buscador (marca vs. razón social).
 
 ## ✅ Hecho el 2026-11-27
@@ -27,6 +27,7 @@
 - **D.O. La Mancha**: consejo nuevo (#74, #75) desde el directorio de lamanchawines.com, leído por sus sitemaps porque robots.txt prohíbe URLs con «?». Carga real: 179 bodegas nuevas con marcas, 2 a revisión (García Carrión ~ Mayor de Castilla, J. Ramón Lozano ~ Bodegas Lozano) y 41 descartadas: 36 embotelladores de fuera de la región y 5 fichas retiradas. El catálogo pasa a unas 1.400 bodegas.
 - **D.O. Jumilla** (#77): 36 bodegas nuevas desde jumilla.wine (Murcia y Albacete), 1 a revisión (García Carrión ~ Mayor de Castilla).
 - **D.O. Somontano** (#78): 27 bodegas de dosomontano.com con web, email y visitas (carga real tras el merge).
+- **D.O. pequeñas**: Empordà (#83, 35 nuevas), Ribera del Guadiana (#85, 18 nuevas, 118 vinos como marcas), Calatayud (#86, 10 nuevas) y Alicante (#87, nombre, web y comarca). Revisiones pendientes en /admin: Oliveda ~ Freixa Rigau (mismo dominio), Perelada ~ Perelada, López Morenas, Bodegas Ateca ~ El Nido.
 - Tablero de tareas en vivo (artifact privado, fuente en `docs/tablero/tareas.html`): lo actualiza Claude al empezar y acabar cada tarea.
 
 ## ✅ Hecho el 2026-11-26
