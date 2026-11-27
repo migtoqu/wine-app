@@ -5,6 +5,7 @@ import { provinciaDeCodigoPostal } from "../../lib/geo.ts";
 import { decodificarCuerpo } from "../../lib/http.ts";
 import { Log } from "../../lib/log.ts";
 import * as bierzo from "./bierzo.ts";
+import * as calatayud from "./calatayud.ts";
 import * as cava from "./cava.ts";
 import * as cigales from "./cigales.ts";
 import { crearScraperConsejo, fichaDesdeListado } from "./comun/ejecutar.ts";
@@ -296,7 +297,7 @@ describe("núcleo común", () => {
   });
 
   it("todas las definiciones: slug cr-*, D.O. y robots", () => {
-    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda", "consejo-ribera-guadiana"]);
+    expect(Object.keys(CONSEJOS)).toEqual(["consejo-toro", "consejo-cigales", "consejo-bierzo", "consejo-priorat", "consejo-rueda", "consejo-penedes", "consejo-jerez", "consejo-ribeiro", "consejo-cava", "consejo-la-mancha", "consejo-jumilla", "consejo-somontano", "consejo-emporda", "consejo-ribera-guadiana", "consejo-calatayud"]);
     for (const def of Object.values(CONSEJOS)) {
       expect(def.slug).toMatch(/^cr-[a-z]+(?:-[a-z]+)*$/);
       expect(def.denominacion.slug).toMatch(/^[a-z]+(?:-[a-z]+)*$/);
@@ -659,5 +660,20 @@ describe("Ribera del Guadiana: lista con iconos y tarjetas de vinos", () => {
     const ctx = { http: { get: async (u: string) => (pedidas.push(u), { url: u, status: 200, texto: html }) }, log: new Log() } as unknown as Contexto;
     expect(await riberaGuadiana.consejoRiberaGuadiana.listar(ctx)).toHaveLength(2);
     expect(pedidas).toEqual(["https://riberadelguadiana.eu/bodegas/", "https://riberadelguadiana.eu/bodegas/page/2/"]);
+  });
+});
+
+describe("Calatayud: secciones «Dirección» y «Vinos»", () => {
+  it("listado sin la página de bodegas", () => {
+    expect(calatayud.parsearListado(fixture("calatayud-listado.html")).map((e) => e.datos.id_externo)).toEqual(["slug:bodegas-ateca", "slug:bodegas-esteban-castejon"]);
+  });
+
+  it("ficha: dirección, CP, municipio, teléfono, web y marcas sin las variedades", () => {
+    const f = calatayud.parsearFicha(fixture("calatayud-esteban.html"), { url: "u", datos: {} });
+    expect(f).toMatchObject({
+      nombre: "Bodegas Esteban Castejón", direccion: "C. Portada 13", codigo_postal: "50236", municipio: "Ibdes", provincia_texto: "Zaragoza",
+      telefono: "(+34) 976 848 031", web: "http://www.bodegasesteban.es", marcas: ["Tranquera", "180 Noches", "Sargas de Idues"],
+    });
+    expect(normalizarBodega(f, calatayud.consejoCalatayud).campos).toMatchObject({ provincia: "Zaragoza", comunidad: "Aragón" });
   });
 });
