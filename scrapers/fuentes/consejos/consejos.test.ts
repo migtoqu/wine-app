@@ -504,6 +504,26 @@ describe("La Mancha: fichas del sitemap del directorio", () => {
     ]);
   });
 
+  it("si el índice no trae los sitemaps del directorio, prueba los nombres conocidos hasta un 404", async () => {
+    const { ErrorHttp } = await import("../../lib/http.ts");
+    const pedidas: string[] = [];
+    const sitemap = fixture("la-mancha-sitemap.xml");
+    const ctx = {
+      http: { get: async (u: string) => {
+        pedidas.push(u);
+        if (u.endsWith("/sitemap.xml")) return { url: u, status: 200, texto: "<sitemapindex></sitemapindex>" };
+        if (u.endsWith("sitemap3.xml")) throw new ErrorHttp(u, 404);
+        return { url: u, status: 200, texto: sitemap };
+      } },
+      log: new Log(),
+    } as unknown as Contexto;
+    const r = await laMancha.consejoLaMancha.listar(ctx);
+    expect(pedidas.slice(1)).toEqual([
+      "https://lamanchawines.com/wpbdp_listing-sitemap.xml", "https://lamanchawines.com/wpbdp_listing-sitemap2.xml", "https://lamanchawines.com/wpbdp_listing-sitemap3.xml",
+    ]);
+    expect(r).toHaveLength(2);
+  });
+
   it("ficha: campos wpbdp, marcas partidas, enoturismo y tipo de bodega", () => {
     const f = laMancha.parsearFicha(fixture("la-mancha-tercia.html"), { url: "u", datos: { id_externo: "slug:bodegas-la-tercia" } });
     expect(f).toMatchObject({
