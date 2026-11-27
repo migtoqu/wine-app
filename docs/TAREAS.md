@@ -10,7 +10,7 @@
 
 ## 🟠 Siguiente (datos)
 
-- [ ] Ampliar **cobertura de D.O.**: hoy 12 (Penedès, Jerez, Ribeiro y Cava añadidas el 2026-11-27); faltan Somontano, Jumilla, La Mancha… La Mancha tiene directorio de bodegas. Rías Baixas sigue dando 403 a nuestro UA.
+- [ ] Ampliar **cobertura de D.O.**: hoy 13 (Penedès, Jerez, Ribeiro, Cava y La Mancha añadidas el 2026-11-27); faltan Somontano, Jumilla, Valdepeñas, Utiel-Requena… (por auditar). Rías Baixas sigue dando 403 a nuestro UA.
 - [ ] Nombres alternativos de bodega en el buscador (marca vs. razón social).
 
 ## ✅ Hecho el 2026-11-27
@@ -22,6 +22,7 @@
 - **D.O. Jerez**: consejo nuevo (#67) desde el listado único de sherry.wine. Carga real: 64 bodegas nuevas (todas con CP y email, 51 con web), 0 a revisión. El crawler de webs del jueves sacará sus vinos.
 - **D.O. Ribeiro**: consejo nuevo (#70) desde el listado de bodegas y colleiteiros de ribeiro.wine y una ficha por bodega (sin razón social ni persona de contacto). Carga real: 88 bodegas nuevas (51 bodegas, 37 colleiteiros), 0 a revisión. El catálogo pasa a 1.152 bodegas.
 - **D.O. Cava**: consejo nuevo (#72) desde el listado paginado de cava.wine y una ficha por bodega. Carga real: 71 bodegas nuevas, 62 ya existentes vinculadas a la D.O. Cava (casi todas del Penedès) y 9 a revisión en /admin (Ondarre, Jaume Serra y Marqués de la Concordia parecen la misma bodega). Su aviso legal es el más restrictivo: pedir permiso antes de una fase pública.
+- **D.O. La Mancha**: consejo nuevo (#74, #75) desde el directorio de lamanchawines.com, leído por sus sitemaps porque robots.txt prohíbe URLs con «?». Carga real: 179 bodegas nuevas con marcas, 2 a revisión (García Carrión ~ Mayor de Castilla, J. Ramón Lozano ~ Bodegas Lozano) y 41 descartadas: 36 embotelladores de fuera de la región y 5 fichas retiradas. El catálogo pasa a unas 1.400 bodegas.
 - Tablero de tareas en vivo (artifact privado, fuente en `docs/tablero/tareas.html`): lo actualiza Claude al empezar y acabar cada tarea.
 
 ## ✅ Hecho el 2026-11-26
