@@ -13,6 +13,12 @@ export interface Marca {
   bodega: string;
 }
 
+/**
+ * Lo que devuelve `extraerVino`: campos que mandan sobre los del genérico. `denominacion`: D.O. que la
+ * ficha da sin la sigla («100% verdejo de Rueda»), escrita como la detecta el genérico («D.O. Rueda»).
+ */
+export type ParcialVino = Partial<VinoWeb> & { bodega?: string | null; denominacion?: string };
+
 /** Lo que recibe `extraerVino`: la ficha ya descargada. */
 export interface FichaAdaptador {
   $: ReturnType<typeof cargar>;
@@ -83,7 +89,7 @@ export interface AdaptadorSitio {
    * `bodega`: dueña del vino según la ficha (migas, categoría) en tiendas que venden vinos de
    * otras bodegas del grupo; se trata como una marca (la del sitio se asigna, el resto a revisión).
    */
-  extraerVino?: (ficha: FichaAdaptador) => (Partial<VinoWeb> & { bodega?: string | null }) | null;
+  extraerVino?: (ficha: FichaAdaptador) => ParcialVino | null;
   /** Renderizado con navegador: no se usa en esta ola (siempre false). */
   renderizar?: false;
   /** Vinos mínimos esperados: si da menos, aviso «adaptador roto» en el resumen del sitio. */

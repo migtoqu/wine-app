@@ -14,7 +14,7 @@ import { formatoMl, ofertaDeJsonLd, ofertaDeWoo, unidades, type OfertaWeb } from
 import { adaptadorPara } from "./adaptadores/index.ts";
 import { productoDeShopify, type ProductoShopify } from "./shopify.ts";
 import { dominioBase } from "./dominio.ts";
-import type { AdaptadorSitio } from "./adaptadores/tipos.ts";
+import type { AdaptadorSitio, ParcialVino } from "./adaptadores/tipos.ts";
 import { candidatasDePagina, elegirImagenBodega, imagenBotella, type CandidataImagen, type ImagenElegida } from "./imagen.ts";
 import {
   bodegaVacia,
@@ -210,7 +210,7 @@ interface Contenido {
   /** Página «vino» que no es ficha según el adaptador (listado): se siguen sus enlaces, no da vinos. */
   soloEnlaces?: boolean;
   /** Ficha de un adaptador: no se divide como listado y usa su umbral de evidencias. */
-  fichaAdaptador?: { evidenciasMin: number; parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null };
+  fichaAdaptador?: { evidenciasMin: number; parcial: ParcialVino | null };
   /** `selectores.fichas` de un adaptador: un vino por elemento de la página (en cualquier clase). */
   fichasAdaptador?: FichaEnPagina[];
 }
@@ -219,7 +219,7 @@ interface FichaEnPagina {
   titulo: string;
   bloques: Bloque[];
   imagen: { url: string; alt: string | null } | null;
-  parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null;
+  parcial: ParcialVino | null;
 }
 
 interface ProductoWoo {
@@ -626,10 +626,10 @@ export class RastreadorSitio {
       const min = c.fichaAdaptador?.evidenciasMin ?? 2;
       for (const f of c.fichasAdaptador!) {
         const texto = textoDe(f.bloques);
-        const { bodega: dueña, ...parcial } = f.parcial ?? {};
+        const { bodega: dueña, denominacion: doFicha, ...parcial } = f.parcial ?? {};
         const v: VinoWeb & { bodega_marca?: VinoSitio["bodega_marca"] } = { ...extraerVino(f.titulo, texto, { hoy }), ...parcial };
         if (dueña !== undefined) v.bodega_marca = { estado: "dudosa", bodega: dueña };
-        if (v.evidencias >= min) meter(conDo(v, { ...c, titulo: f.titulo }, c.url, texto, imagenBotella(f.imagen?.url, f.imagen?.alt ?? null, c.url, esDelSitio)));
+        if (v.evidencias >= min) meter(conDo(v, { ...c, titulo: f.titulo }, c.url, conDoFicha(texto, doFicha), imagenBotella(f.imagen?.url, f.imagen?.alt ?? null, c.url, esDelSitio)));
       }
     }
     // Con `patronFicha`, solo sus fichas dan vinos, vengan del HTML, de la API REST o de la tienda.
@@ -640,7 +640,7 @@ export class RastreadorSitio {
         // Con `fichaHtmlWoo` el texto de la ficha HTML se suma al de la Store API.
         const texto = [textoDe(bloquesDeFragmento(`${p.short_description ?? ""}\n${p.description ?? ""}`)), textoDe(c.bloques)].filter(Boolean).join("\n");
         const atributos = Object.fromEntries((p.attributes ?? []).map((a) => [a.name, (a.terms ?? []).map((t) => t.name).join(", ")]));
-        const { bodega: dueña, ...parcial } = c.fichaAdaptador?.parcial ?? {};
+        const { bodega: dueña, denominacion: doFicha, ...parcial } = c.fichaAdaptador?.parcial ?? {};
         const v: VinoWeb & { bodega_marca?: VinoSitio["bodega_marca"] } = { ...extraerVino(decodificarEntidades(p.name), texto, { atributos, hoy, gtin: c.gtin ?? null }), ...parcial };
         if (dueña !== undefined) v.bodega_marca = { estado: "dudosa", bodega: dueña };
         const categoriaVino = (p.categories ?? []).some((x) => /vino|wine|tinto|blanco|rosado/i.test(x.name));
@@ -648,19 +648,19 @@ export class RastreadorSitio {
         const atribTexto = Object.entries(atributos).map(([k, x]) => `${k}: ${x}`).join("\n");
         if (v.evidencias >= 1 || categoriaVino || (c.fichaAdaptador && v.evidencias >= c.fichaAdaptador.evidenciasMin)) {
           const oferta = ofertaDeWoo(p, v.ean);
-          meter(conDo(v, c, p.permalink, `${texto}\n${atribTexto}`, imagenBotella(img?.src, img?.alt || null, p.permalink, esDelSitio), oferta ? [oferta] : []));
+          meter(conDo(v, c, p.permalink, conDoFicha(`${texto}\n${atribTexto}`, doFicha), imagenBotella(img?.src, img?.alt || null, p.permalink, esDelSitio), oferta ? [oferta] : []));
         }
         continue;
       }
       const texto = textoDe(c.bloques);
       if (c.fichaAdaptador) {
         // Ficha de un adaptador: una página = un vino, con su umbral de evidencias.
-        const { bodega: dueña, ...parcial } = c.fichaAdaptador.parcial ?? {};
+        const { bodega: dueña, denominacion: doFicha, ...parcial } = c.fichaAdaptador.parcial ?? {};
         const v: VinoWeb & { bodega_marca?: VinoSitio["bodega_marca"] } = { ...extraerVino(c.titulo, texto, { hoy, gtin: c.gtin ?? null }), ...parcial };
         if (dueña !== undefined) v.bodega_marca = { estado: "dudosa", bodega: dueña };
         if (v.evidencias >= c.fichaAdaptador.evidenciasMin && !TITULO_NO_VINO.test(v.nombre)) {
           const oferta = c.oferta ? { ...c.oferta, ean: c.oferta.ean ?? v.ean } : null;
-          meter(conDo(v, c, c.url, texto, imagenBotella(c.imagenProducto?.url, c.imagenProducto?.alt ?? null, c.url, esDelSitio), oferta ? [oferta] : []));
+          meter(conDo(v, c, c.url, conDoFicha(texto, doFicha), imagenBotella(c.imagenProducto?.url, c.imagenProducto?.alt ?? null, c.url, esDelSitio), oferta ? [oferta] : []));
         }
         continue;
       }
@@ -1073,7 +1073,7 @@ async function paginaHtml(ctx: ContextoDescubrimiento, url: string, clasePrevia?
     const srcSel = imagenSel ? srcDe(imagenSel) : undefined;
     // <base href> (p. ej. «/es/»): las rutas relativas de enlaces e imágenes se resuelven contra él.
     const base = baseDe($, res.url);
-    let parcial: (Partial<VinoWeb> & { bodega?: string | null }) | null = null;
+    let parcial: ParcialVino | null = null;
     const fichasAdaptador = ficha && indexable && sel.fichas
       ? $(sel.fichas).toArray().map((el): FichaEnPagina => {
           const $el = $(el);
@@ -1166,6 +1166,11 @@ function urlImagen(src: string, base: string, alt: string | undefined): { url: s
 }
 
 /** ¿Es una ficha de vino según el adaptador del sitio? */
+/** Texto para detectar la D.O., con la que da el adaptador delante (la ficha no trae la sigla). */
+function conDoFicha(texto: string, doFicha: string | undefined): string {
+  return doFicha ? `${doFicha}\n${texto}` : texto;
+}
+
 function esFichaAdaptador(ad: AdaptadorSitio | null, url: string): boolean {
   const r = ad?.rutas;
   return !!r?.patronFicha && r.patronFicha.test(url) && !r.excluir?.test(url);
