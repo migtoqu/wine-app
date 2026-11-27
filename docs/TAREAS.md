@@ -15,6 +15,8 @@
 
 ## ✅ Hecho el 2026-11-27
 
+- **Premios** (#80): tablas `certamenes` y `premios` (migración aplicada), scraper del Concours Mondial de Bruxelles (vinos españoles de 2019 a 2026, mensual) y bloques «Premios» en la ficha de vino y «Premios de sus vinos» en la de bodega. En dry-run de la edición 2026: 881 premios, 73 con vino del catálogo y sin falsos positivos tras el ajuste del atajo por nombre único.
+
 - Cooperativa de Cigales y Mazuela: no necesitaban navegador. Adaptadores nuevos (de 0 a 14 vinos en dry-run): en `bodegacigales.es` las fichas están por columnas en las dos páginas de gama Torondos (9 vinos; el «Torondos Verdejo Rueda» va a D.O. Rueda); en `bodegasmazuela.com` `/vinos/` redirige por JavaScript y el nombre solo está en el `<title>` con «Caja de 6» (5 vinos, con añada e imagen). Los adaptadores pueden dar ya la D.O. de una ficha que no trae la sigla. Se cargan en la próxima ejecución de webs.
 - AJV sin 429: las ejecuciones del 26 de noviembre leyeron la web entera (7 vinos en la BD, 11 servicios).
 - Vinorea confirmada tras el arreglo de PrestaShop 8: la ejecución del 15 de noviembre leyó 114 ofertas sin errores (la del 22 no arrancó por la facturación de Actions, antes de que el repo fuera público).
@@ -35,7 +37,8 @@
 
 ## 🟡 Producto — Fase 2
 
-- [ ] Premios y puntuaciones: tablas (§6.3) y scraper de una guía y un concurso
+- [ ] Premios y puntuaciones: **hecho** tablas (§6.3), concurso (Concours Mondial de Bruxelles, #80) y bloque en las fichas. **Falta una guía con puntos**: Peñín (tras registro) y Proensa (de pago) no son aptas; siguiente candidata, Premios Zarcillo (oro y plata en PDF). También ocultar premios desde el admin
+- [ ] Vinos premiados que no están en el catálogo (~90 % en el CMB 2026, casi todos de bodegas que sí están): decidir si un certamen puede crear el vino cuando la bodega es inequívoca
 - [ ] Reseñas externas (extracto + enlace)
 - [ ] Ubicación de referencia guardada del usuario («cerca de mí» ya funciona en `/mapa`)
 - [ ] Filtros de tienda, puntuación, premios y servicios (precio ya hecho)

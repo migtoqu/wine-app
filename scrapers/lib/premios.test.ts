@@ -54,6 +54,14 @@ describe("premios: emparejamiento", () => {
     expect(otra.estado).toBe("pendiente");
   });
 
+  it("el atajo de nombre único no casa un vino sin tipo con otro que sí lo lleva", () => {
+    const e = new EmparejadorPremios([], [
+      { id: "v-t", bodegaId: "b", nombre: "Salvueros Tinto", tipo: "tinto", crianza: null, denominacion: "Cigales" },
+    ]);
+    expect(e.emparejar(premio({ nombre: "Salvueros", denominacion: "Cigales" })).estado).toBe("pendiente");
+    expect(e.emparejar(premio({ nombre: "Salvueros Tinto", denominacion: "Cigales", tipo: "tinto" })).estado).toBe("emparejado");
+  });
+
   it("vino fuera del catálogo de una bodega conocida: pendiente, no revisión", () => {
     const r = emp.emparejar(premio({ nombre: "Pinna Fidelis Vendimia Seleccionada", productor: "Bodegas Pinna Fidelis" }));
     expect(r.estado).toBe("pendiente");

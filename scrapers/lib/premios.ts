@@ -91,6 +91,7 @@ function mismaDenominacion(a: string | null, b: string | null): boolean {
 }
 
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
+const PALABRAS_TIPO = new Set(["tinto", "blanco", "rosado", "rose", "clarete"]);
 
 export class EmparejadorPremios {
   private bodegas: EmparejadorBodegas;
@@ -141,10 +142,18 @@ export class EmparejadorPremios {
       if (r.estado === "revision" && r.motivo === "parecido") parecidos.push(...r.candidatos);
     }
 
-    // Sin bodega reconocible: un nombre de vino único en todo el catálogo y de la misma D.O.
+    // Sin bodega reconocible: un nombre de vino único en todo el catálogo, de la misma D.O. y sin
+    // un tipo en el nombre que el premio no diga («Salvueros» rosado ≠ «Salvueros Tinto»).
     const canon = claveVino(p.nombre, p.tipo);
     const iguales = canon.length >= 5 ? (this.porCanon.get(canon) ?? []) : [];
-    if (iguales.length === 1 && mismaDenominacion(iguales[0]!.denominacion, p.denominacion)) {
+    const tiposDe = (n: string) => new Set(claveTexto(n).split(" ").filter((w) => PALABRAS_TIPO.has(w)));
+    const tiposPremio = tiposDe(p.nombre);
+    if (
+      iguales.length === 1 &&
+      mismaDenominacion(iguales[0]!.denominacion, p.denominacion) &&
+      (p.tipo === null || iguales[0]!.tipo === null || iguales[0]!.tipo === p.tipo) &&
+      [...tiposDe(iguales[0]!.nombre)].every((w) => tiposPremio.has(w))
+    ) {
       const v = iguales[0]!;
       return { ...base, estado: "emparejado", vinoId: v.id, bodegaId: v.bodegaId, confianza: 0.85, motivo: "vino_unico_do" };
     }
