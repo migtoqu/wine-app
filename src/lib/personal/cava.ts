@@ -3,6 +3,8 @@
 // las restricciones de la tabla (20261116180000_mi_cava.sql y 20261126214633_cava_fotos.sql).
 
 import type { Dictionary } from "@/i18n/dictionaries/es";
+import type { CrianzaVino, TipoVino } from "@/lib/catalog/types";
+import type { ConsultaCava } from "./cava-busqueda";
 import { isUuid } from "./validation";
 
 export const CAVA_FORMATOS = [187, 375, 500, 750, 1500, 3000] as const;
@@ -139,27 +141,45 @@ export function validateCava(form: FormData): Result {
 }
 
 // Vino del catálogo al que se enlaza un lote: nombre y bodega fijos y la añada
-// se elige de su lista.
+// se elige de su lista. Lo devuelve el buscador (VinoSugerido) o la ficha.
 export type CavaVinoData = {
   id: string;
   nombre: string;
   bodega: string;
   bodega_id: string;
-  anadas: { id: string; anio: number | null }[];
+  tipo: TipoVino | null;
+  crianza: CrianzaVino | null;
+  denominacion: string | null;
+  imagen_url: string | null;
+  precio_desde: number | null;
+  anadas: { id: string; anio: number | null; meses: number | null }[];
 };
+
+export type VinoSugerido = CavaVinoData & { slug: string };
+
+export type ResultadoBusquedaCava = { consulta: ConsultaCava; vinos: VinoSugerido[] };
 
 export function toCavaVino(ficha: {
   id: string;
   nombre: string;
+  tipo: TipoVino | null;
+  crianza: CrianzaVino | null;
   bodega: { id: string; nombre: string };
-  anadas: { id: string; anio: number | null }[];
+  denominacion: { nombre: string } | null;
+  imagenes: { url: string }[];
+  anadas: { id: string; anio: number | null; meses_crianza: number | null; imagenes: { url: string }[] }[];
 }): CavaVinoData {
   return {
     id: ficha.id,
     nombre: ficha.nombre,
     bodega: ficha.bodega.nombre,
     bodega_id: ficha.bodega.id,
-    anadas: ficha.anadas.map((a) => ({ id: a.id, anio: a.anio })),
+    tipo: ficha.tipo,
+    crianza: ficha.crianza,
+    denominacion: ficha.denominacion?.nombre ?? null,
+    imagen_url: ficha.imagenes[0]?.url ?? ficha.anadas.find((a) => a.imagenes.length > 0)?.imagenes[0].url ?? null,
+    precio_desde: null,
+    anadas: ficha.anadas.map((a) => ({ id: a.id, anio: a.anio, meses: a.meses_crianza })),
   };
 }
 
@@ -213,12 +233,21 @@ export function cavaTotals(lotes: { cantidad: number; precio_compra: number | nu
 // pasar del servidor al cliente: se le envían solo los textos que usa.
 export type CavaFormLabels = Pick<
   Dictionary["cava"],
-  "fromCatalog" | "catalogHint" | "bodegaHint" | "fields" | "picker" | "formatos" | "save" | "cancel" | "errors"
-> & { photo: Omit<Dictionary["cava"]["photo"], "alt"> };
+  "fromCatalog" | "bodegaHint" | "fields" | "picker" | "alta" | "formatos" | "save" | "cancel" | "errors"
+> & {
+  photo: Omit<Dictionary["cava"]["photo"], "alt">;
+  wineTypes: Dictionary["catalog"]["wineTypes"];
+  agings: Dictionary["catalog"]["agings"];
+};
 
-export function cavaFormLabels(cava: Dictionary["cava"]): CavaFormLabels {
-  const { fromCatalog, catalogHint, bodegaHint, fields, formatos, save, cancel, errors, picker } = cava;
+export function cavaFormLabels(dict: Dictionary): CavaFormLabels {
+  const { cava, catalog } = dict;
+  const { fromCatalog, bodegaHint, fields, formatos, save, cancel, errors, picker, alta } = cava;
   const { label, add, change, remove, preview, processing, unreadable } = cava.photo;
   const photo = { label, add, change, remove, preview, processing, unreadable };
-  return { fromCatalog, catalogHint, bodegaHint, fields, formatos, save, cancel, errors, photo, picker };
+  return {
+    fromCatalog, bodegaHint, fields, formatos, save, cancel, errors, photo, picker, alta,
+    wineTypes: catalog.wineTypes,
+    agings: catalog.agings,
+  };
 }

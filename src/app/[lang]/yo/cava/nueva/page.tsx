@@ -20,10 +20,11 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function NuevaCavaPage({ searchParams }: PageProps<"/[lang]/yo/cava/nueva">) {
   const { cava } = await getDictionary();
   return (
-    <Container className="max-w-2xl py-12">
-      <h1 className="text-3xl font-semibold tracking-tight">{cava.newTitle}</h1>
-      <Card className="mt-6">
-        <CardBody>
+    <Container className="max-w-2xl py-6 sm:py-12">
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{cava.newTitle}</h1>
+      {/* En el móvil sin tarjeta: el formulario usa todo el ancho. */}
+      <Card className="mt-4 border-0 bg-transparent shadow-none sm:mt-6 sm:border sm:bg-surface sm:shadow-card">
+        <CardBody className="p-0 sm:p-5">
           <Suspense fallback={<FormFallback fields={6} />}>
             <NuevaForm searchParams={searchParams} />
           </Suspense>
@@ -37,7 +38,7 @@ async function NuevaForm({ searchParams }: Pick<PageProps<"/[lang]/yo/cava/nueva
   const lang = await getLocale();
   const { vino: slug } = await searchParams;
   await requireUser({ next: localePath(lang, "/yo/cava/nueva") });
-  const [{ cava }, ficha] = await Promise.all([
+  const [dict, ficha] = await Promise.all([
     getDictionary(),
     typeof slug === "string" && slug.length <= 200 ? getVino(slug) : null,
   ]);
@@ -48,7 +49,7 @@ async function NuevaForm({ searchParams }: Pick<PageProps<"/[lang]/yo/cava/nueva
   return (
     <CavaForm
       lang={lang}
-      labels={cavaFormLabels(cava)}
+      labels={cavaFormLabels(dict)}
       vino={vino}
       values={{
         vino_id: vino?.id ?? null,
@@ -60,7 +61,8 @@ async function NuevaForm({ searchParams }: Pick<PageProps<"/[lang]/yo/cava/nueva
         cantidad: 1,
         formato_ml: 750,
         precio_compra: null,
-        fecha_compra: null,
+        // Hoy en España: casi siempre se apunta al volver de comprar.
+        fecha_compra: hoyMadrid(),
         tienda: null,
         ubicacion: null,
         beber_desde: null,
@@ -69,4 +71,8 @@ async function NuevaForm({ searchParams }: Pick<PageProps<"/[lang]/yo/cava/nueva
       }}
     />
   );
+}
+
+function hoyMadrid(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid" }).format(new Date());
 }
