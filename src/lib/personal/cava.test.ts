@@ -17,6 +17,7 @@ describe("validateCava", () => {
         cantidad: 2,
         formato_ml: 750,
         vino_id: null,
+        bodega_id: null,
         anio: null,
         precio_compra: null,
       }),
@@ -32,6 +33,7 @@ describe("validateCava", () => {
         fecha_compra: "2026-11-01",
         vino_id: "60000000-0000-4000-8000-0000000000C1",
         anada_id: "no-uuid",
+        bodega_id: "40000000-0000-4000-8000-0000000000C1",
       }),
     );
     expect(r.ok && r.data).toMatchObject({
@@ -39,6 +41,7 @@ describe("validateCava", () => {
       fecha_compra: "2026-11-01",
       vino_id: "60000000-0000-4000-8000-0000000000c1",
       anada_id: null,
+      bodega_id: "40000000-0000-4000-8000-0000000000c1",
     });
   });
 

@@ -4,8 +4,9 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { defaultLocale, hasLocale, localePath, type Locale } from "@/i18n/config";
 import { requireUser } from "@/lib/auth/server";
+import { getVino } from "@/lib/catalog/queries";
 import { createClient } from "@/lib/supabase/server";
-import { parseFoto, validateCava, type CavaErrorKey, type CavaField } from "./cava";
+import { parseFoto, toCavaVino, validateCava, type CavaErrorKey, type CavaField, type CavaVinoData } from "./cava";
 import { CAVA_FOTOS_BUCKET } from "./queries";
 import { isUuid } from "./validation";
 
@@ -104,4 +105,13 @@ export async function deleteCavaLote(form: FormData) {
   }
   refresh();
   redirect(localePath(lang, "/yo/cava"));
+}
+
+// Vino del catálogo elegido en el buscador del formulario: nombre, bodega y
+// añadas para enlazar el lote. null si el slug no existe.
+export async function getCavaVino(input: { lang: string; slug: string }): Promise<CavaVinoData | null> {
+  await requireUser({ lang: toLocale(input.lang) });
+  if (typeof input.slug !== "string" || input.slug.length > 200) return null;
+  const ficha = await getVino(input.slug);
+  return ficha ? toCavaVino(ficha) : null;
 }

@@ -198,7 +198,7 @@ export type VinoFicha = {
   elaboracion: string | null;
   updated_at: string;
   procedencia: Procedencias;
-  bodega: { slug: string; nombre: string; municipio: string | null; provincia: string | null };
+  bodega: { id: string; slug: string; nombre: string; municipio: string | null; provincia: string | null };
   denominacion: DenominacionRef | null;
   fuente: Fuente;
   imagenes: CatalogImage[];

@@ -131,7 +131,7 @@ export async function getVino(slug: string): Promise<VinoFicha | null> {
     .from("vinos")
     .select(
       `id, slug, nombre, tipo, crianza, descripcion, elaboracion, updated_at, enlaces_ocultos,
-       bodega:bodegas!inner(slug, nombre, municipio, provincia),
+       bodega:bodegas!inner(id, slug, nombre, municipio, provincia),
        denominacion:denominaciones(slug, nombre, tipo),
        fuente:fuentes(nombre, url_base),
        imagenes(${IMAGE_FIELDS}),
