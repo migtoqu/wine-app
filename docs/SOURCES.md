@@ -20,6 +20,8 @@ Decisiones de partida (del usuario): **textos** = resumen propio redactado a par
 | 4.6 | **Vinatis** y **Vinorea** (Ola B, 2026-11-10) | Precio y disponibilidad; D.O., añada, uvas, grado y formato | **Apta**; implementadas en `scrapers/fuentes/tiendas/` (§4.6) |
 | 4.6 | Vila Viniteca, Coalla Gourmet, Mariskal | — | **No aptas**: aviso legal prohíbe extraer datos (Vila Viniteca); robots.txt veta scrapers por nombre (Coalla); no vende vino (Mariskal) (§4.6) |
 | 4.4 | Uvinum / Drinks&Co | — | **No verificada** (error 520 a nuestro UA); baja prioridad (§4.4) |
+| 9.1 | **Concours Mondial de Bruxelles** (resultados) | Medallas de ~900 vinos españoles por edición (2019–2026) | **Apta**; implementada en `scrapers/fuentes/concours-mondial/` (§9.1) |
+| 9.2 | Premios Zarcillo, Guía Peñín, Guía Proensa, Decanter WWA, Bacchus | Medallas y puntuaciones | **Aplazadas** o **no aptas** (§9.2) |
 | 5.1 | **C.R. DOCa Rioja** (`riojawine.com`) | ~213 bodegas, ~700 vinos, ~370 experiencias con reserva | **Apta con condiciones** (§5.1) |
 | 5.2 | **D.O. Rueda** (2.ª D.O. recomendada) y **D.O. Navarra** | Bodegas con web; Navarra: bodegas, vinos y experiencias estructurados | **Apta con condiciones** (§5.2) |
 | 5.3 | **C.R. Toro, Cigales, Bierzo, Priorat y Rueda** (ola C) | ≈ 350 bodegas con contacto y municipio; marcas (Toro, Cigales); coordenadas (Bierzo, Priorat); visitable y tienda (Rueda) | **Apta con condiciones**; implementada (§5.3) |
@@ -605,3 +607,21 @@ Más `Accept-Language: es-ES,es;q=0.9`. Usar un email de contacto dedicado del p
 - Crear la key: Google Cloud Console → proyecto nuevo → activar facturación → *APIs & Services* → habilitar **Places API (New)** → *Credentials* → *Create API key* → restringirla a Places API (New). Guardarla como secreto `GOOGLE_PLACES_API_KEY` (no hay workflow programado: solo ejecución manual).
 - Términos: solo se guarda `place_id` (permitido indefinidamente); lat/lng como mucho 30 días (aquí solo en memoria para verificar); valoración, horario, teléfono, web y fotos no se guardan: se piden al mostrarlos (`ClientePlaces.detalles`) con atribución «Google Maps», y no se pueden mezclar en nuestro mapa de OSM. Nunca se rastrea Google Maps.
 - Coste estimado (precios 2026-11, por 1.000): ~900 bodegas × 1 Text Search Pro (5.000 gratis/mes, luego 32 $) = **0 $** al mes; mostrar detalles: Place Details Enterprise (1.000 gratis/mes, luego 20 $) y Photos (1.000 gratis, luego 7 $). Con uso de amigos, previsiblemente dentro del tramo gratuito. Presupuesto por ejecución: `--presupuesto` (100 por defecto).
+
+## 9. Guías y premios (auditadas el 2026-11-27)
+
+### 9.1 Concours Mondial de Bruxelles (`results.concoursmondial.com`) — apta
+
+- **robots.txt:** `Disallow:` vacío en `results.`; `concoursmondial.com` pide `Crawl-delay: 10`, que el scraper aplica también aquí (10–12 s entre páginas).
+- **Términos:** no hay aviso legal publicado en ninguno de los dos dominios. Solo se guardan hechos (medalla, edición, añada, trofeo) con enlace a la ficha del concurso.
+- **Rutas:** `/es/resultados/<edición>?search[country]=Spain` (24 vinos por página, paginación con `rel="next"`). 2026: 37 páginas; 2019: 14. Las ediciones hasta ~2020 dan la medalla en inglés («Grand Gold Medal»).
+- **Datos del listado:** nombre con añada, productor (razón social), «País - Región», D.O. (si la hay), medalla y trofeo («Revelación España»), categoría. Las fichas añaden notas de cata (no se guardan), variedades, grado y web del productor; no se leen para no multiplicar las peticiones por 25.
+- **Emparejamiento:** bodega por razón social (emparejador común) y vino por nombre canónico dentro de ella; un nombre de vino único en el catálogo y de la misma D.O. basta aunque la razón social no se reconozca. Lo que no está en el catálogo queda `pendiente` y se reintenta cada mes. No crea bodegas ni vinos.
+
+### 9.2 Otras guías y concursos
+
+- **Premios Zarcillo** (`premioszarcillo.com`): robots.txt abierto; el Gran Zarcillo de Oro y los premios especiales están en HTML, pero las medallas de oro y plata solo en PDF por edición. Candidata para una segunda iteración (lector de PDF).
+- **Guía Peñín** (`guiapenin.wine`): robots.txt abierto, pero la puntuación de cada vino está tras registro. Es su producto comercial: **no apta** sin permiso.
+- **Guía Proensa** (`proensa.com`): las fichas de cata se venden (WooCommerce). **No apta**.
+- **Decanter World Wine Awards** (`awards.decanter.com`): aplicación React sobre una API privada (`decanterresultsapi.decanter.com`) sin robots.txt. Usarla sería rastrear una API no publicada: **aplazada** hasta que haya un listado público o permiso.
+- **Concurso Bacchus** (`bacchus.es`): el dominio está a la venta; habrá que localizar la nueva web.

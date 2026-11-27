@@ -1,0 +1,66 @@
+name: Scraper Concours Mondial de Bruxelles (premios)
+
+# Mensual, en su propia franja: día 15 a las 05:41 UTC. Lee el listado de vinos españoles premiados de la
+# edición del año y la anterior (~37 páginas por edición a 10 s: Crawl-delay del concurso, ~15 min). La carga
+# histórica se lanza a mano con ediciones=todas (~1 h). Solo el listado; ni fichas ni imágenes.
+# Nunca se ejecuta en pull requests: solo cron y lanzamiento manual.
+on:
+  schedule:
+    - cron: "41 5 15 * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run: no toca la BD y sube el JSON como artefacto"
+        type: boolean
+        default: false
+      limit:
+        description: "Máximo de premios a procesar (vacío = todos)"
+        type: string
+        default: ""
+      ediciones:
+        description: "Ediciones: 2019-2026, 2025,2026 o todas (vacío = la del año y la anterior)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scrape-concours-mondial
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Ejecutar scraper
+        env:
+          # Solo se pasan en ejecuciones reales; en dry-run no hacen falta.
+          SUPABASE_URL: ${{ !inputs.dry_run && secrets.SUPABASE_URL || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ !inputs.dry_run && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+          LIMIT: ${{ inputs.limit }}
+          EDICIONES: ${{ inputs.ediciones }}
+        run: |
+          args=(concours-mondial)
+          if [ -n "$DRY_RUN" ]; then args+=(--dry-run --out scrapers/out/concours-mondial.json); fi
+          if [ -n "$LIMIT" ]; then args+=(--limit "$LIMIT"); fi
+          if [ -n "$EDICIONES" ]; then args+=(--ediciones "$EDICIONES"); fi
+          node scrapers/cli.ts "${args[@]}"
+
+      - name: Subir resultado del dry-run
+        if: ${{ always() && inputs.dry_run }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: concours-mondial-dry-run
+          path: scrapers/out/concours-mondial.json
+          if-no-files-found: ignore
+          retention-days: 14

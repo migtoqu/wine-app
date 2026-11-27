@@ -14,6 +14,7 @@ import { scraperOsm, SLUG_FUENTE as SLUG_OSM } from "./fuentes/osm/index.ts";
 import { scraperGooglePlaces, SLUG_FUENTE as SLUG_GOOGLE_PLACES } from "./fuentes/google-places/index.ts";
 import { scraperNavarra, SLUG_FUENTE as SLUG_NAVARRA } from "./fuentes/consejos/navarra/index.ts";
 import { scraperWikimedia, SLUG_FUENTE as SLUG_WIKIMEDIA } from "./fuentes/wikimedia/index.ts";
+import { scraperConcoursMondial, SLUG_FUENTE as SLUG_CONCOURS_MONDIAL } from "./fuentes/concours-mondial/index.ts";
 
 // Alias de línea de comandos → slug de `fuentes` + scraper.
 const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
@@ -37,6 +38,8 @@ const FUENTES: Record<string, { slug: string; scraper: Scraper }> = {
   osm: { slug: SLUG_OSM, scraper: scraperOsm },
   // Google Places API (New): desactivado si falta GOOGLE_PLACES_API_KEY.
   "google-places": { slug: SLUG_GOOGLE_PLACES, scraper: scraperGooglePlaces },
+  // Premios: medallas de vinos españoles en el Concours Mondial de Bruxelles.
+  "concours-mondial": { slug: SLUG_CONCOURS_MONDIAL, scraper: scraperConcoursMondial },
 };
 
 const AYUDA = `Uso: node scrapers/cli.ts <fuente> [opciones]
@@ -66,6 +69,10 @@ OpenStreetMap (osm):
 Google Places (google-places), solo con GOOGLE_PLACES_API_KEY:
   --presupuesto N      máximo de peticiones a la API por ejecución (por defecto 100)
 
+Concours Mondial de Bruxelles (concours-mondial):
+  --ediciones A[-B],…  ediciones a leer (2019-2026, 2025,2026 o «todas»); por defecto, la del año y la anterior
+  --bodegas RUTA       (dry-run) instantánea del catálogo {bodegas, vinos} para emparejar
+
 Comprobador de enlaces (enlaces):
   --urls RUTA|URLS     (dry-run) fichero con una URL por línea o URLs separadas por comas
   --presupuesto-min N  no comprueba enlaces nuevos pasados N minutos (por defecto 150)
@@ -89,6 +96,7 @@ async function main(): Promise<number> {
       urls: { type: "string" },
       cache: { type: "string" },
       presupuesto: { type: "string" },
+      ediciones: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -125,6 +133,7 @@ async function main(): Promise<number> {
       urls: values.urls,
       cache: values.cache,
       presupuesto: values.presupuesto,
+      ediciones: values.ediciones,
     },
   });
 }

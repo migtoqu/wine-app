@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { Attribution } from "@/components/catalog/attribution";
 import { CatalogImage } from "@/components/catalog/catalog-image";
 import { FieldSources, SummarySources } from "@/components/catalog/field-sources";
+import { WineAwards } from "@/components/catalog/awards";
 import { AnadaNote, VinoActions } from "@/components/catalog/personal-actions";
 import { WhereToBuy } from "@/components/catalog/where-to-buy";
 import { WineCard, wineCardLabels } from "@/components/catalog/wine-card";
@@ -26,8 +27,8 @@ import {
 } from "@/lib/catalog/format";
 import { formatosDisponibles, pickFormato } from "@/lib/catalog/prices";
 import { pickResumen } from "@/lib/catalog/provenance";
-import { getOfertasVino, getOtrosVinos, getVino } from "@/lib/catalog/queries";
-import type { Anada, Oferta, VinoFicha } from "@/lib/catalog/types";
+import { getOfertasVino, getOtrosVinos, getPremiosVino, getVino } from "@/lib/catalog/queries";
+import type { Anada, Oferta, Premio, VinoFicha } from "@/lib/catalog/types";
 import { cn } from "@/lib/cn";
 
 // Ficha de vino (§5.4). La lectura está cacheada (perfil "catalogo") y la
@@ -62,8 +63,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function WinePage({ params, searchParams }: Props) {
   const { slug } = await params;
-  // Ficha y ofertas a la vez (las ofertas van por slug, no esperan al id).
-  const [vino, ofertas] = await Promise.all([getVino(slug), getOfertasVino(slug)]);
+  // Ficha, ofertas y premios a la vez (van por slug, no esperan al id).
+  const [vino, ofertas, premios] = await Promise.all([getVino(slug), getOfertasVino(slug), getPremiosVino(slug)]);
   if (!vino) notFound();
 
   const lang = await getLocale();
@@ -127,6 +128,11 @@ export default async function WinePage({ params, searchParams }: Props) {
           <SelectedBuyBlock lang={lang} dict={dict} vino={vino} ofertas={ofertas} searchParams={searchParams} />
         </Suspense>
 
+        {/* La añada de ?anada= resalta sus premios; el fallback los muestra todos igual. */}
+        <Suspense fallback={<WineAwards lang={lang} dict={dict} premios={premios} />}>
+          <SelectedAwards lang={lang} dict={dict} vino={vino} premios={premios} searchParams={searchParams} />
+        </Suspense>
+
         <section aria-labelledby="vintages-heading" className="flex flex-col gap-6">
           <h2 id="vintages-heading" className="text-2xl font-semibold">
             {catalog.wine.vintages}
@@ -178,6 +184,20 @@ function BuyBlock({
     return `${localePath(lang, `/vino/${vino.slug}`)}?${q}`;
   };
   return <WhereToBuy lang={lang} dict={dict} ofertas={ofertas} formato={formato} hrefFormato={hrefFormato} />;
+}
+
+async function SelectedAwards({
+  lang,
+  dict,
+  vino,
+  premios,
+  searchParams,
+}: { lang: Locale; dict: Dictionary; vino: VinoFicha; premios: Premio[] } & SearchParamsProp) {
+  if (premios.length === 0) return null;
+  const params = await searchParams;
+  // Solo se resalta si la URL elige añada (por defecto se muestran todos por igual).
+  const anada = params.anada !== undefined ? pickAnada(vino.anadas, params.anada) : null;
+  return <WineAwards lang={lang} dict={dict} premios={premios} anio={anada ? anada.anio : undefined} />;
 }
 
 async function SelectedWineImage({

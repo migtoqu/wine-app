@@ -260,6 +260,22 @@ const es = {
       date: "Fecha",
       bestPrice: "Mejor precio",
     },
+    awards: {
+      heading: "Premios",
+      intro: "Medallas y puntuaciones de concursos y guías, con enlace a la fuente.",
+      wineryHeading: "Premios de sus vinos",
+      wineryIntro: (n: number) =>
+        n === 1 ? "1 premio en concursos y guías." : `${n} premios en concursos y guías.`,
+      medals: { gran_oro: "Gran Oro", oro: "Oro", plata: "Plata", bronce: "Bronce" },
+      points: (n: string) => `${n} puntos`,
+      edition: (year: number) => `Edición ${year}`,
+      vintage: (year: number) => `Añada ${year}`,
+      noVintage: "Sin añada",
+      thisVintage: "Esta añada",
+      source: "Ver en la fuente",
+      sourceLabel: (contest: string) => `Ver el premio en ${contest} (se abre en una pestaña nueva)`,
+      seeAll: (n: number) => `Ver los ${n} premios`,
+    },
     winery: {
       about: "Sobre la bodega",
       appellations: "Denominaciones de origen",

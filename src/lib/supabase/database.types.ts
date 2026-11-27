@@ -262,8 +262,8 @@ export type Database = {
           cantidad: number
           created_at: string
           fecha_compra: string | null
-          foto_path: string | null
           formato_ml: number
+          foto_path: string | null
           id: string
           nombre: string
           notas: string | null
@@ -284,8 +284,8 @@ export type Database = {
           cantidad?: number
           created_at?: string
           fecha_compra?: string | null
-          foto_path?: string | null
           formato_ml?: number
+          foto_path?: string | null
           id?: string
           nombre: string
           notas?: string | null
@@ -306,8 +306,8 @@ export type Database = {
           cantidad?: number
           created_at?: string
           fecha_compra?: string | null
-          foto_path?: string | null
           formato_ml?: number
+          foto_path?: string | null
           id?: string
           nombre?: string
           notas?: string | null
@@ -338,6 +338,56 @@ export type Database = {
             columns: ["vino_id"]
             isOneToOne: false
             referencedRelation: "vinos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certamenes: {
+        Row: {
+          created_at: string
+          escala_max: number | null
+          fuente_id: string | null
+          id: string
+          nombre: string
+          orden: number
+          pais: string | null
+          slug: string
+          tipo: Database["public"]["Enums"]["tipo_certamen"]
+          updated_at: string
+          web: string | null
+        }
+        Insert: {
+          created_at?: string
+          escala_max?: number | null
+          fuente_id?: string | null
+          id?: string
+          nombre: string
+          orden?: number
+          pais?: string | null
+          slug: string
+          tipo: Database["public"]["Enums"]["tipo_certamen"]
+          updated_at?: string
+          web?: string | null
+        }
+        Update: {
+          created_at?: string
+          escala_max?: number | null
+          fuente_id?: string | null
+          id?: string
+          nombre?: string
+          orden?: number
+          pais?: string | null
+          slug?: string
+          tipo?: Database["public"]["Enums"]["tipo_certamen"]
+          updated_at?: string
+          web?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certamenes_fuente_id_fkey"
+            columns: ["fuente_id"]
+            isOneToOne: false
+            referencedRelation: "fuentes"
             referencedColumns: ["id"]
           },
         ]
@@ -992,6 +1042,95 @@ export type Database = {
         }
         Relationships: []
       }
+      premios: {
+        Row: {
+          anio: number | null
+          certamen_id: string
+          created_at: string
+          distincion: string | null
+          edicion: number
+          fuente_id: string | null
+          id: string
+          id_externo: string
+          medalla: Database["public"]["Enums"]["medalla_premio"] | null
+          mencion: string | null
+          oculto_admin: boolean
+          puntos: number | null
+          registro_id: string | null
+          updated_at: string
+          url: string | null
+          vino_id: string
+          visto_por_ultima_vez: string
+        }
+        Insert: {
+          anio?: number | null
+          certamen_id: string
+          created_at?: string
+          distincion?: string | null
+          edicion: number
+          fuente_id?: string | null
+          id?: string
+          id_externo: string
+          medalla?: Database["public"]["Enums"]["medalla_premio"] | null
+          mencion?: string | null
+          oculto_admin?: boolean
+          puntos?: number | null
+          registro_id?: string | null
+          updated_at?: string
+          url?: string | null
+          vino_id: string
+          visto_por_ultima_vez?: string
+        }
+        Update: {
+          anio?: number | null
+          certamen_id?: string
+          created_at?: string
+          distincion?: string | null
+          edicion?: number
+          fuente_id?: string | null
+          id?: string
+          id_externo?: string
+          medalla?: Database["public"]["Enums"]["medalla_premio"] | null
+          mencion?: string | null
+          oculto_admin?: boolean
+          puntos?: number | null
+          registro_id?: string | null
+          updated_at?: string
+          url?: string | null
+          vino_id?: string
+          visto_por_ultima_vez?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premios_certamen_id_fkey"
+            columns: ["certamen_id"]
+            isOneToOne: false
+            referencedRelation: "certamenes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premios_fuente_id_fkey"
+            columns: ["fuente_id"]
+            isOneToOne: false
+            referencedRelation: "fuentes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premios_registro_id_fkey"
+            columns: ["registro_id"]
+            isOneToOne: false
+            referencedRelation: "registros_fuente"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premios_vino_id_fkey"
+            columns: ["vino_id"]
+            isOneToOne: false
+            referencedRelation: "vinos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       procedencia_campos: {
         Row: {
           campo: string
@@ -1591,6 +1730,28 @@ export type Database = {
           tipo_vino: Database["public"]["Enums"]["tipo_vino"]
         }[]
       }
+      buscar_vinos_cava: {
+        Args: {
+          anio?: number
+          limite?: number
+          meses?: number
+          palabras: string[]
+        }
+        Returns: {
+          anadas: Json
+          bodega_id: string
+          bodega_nombre: string
+          crianza: Database["public"]["Enums"]["crianza_vino"]
+          denominacion_nombre: string
+          id: string
+          imagen_url: string
+          nombre: string
+          precio_desde: number
+          relevancia: number
+          slug: string
+          tipo: Database["public"]["Enums"]["tipo_vino"]
+        }[]
+      }
       dominio_web: { Args: { url: string }; Returns: string }
       enlaces_ocultos:
         | {
@@ -1812,6 +1973,7 @@ export type Database = {
         | "descartado"
       estado_enlace: "sin_comprobar" | "ok" | "fallando" | "oculto"
       idioma: "es" | "en"
+      medalla_premio: "gran_oro" | "oro" | "plata" | "bronce"
       origen_dato:
         | "admin"
         | "bodega"
@@ -1821,6 +1983,7 @@ export type Database = {
         | "otra"
       rol_usuario: "user" | "admin"
       tema: "claro" | "oscuro" | "sistema"
+      tipo_certamen: "guia" | "concurso"
       tipo_denominacion: "doca" | "do" | "do_pago" | "vc" | "igp"
       tipo_fuente: "tienda" | "bodega" | "consejo_regulador" | "guia" | "otra"
       tipo_imagen: "botella" | "etiqueta" | "bodega" | "vinedo" | "otra"
@@ -1997,6 +2160,7 @@ export const Constants = {
       ],
       estado_enlace: ["sin_comprobar", "ok", "fallando", "oculto"],
       idioma: ["es", "en"],
+      medalla_premio: ["gran_oro", "oro", "plata", "bronce"],
       origen_dato: [
         "admin",
         "bodega",
@@ -2007,6 +2171,7 @@ export const Constants = {
       ],
       rol_usuario: ["user", "admin"],
       tema: ["claro", "oscuro", "sistema"],
+      tipo_certamen: ["guia", "concurso"],
       tipo_denominacion: ["doca", "do", "do_pago", "vc", "igp"],
       tipo_fuente: ["tienda", "bodega", "consejo_regulador", "guia", "otra"],
       tipo_imagen: ["botella", "etiqueta", "bodega", "vinedo", "otra"],
