@@ -257,6 +257,7 @@ export type Database = {
           anio: number | null
           beber_desde: number | null
           beber_hasta: number | null
+          bodega_id: string | null
           bodega_nombre: string | null
           cantidad: number
           created_at: string
@@ -278,6 +279,7 @@ export type Database = {
           anio?: number | null
           beber_desde?: number | null
           beber_hasta?: number | null
+          bodega_id?: string | null
           bodega_nombre?: string | null
           cantidad?: number
           created_at?: string
@@ -299,6 +301,7 @@ export type Database = {
           anio?: number | null
           beber_desde?: number | null
           beber_hasta?: number | null
+          bodega_id?: string | null
           bodega_nombre?: string | null
           cantidad?: number
           created_at?: string
@@ -321,6 +324,13 @@ export type Database = {
             columns: ["anada_id"]
             isOneToOne: false
             referencedRelation: "anadas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cava_bodega_id_fkey"
+            columns: ["bodega_id"]
+            isOneToOne: false
+            referencedRelation: "bodegas"
             referencedColumns: ["id"]
           },
           {

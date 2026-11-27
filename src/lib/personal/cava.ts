@@ -27,6 +27,7 @@ export type CavaErrorKey = "required" | "tooLong" | "number" | "range" | "date" 
 export type CavaInput = {
   vino_id: string | null;
   anada_id: string | null;
+  bodega_id: string | null;
   nombre: string;
   bodega_nombre: string | null;
   anio: number | null;
@@ -111,6 +112,8 @@ export function validateCava(form: FormData): Result {
 
   const vino = text(form, "vino_id");
   const anada = text(form, "anada_id");
+  // Con vino enlazado, la base de datos fija la bodega del vino (trigger).
+  const bodega = text(form, "bodega_id");
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
@@ -118,6 +121,7 @@ export function validateCava(form: FormData): Result {
     data: {
       vino_id: isUuid(vino) ? vino.toLowerCase() : null,
       anada_id: isUuid(anada) ? anada.toLowerCase() : null,
+      bodega_id: isUuid(bodega) ? bodega.toLowerCase() : null,
       nombre,
       bodega_nombre,
       anio,
@@ -131,6 +135,31 @@ export function validateCava(form: FormData): Result {
       beber_hasta,
       notas,
     },
+  };
+}
+
+// Vino del catálogo al que se enlaza un lote: nombre y bodega fijos y la añada
+// se elige de su lista.
+export type CavaVinoData = {
+  id: string;
+  nombre: string;
+  bodega: string;
+  bodega_id: string;
+  anadas: { id: string; anio: number | null }[];
+};
+
+export function toCavaVino(ficha: {
+  id: string;
+  nombre: string;
+  bodega: { id: string; nombre: string };
+  anadas: { id: string; anio: number | null }[];
+}): CavaVinoData {
+  return {
+    id: ficha.id,
+    nombre: ficha.nombre,
+    bodega: ficha.bodega.nombre,
+    bodega_id: ficha.bodega.id,
+    anadas: ficha.anadas.map((a) => ({ id: a.id, anio: a.anio })),
   };
 }
 
@@ -184,12 +213,12 @@ export function cavaTotals(lotes: { cantidad: number; precio_compra: number | nu
 // pasar del servidor al cliente: se le envían solo los textos que usa.
 export type CavaFormLabels = Pick<
   Dictionary["cava"],
-  "fromCatalog" | "catalogHint" | "fields" | "formatos" | "save" | "cancel" | "errors"
+  "fromCatalog" | "catalogHint" | "bodegaHint" | "fields" | "picker" | "formatos" | "save" | "cancel" | "errors"
 > & { photo: Omit<Dictionary["cava"]["photo"], "alt"> };
 
 export function cavaFormLabels(cava: Dictionary["cava"]): CavaFormLabels {
-  const { fromCatalog, catalogHint, fields, formatos, save, cancel, errors } = cava;
+  const { fromCatalog, catalogHint, bodegaHint, fields, formatos, save, cancel, errors, picker } = cava;
   const { label, add, change, remove, preview, processing, unreadable } = cava.photo;
   const photo = { label, add, change, remove, preview, processing, unreadable };
-  return { fromCatalog, catalogHint, fields, formatos, save, cancel, errors, photo };
+  return { fromCatalog, catalogHint, bodegaHint, fields, formatos, save, cancel, errors, photo, picker };
 }

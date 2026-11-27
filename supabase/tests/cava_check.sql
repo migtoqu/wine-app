@@ -65,6 +65,11 @@ begin
   if (select count(*) from public.cava) <> 2 then
     raise exception 'FALLO: A no ve sus 2 lotes';
   end if;
+  -- Con vino enlazado, la bodega es la del vino (20261127140000_cava_bodega).
+  if (select bodega_id from public.cava where vino_id is not null)
+     is distinct from '40000000-0000-4000-8000-0000000000c1' then
+    raise exception 'FALLO: el lote con vino no hereda la bodega del vino';
+  end if;
   begin
     insert into public.cava (usuario_id, nombre) values ('00000000-0000-4000-8000-0000000000c2', 'Ajeno');
     raise exception 'FALLO: A ha creado un lote a nombre de B';
@@ -108,6 +113,12 @@ begin
   delete from public.vinos where id = '60000000-0000-4000-8000-0000000000c2';
   if not exists (select 1 from public.cava where vino_id is null and nombre = 'Vino Cava' and cantidad = 3) then
     raise exception 'FALLO: el lote no sobrevive al borrado del vino';
+  end if;
+  -- Borrar la bodega deja el lote sin enlace pero con su texto.
+  delete from public.vinos where bodega_id = '40000000-0000-4000-8000-0000000000c1';
+  delete from public.bodegas where id = '40000000-0000-4000-8000-0000000000c1';
+  if not exists (select 1 from public.cava where bodega_id is null and bodega_nombre = 'Bodega Cava') then
+    raise exception 'FALLO: el lote no sobrevive al borrado de la bodega';
   end if;
   raise notice 'OK: cava_check';
 end

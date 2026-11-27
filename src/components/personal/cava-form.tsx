@@ -1,12 +1,13 @@
 "use client";
 
 import NextLink from "next/link";
-import { useActionState, useId } from "react";
+import { useActionState, useId, useState, useTransition } from "react";
 import { FormAlert } from "@/components/auth/form-parts";
 import { Button, buttonStyles, Input } from "@/components/ui";
 import { localePath, type Locale } from "@/i18n/config";
-import { CAVA_FORMATOS, type CavaField, type CavaFormLabels } from "@/lib/personal/cava";
-import { saveCavaLote, type CavaFormState } from "@/lib/personal/cava-actions";
+import { CAVA_FORMATOS, type CavaField, type CavaFormLabels, type CavaVinoData } from "@/lib/personal/cava";
+import { getCavaVino, saveCavaLote, type CavaFormState } from "@/lib/personal/cava-actions";
+import { CatalogPicker } from "./catalog-picker";
 import { CavaPhotoField } from "./cava-photo-field";
 
 type Labels = CavaFormLabels;
@@ -15,6 +16,7 @@ export type CavaFormValues = {
   id?: string;
   vino_id: string | null;
   anada_id: string | null;
+  bodega_id: string | null;
   nombre: string;
   bodega_nombre: string | null;
   anio: number | null;
@@ -31,8 +33,9 @@ export type CavaFormValues = {
 };
 
 // Vino del catálogo al que se enlaza el lote: nombre y bodega fijos y la añada
-// se elige de la lista. Sin vino, nombre y bodega son texto libre.
-export type CavaVino = { id: string; nombre: string; bodega: string; anadas: { id: string; anio: number | null }[] };
+// se elige de la lista. Sin vino, nombre y bodega se buscan en el catálogo
+// (para enlazarlos) o se escriben como texto libre.
+export type CavaVino = CavaVinoData;
 
 const initialState: CavaFormState = { status: "idle" };
 const fieldClass =
@@ -42,7 +45,7 @@ export function CavaForm({
   lang,
   labels,
   values,
-  vino,
+  vino: initialVino,
 }: {
   lang: Locale;
   labels: Labels;
@@ -57,6 +60,36 @@ export function CavaForm({
     ? CAVA_FORMATOS
     : [...CAVA_FORMATOS, values.formato_ml];
 
+  // Vino y bodega enlazados. Al quitar el vino, el texto de los buscadores
+  // vuelve a ser editable (la clave los reinicia con el valor nuevo).
+  const [vino, setVino] = useState<CavaVino | null>(initialVino);
+  const [bodega, setBodega] = useState({ id: values.bodega_id, nombre: str(values.bodega_nombre) });
+  const [pickerKey, setPickerKey] = useState(0);
+  const [nombreLibre, setNombreLibre] = useState(values.nombre);
+  const [loadingVino, startLoadingVino] = useTransition();
+  const [vinoError, setVinoError] = useState(false);
+  const p = labels.picker;
+  const pickerLabels = { suggestions: p.suggestions, loading: p.loading, none: p.none, linked: p.linked, keepText: p.keepText };
+
+  const pickVino = (slug: string) => {
+    setVinoError(false);
+    startLoadingVino(async () => {
+      const data = await getCavaVino({ lang, slug }).catch(() => null);
+      if (data) {
+        setVino(data);
+        setBodega({ id: data.bodega_id, nombre: data.bodega });
+      } else setVinoError(true);
+    });
+  };
+
+  const unlinkVino = () => {
+    if (!vino) return;
+    setNombreLibre("");
+    setBodega({ id: vino.bodega_id, nombre: vino.bodega });
+    setVino(null);
+    setPickerKey((k) => k + 1);
+  };
+
   return (
     <form action={action} className="flex flex-col gap-5" noValidate>
       <input type="hidden" name="lang" value={lang} />
@@ -64,32 +97,55 @@ export function CavaForm({
       {state.message && <FormAlert>{labels.errors.generic}</FormAlert>}
 
       {vino ? (
-        <div className="flex flex-col gap-1 rounded-control bg-surface-2 px-3 py-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted">{labels.fromCatalog}</span>
-          <span className="font-semibold">{vino.nombre}</span>
-          <span className="text-sm text-muted">{vino.bodega}</span>
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-control bg-surface-2 px-3 py-2">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">{labels.fromCatalog}</span>
+            <span className="font-semibold">{vino.nombre}</span>
+            <span className="text-sm text-muted">{vino.bodega}</span>
+          </div>
+          <button type="button" onClick={unlinkVino} className={buttonStyles({ variant: "ghost", size: "sm" })}>
+            {p.change}
+          </button>
           <input type="hidden" name="vino_id" value={vino.id} />
           <input type="hidden" name="nombre" value={vino.nombre} />
           <input type="hidden" name="bodega_nombre" value={vino.bodega} />
+          <input type="hidden" name="bodega_id" value={vino.bodega_id} />
         </div>
       ) : (
         <>
-          <Input
-            label={labels.fields.nombre}
-            name="nombre"
-            required
-            maxLength={200}
-            defaultValue={values.nombre}
-            error={err("nombre")}
-            hint={values.id ? undefined : labels.catalogHint}
-          />
-          <Input
-            label={labels.fields.bodega}
+          <div className="flex flex-col gap-1.5" aria-busy={loadingVino || undefined}>
+            <CatalogPicker
+              key={`vino-${pickerKey}`}
+              entidad="vino"
+              name="nombre"
+              label={labels.fields.nombre}
+              placeholder={p.vinoPlaceholder}
+              required
+              defaultValue={nombreLibre}
+              error={err("nombre")}
+              hint={loadingVino ? p.loading : labels.catalogHint}
+              labels={pickerLabels}
+              onPick={(item) => pickVino(item.slug)}
+              onType={setNombreLibre}
+            />
+            {vinoError && <p className="text-sm font-medium text-danger">{p.loadError}</p>}
+          </div>
+          <CatalogPicker
+            key={`bodega-${pickerKey}`}
+            entidad="bodega"
             name="bodega_nombre"
-            maxLength={200}
-            defaultValue={str(values.bodega_nombre)}
+            label={labels.fields.bodega}
+            placeholder={p.bodegaPlaceholder}
+            defaultValue={bodega.nombre}
+            linked={bodega.id !== null}
             error={err("bodega_nombre")}
+            hint={labels.bodegaHint}
+            labels={pickerLabels}
+            onPick={(item) => setBodega({ id: item.id, nombre: item.nombre })}
+            // Al reescribir el nombre deja de estar enlazada.
+            onType={(text) => setBodega({ id: null, nombre: text })}
           />
+          {bodega.id && <input type="hidden" name="bodega_id" value={bodega.id} />}
         </>
       )}
 
@@ -97,9 +153,10 @@ export function CavaForm({
 
       <div className="grid gap-5 sm:grid-cols-2">
         {vino && vino.anadas.some((a) => a.anio !== null) ? (
-          <AnadaSelect id={ids.anada} labels={labels} vino={vino} values={values} />
+          <AnadaSelect key={vino.id} id={ids.anada} labels={labels} vino={vino} values={values} />
         ) : (
           <Input
+            key={vino?.id ?? "libre"}
             label={labels.fields.anada}
             name="anio"
             inputMode="numeric"

@@ -7,7 +7,7 @@ import { Card, CardBody } from "@/components/ui";
 import { localePath } from "@/i18n/config";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { requireUser } from "@/lib/auth/server";
-import { cavaFormLabels } from "@/lib/personal/cava";
+import { cavaFormLabels, toCavaVino } from "@/lib/personal/cava";
 import { getVino } from "@/lib/catalog/queries";
 
 // Alta de un lote. Con ?vino=slug (botón «Añadir a mi cava» de la ficha) queda
@@ -42,14 +42,7 @@ async function NuevaForm({ searchParams }: Pick<PageProps<"/[lang]/yo/cava/nueva
     typeof slug === "string" && slug.length <= 200 ? getVino(slug) : null,
   ]);
 
-  const vino: CavaVino | null = ficha
-    ? {
-        id: ficha.id,
-        nombre: ficha.nombre,
-        bodega: ficha.bodega.nombre,
-        anadas: ficha.anadas.map((a) => ({ id: a.id, anio: a.anio })),
-      }
-    : null;
+  const vino: CavaVino | null = ficha ? toCavaVino(ficha) : null;
   const anada = vino?.anadas[0] ?? null;
 
   return (
@@ -60,6 +53,7 @@ async function NuevaForm({ searchParams }: Pick<PageProps<"/[lang]/yo/cava/nueva
       values={{
         vino_id: vino?.id ?? null,
         anada_id: anada?.id ?? null,
+        bodega_id: vino?.bodega_id ?? null,
         nombre: vino?.nombre ?? "",
         bodega_nombre: vino?.bodega ?? null,
         anio: anada?.anio ?? null,

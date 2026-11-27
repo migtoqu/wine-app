@@ -134,7 +134,15 @@ function LoteItem({ lang, dict, lote, year }: { lang: Locale; dict: Dictionary; 
             <h3 className="font-semibold">
               {lote.vino ? <Link href={localePath(lang, `/vino/${lote.vino.slug}`)}>{title}</Link> : title}
             </h3>
-            {lote.bodega_nombre && <p className="text-sm text-muted">{lote.bodega_nombre}</p>}
+            {lote.bodega_nombre && (
+              <p className="text-sm text-muted">
+                {lote.bodega ? (
+                  <Link href={localePath(lang, `/bodega/${lote.bodega.slug}`)}>{lote.bodega_nombre}</Link>
+                ) : (
+                  lote.bodega_nombre
+                )}
+              </p>
+            )}
           </div>
         </div>
         {windowText && lote.cantidad > 0 && <Badge tone={windowTone[status]}>{windowText}</Badge>}

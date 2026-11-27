@@ -42,7 +42,8 @@ const es = {
       past: "Pasada su ventana",
     },
     fromCatalog: "Del catálogo",
-    catalogHint: "Para enlazarlo con su ficha, busca el vino y pulsa «Añadir a mi cava» en ella.",
+    catalogHint: "Empieza a escribir y elige el vino del catálogo para enlazarlo con su ficha. Si no aparece, escríbelo igualmente.",
+    bodegaHint: "Si la bodega está registrada, elígela para enlazarla con su ficha.",
     fields: {
       nombre: "Vino",
       bodega: "Bodega",
@@ -71,6 +72,17 @@ const es = {
       window: "Debe ser igual o posterior a «beber desde».",
       generic: "No se ha podido guardar. Inténtalo de nuevo.",
       photo: "La foto debe ser JPG, PNG o WebP y pesar menos de 2 MB.",
+    },
+    picker: {
+      vinoPlaceholder: "Busca un vino o escribe su nombre",
+      bodegaPlaceholder: "Busca una bodega o escribe su nombre",
+      suggestions: "Sugerencias del catálogo",
+      loading: "Buscando…",
+      none: "No está en el catálogo. Puedes guardarlo igualmente.",
+      linked: "Enlazada con su ficha del catálogo",
+      keepText: "Usar «{q}» sin enlazar",
+      change: "Cambiar vino",
+      loadError: "No se ha podido cargar el vino. Inténtalo de nuevo.",
     },
     photo: {
       label: "Foto de la botella",

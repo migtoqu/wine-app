@@ -8,7 +8,7 @@ import { buttonStyles, Card, CardBody } from "@/components/ui";
 import { localePath } from "@/i18n/config";
 import { getDictionary, getLocale } from "@/i18n/server";
 import { requireUser } from "@/lib/auth/server";
-import { cavaFormLabels } from "@/lib/personal/cava";
+import { cavaFormLabels, toCavaVino } from "@/lib/personal/cava";
 import { getVino } from "@/lib/catalog/queries";
 import { deleteCavaLote } from "@/lib/personal/cava-actions";
 import { getCavaLote } from "@/lib/personal/queries";
@@ -54,14 +54,7 @@ async function EditForm({ params }: Pick<PageProps<"/[lang]/yo/cava/[id]">, "par
   if (!lote) notFound();
 
   const ficha = lote.vino ? await getVino(lote.vino.slug) : null;
-  const vino: CavaVino | null = ficha
-    ? {
-        id: ficha.id,
-        nombre: ficha.nombre,
-        bodega: ficha.bodega.nombre,
-        anadas: ficha.anadas.map((a) => ({ id: a.id, anio: a.anio })),
-      }
-    : null;
+  const vino: CavaVino | null = ficha ? toCavaVino(ficha) : null;
 
   return (
     <>

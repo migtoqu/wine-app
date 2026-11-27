@@ -42,7 +42,8 @@ const en = {
       past: "Past its window",
     },
     fromCatalog: "From the catalogue",
-    catalogHint: "To link it to its page, find the wine and tap “Add to my cellar” there.",
+    catalogHint: "Start typing and pick the wine from the catalogue to link it to its page. If it isn't there, just type it in.",
+    bodegaHint: "If the winery is in the catalogue, pick it to link it to its page.",
     fields: {
       nombre: "Wine",
       bodega: "Winery",
@@ -71,6 +72,17 @@ const en = {
       window: "Must be the same as or later than “drink from”.",
       generic: "Couldn't save. Please try again.",
       photo: "The photo must be JPG, PNG or WebP and under 2 MB.",
+    },
+    picker: {
+      vinoPlaceholder: "Search for a wine or type its name",
+      bodegaPlaceholder: "Search for a winery or type its name",
+      suggestions: "Catalogue suggestions",
+      loading: "Searching…",
+      none: "Not in the catalogue. You can still save it.",
+      linked: "Linked to its catalogue page",
+      keepText: "Use “{q}” without linking",
+      change: "Change wine",
+      loadError: "Couldn't load the wine. Please try again.",
     },
     photo: {
       label: "Bottle photo",

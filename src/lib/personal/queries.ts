@@ -105,6 +105,7 @@ export type CavaLote = {
   id: string;
   vino_id: string | null;
   anada_id: string | null;
+  bodega_id: string | null;
   nombre: string;
   bodega_nombre: string | null;
   anio: number | null;
@@ -121,11 +122,12 @@ export type CavaLote = {
   foto_url: string | null;
   updated_at: string;
   vino: { slug: string } | null;
+  bodega: { slug: string } | null;
 };
 
-const CAVA_COLUMNS = `id, vino_id, anada_id, nombre, bodega_nombre, anio, cantidad, formato_ml,
+const CAVA_COLUMNS = `id, vino_id, anada_id, bodega_id, nombre, bodega_nombre, anio, cantidad, formato_ml,
   precio_compra, fecha_compra, tienda, ubicacion, beber_desde, beber_hasta, notas, foto_path, updated_at,
-  vino:vinos(slug)`;
+  vino:vinos(slug), bodega:bodegas(slug)`;
 
 export const CAVA_FOTOS_BUCKET = "cava-fotos";
 
