@@ -5,6 +5,7 @@
 // La descripción larga, el logo y las redes sociales no se leen.
 import * as cheerio from "cheerio";
 import type { Contexto } from "../../lib/ejecucion.ts";
+import { ErrorHttp } from "../../lib/http.ts";
 import { claveTexto, limpiarEspacios, textoONull } from "../../lib/texto.ts";
 import type { DefinicionConsejo, EntradaListado, FichaConsejo } from "./comun/tipos.ts";
 
@@ -104,11 +105,25 @@ export const consejoLaMancha: DefinicionConsejo = {
   denominacion: { slug: "la-mancha", nombre: "La Mancha" },
   urlsRobots: [URL_SITEMAP, `${BASE}/enoturismo/bodegas-la-tercia/`],
   async listar(ctx: Contexto) {
-    const indice = (await ctx.http.get(URL_SITEMAP)).texto;
+    let sitemaps = sitemapsDeFichas((await ctx.http.get(URL_SITEMAP)).texto);
+    // El índice de Yoast a veces llega sin los sitemaps del directorio (se regenera): se prueban
+    // los nombres conocidos, parando en el primer 404.
+    const respaldo = sitemaps.length === 0;
+    if (respaldo) {
+      ctx.log.warn("El índice de sitemaps no trae los del directorio: se prueban los nombres conocidos");
+      sitemaps = Array.from({ length: 9 }, (_, i) => `${BASE}/wpbdp_listing-sitemap${i ? i + 1 : ""}.xml`);
+    }
     const out: EntradaListado[] = [];
     const vistos = new Set<string>();
-    for (const url of sitemapsDeFichas(indice)) {
-      for (const e of fichasDeSitemap((await ctx.http.get(url)).texto)) {
+    for (const url of sitemaps) {
+      let xml: string;
+      try {
+        xml = (await ctx.http.get(url)).texto;
+      } catch (e) {
+        if (respaldo && e instanceof ErrorHttp && e.status === 404) break;
+        throw e;
+      }
+      for (const e of fichasDeSitemap(xml)) {
         if (!vistos.has(e.url)) out.push(e), vistos.add(e.url);
       }
     }
