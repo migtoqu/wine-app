@@ -61,14 +61,15 @@ function AwardItem({
         )}
         {actual && <span className="text-xs font-semibold text-primary">{labels.thisVintage}</span>}
       </div>
-      <p className="font-semibold">
-        {premio.certamen.nombre} <span className="font-normal text-muted">· {labels.edition(premio.edicion)}</span>
-      </p>
       {premio.vino && (
-        <p>
+        <p className="font-semibold">
           <Link href={localePath(lang, `/vino/${premio.vino.slug}`)}>{premio.vino.nombre}</Link>
         </p>
       )}
+      <p className="flex flex-col">
+        <span className="font-semibold">{premio.certamen.nombre}</span>
+        <span className="text-sm text-muted">{labels.edition(premio.edicion)}</span>
+      </p>
       <p className="text-sm text-muted">
         {premio.anio !== null ? labels.vintage(premio.anio) : labels.noVintage}
         {premio.mencion && <> · {premio.mencion}</>}
